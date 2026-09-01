@@ -23,8 +23,7 @@ export default function HomeScreen({
     <>
       <div className="title">Cul-Sec</div>
       <div className="subtitle">
-        Cartes, culture G et gorgées. Chacun sur son téléphone, un code de partie pour vous
-        retrouver.
+        Cartes, culture G et cul secs. Un code, une soirée, zéro alibi.
       </div>
 
       {mode === "choose" ? (
