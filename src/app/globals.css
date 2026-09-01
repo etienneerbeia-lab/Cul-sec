@@ -19,14 +19,17 @@
 html,
 body {
   height: 100%;
+  overscroll-behavior: none;
+  background: var(--felt-dark);
 }
 body {
   margin: 0;
   font-family: var(--font-space-grotesk), sans-serif;
   background: radial-gradient(ellipse at 50% -10%, #3a2361 0%, var(--felt) 55%, var(--felt-dark) 100%);
-  background-attachment: fixed;
   color: var(--offwhite);
-  min-height: 100vh;
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
   display: flex;
   align-items: stretch;
   justify-content: center;
@@ -34,11 +37,21 @@ body {
 #app {
   width: 100%;
   max-width: 480px;
-  min-height: 100vh;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 22px 22px 22px;
+  padding: calc(22px + env(safe-area-inset-top, 0px)) 22px
+    calc(22px + env(safe-area-inset-bottom, 0px));
   position: relative;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+/* #app has a fixed height so it can scroll internally — without this,
+   flexbox's default flex-shrink:1 would squeeze tall content (long
+   player lists, leaderboards) to fit instead of letting it overflow. */
+#app > * {
+  flex-shrink: 0;
 }
 h1,
 h2,
