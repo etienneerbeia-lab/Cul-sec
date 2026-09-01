@@ -4,17 +4,45 @@ import type {
   QuizDistributionEntry,
   QuizQuestionState,
 } from "../game/types";
+import type { Difficulty } from "./types";
 import { checkAnswer } from "./match";
 import { QUIZ_QUESTIONS } from "./questions";
 
 const TYPES = ["capital", "flag", "date"] as const;
 
+// 50% facile / 35% moyen / 15% difficile — keeps the quiz approachable for
+// a normal group instead of drawing uniformly across difficulty.
+const DIFFICULTY_WEIGHTS: [Difficulty, number][] = [
+  [1, 0.5],
+  [2, 0.35],
+  [3, 0.15],
+];
+
+function pickWeightedDifficulty(): Difficulty {
+  const r = Math.random();
+  let cumulative = 0;
+  for (const [level, weight] of DIFFICULTY_WEIGHTS) {
+    cumulative += weight;
+    if (r <= cumulative) return level;
+  }
+  return 3;
+}
+
 function pickQuestion(g: GameState): QuizQuestionState {
   const used = new Set(g.usedQuestionIds ?? []);
   const type = TYPES[Math.floor(Math.random() * TYPES.length)];
-  let pool = QUIZ_QUESTIONS.filter((q) => q.type === type && !used.has(q.id));
+  const difficulty = pickWeightedDifficulty();
+
+  let pool = QUIZ_QUESTIONS.filter(
+    (q) => q.type === type && q.difficulty === difficulty && !used.has(q.id)
+  );
   if (pool.length === 0) {
-    // Exhausted this type's bank for the night — allow repeats again.
+    // That exact (type, difficulty) bucket is exhausted for the night —
+    // fall back to any unused question of the same type.
+    pool = QUIZ_QUESTIONS.filter((q) => q.type === type && !used.has(q.id));
+  }
+  if (pool.length === 0) {
+    // Exhausted this type's whole bank for the night — allow repeats again.
     pool = QUIZ_QUESTIONS.filter((q) => q.type === type);
   }
   const chosen = pool[Math.floor(Math.random() * pool.length)];
