@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import HomeMark from "../HomeMark";
 
 export default function HomeScreen({
   onCreate,
@@ -28,6 +29,31 @@ export default function HomeScreen({
 
       {mode === "choose" ? (
         <>
+          <div className="home-mark">
+            <HomeMark />
+          </div>
+
+          <div className="how-it-works">
+            <div className="how-it-works-row">
+              <div className="how-it-works-num">1</div>
+              <div className="how-it-works-text">
+                Crée une partie ou rejoins avec le code d&apos;un ami.
+              </div>
+            </div>
+            <div className="how-it-works-row">
+              <div className="how-it-works-num">2</div>
+              <div className="how-it-works-text">
+                Chacun son tour : cartes ou Culture G, tiré au hasard.
+              </div>
+            </div>
+            <div className="how-it-works-row">
+              <div className="how-it-works-num">3</div>
+              <div className="how-it-works-text">
+                À la fin, le classement désigne qui fait le cul sec.
+              </div>
+            </div>
+          </div>
+
           <div className="spacer" />
           <button
             className="btn-primary"
