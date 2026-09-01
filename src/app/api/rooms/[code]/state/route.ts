@@ -22,9 +22,23 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ code
     myHand = hand.length ? hand : null;
   }
 
+  // Never let the answer reach any client before the active player has
+  // actually submitted — the question prompt itself is public (everyone
+  // watches along), only the answer stays server-side until resolved.
+  const publicGame =
+    game && game.quiz && game.quiz.status === "asking"
+      ? {
+          ...game,
+          quiz: {
+            ...game.quiz,
+            question: { ...game.quiz.question, answer: undefined, acceptableAnswers: undefined },
+          },
+        }
+      : game;
+
   return NextResponse.json({
     players,
-    game,
+    game: publicGame,
     myHand,
     mySlug: session?.slug ?? null,
     myName: session?.name ?? null,

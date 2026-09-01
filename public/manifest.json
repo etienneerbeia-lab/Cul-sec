@@ -1,7 +1,7 @@
 {
-  "name": "Mise à l'aveugle",
-  "short_name": "Mise à l'aveugle",
-  "description": "Un jeu de cartes à boire, multijoueur, chacun sur son téléphone.",
+  "name": "Cul-Sec",
+  "short_name": "Cul-Sec",
+  "description": "Jeux de soirée à boire, multijoueur, chacun sur son téléphone.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

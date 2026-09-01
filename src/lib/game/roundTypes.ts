@@ -36,6 +36,13 @@ export const ROUND_TYPES: RoundType[] = [
     icon: "⚔️",
     cards: 1,
   },
+  {
+    id: "quiz",
+    label: "Culture G",
+    tagline: "Chacun son tour : capitales, drapeaux, dates. Bonne réponse, tu fais boire ; mauvaise, tu bois.",
+    icon: "🧠",
+    cards: 0,
+  },
 ];
 
 export function roundTypeById(id: string): RoundType {

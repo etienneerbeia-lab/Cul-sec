@@ -299,6 +299,49 @@ label.field-label {
   font-size: 1.1rem;
 }
 
+.quiz-flag {
+  font-size: 5rem;
+  text-align: center;
+  margin: 10px 0;
+}
+.quiz-prompt {
+  font-family: var(--font-fraunces), serif;
+  font-size: 1.4rem;
+  color: var(--cream);
+  text-align: center;
+  line-height: 1.3;
+  margin: 10px 0 6px;
+}
+.quiz-result-banner {
+  font-family: var(--font-fraunces), serif;
+  font-size: 1.4rem;
+  font-weight: 700;
+  text-align: center;
+  margin: 14px 0 6px;
+}
+.quiz-result-banner.correct {
+  color: var(--gold);
+}
+.quiz-result-banner.incorrect {
+  color: var(--wine-bright);
+}
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.stepper button {
+  width: auto;
+  padding: 4px 12px !important;
+  font-size: 1.1rem;
+}
+.stepper-value {
+  font-family: var(--font-fraunces), serif;
+  font-weight: 700;
+  min-width: 1.2em;
+  text-align: center;
+}
+
 .leaderboard-row {
   display: flex;
   justify-content: space-between;

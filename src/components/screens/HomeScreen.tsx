@@ -21,9 +21,9 @@ export default function HomeScreen({
 
   return (
     <>
-      <div className="title">Mise à l&apos;aveugle</div>
+      <div className="title">Cul-Sec</div>
       <div className="subtitle">
-        Un jeu de bluff et de gorgées. Chacun sur son téléphone, un code de partie pour vous
+        Cartes, culture G et gorgées. Chacun sur son téléphone, un code de partie pour vous
         retrouver.
       </div>
 

@@ -18,6 +18,7 @@ import BettingScreen from "./screens/BettingScreen";
 import CommunityRevealScreen from "./screens/CommunityRevealScreen";
 import ShowdownScreen from "./screens/ShowdownScreen";
 import FinalScreen from "./screens/FinalScreen";
+import QuizScreen from "./screens/QuizScreen";
 
 const POLL_MS = 1500;
 
@@ -226,6 +227,21 @@ export default function GameApp() {
           isHost={isHost}
           busy={busy}
           onNextRound={() => runAction(() => apiPost(`/api/rooms/${roomCode}/next-round`))}
+          onEndNight={() => runAction(() => apiPost(`/api/rooms/${roomCode}/end-night`))}
+        />
+      ) : phase === "quiz" ? (
+        <QuizScreen
+          game={game}
+          mySlug={mySlug}
+          isHost={isHost}
+          busy={busy}
+          onSubmitAnswer={(answer) =>
+            runAction(() => apiPost(`/api/rooms/${roomCode}/quiz-answer`, { answer }))
+          }
+          onDistribute={(targets) =>
+            runAction(() => apiPost(`/api/rooms/${roomCode}/quiz-distribute`, { targets }))
+          }
+          onNext={() => runAction(() => apiPost(`/api/rooms/${roomCode}/quiz-next`))}
           onEndNight={() => runAction(() => apiPost(`/api/rooms/${roomCode}/end-night`))}
         />
       ) : phase === "final" ? (

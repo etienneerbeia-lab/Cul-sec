@@ -10,7 +10,7 @@ export interface Card {
   suit: Suit;
 }
 
-export type RoundTypeId = "high" | "low" | "teenpatti" | "holdem" | "duel";
+export type RoundTypeId = "high" | "low" | "teenpatti" | "holdem" | "duel" | "quiz";
 
 export interface RoundType {
   id: RoundTypeId;
@@ -35,6 +35,7 @@ export type GamePhase =
   | "betting"
   | "communityReveal"
   | "showdown"
+  | "quiz"
   | "final";
 
 export type Street = "single" | "preflop" | "flop" | "turn" | "river";
@@ -63,6 +64,41 @@ export interface LastResults {
   cards?: Record<string, Card>;
 }
 
+export type QuizQuestionType = "capital" | "flag" | "date";
+export type QuizAnswerKind = "year" | "text";
+export type QuizTurnStatus = "asking" | "distributing" | "result";
+
+export interface QuizQuestionState {
+  id: string;
+  type: QuizQuestionType;
+  difficulty: number;
+  prompt: string;
+  flagEmoji?: string;
+  answerKind: QuizAnswerKind;
+  // Present in server-side state at all times, but the API route strips
+  // these two fields from the response while status === "asking" so no
+  // client ever receives the answer before it's actually resolved.
+  answer?: string;
+  acceptableAnswers?: string[];
+}
+
+export interface QuizDistributionEntry {
+  slug: string;
+  name: string;
+  amount: number;
+}
+
+export interface QuizRoundState {
+  turnOrder: number[];
+  turnPointer: number;
+  playerIdx: number;
+  status: QuizTurnStatus;
+  question: QuizQuestionState;
+  lastAnswerGiven?: string;
+  correct?: boolean;
+  distribution?: QuizDistributionEntry[];
+}
+
 export interface GameState {
   phase: GamePhase;
   round: number;
@@ -83,6 +119,8 @@ export interface GameState {
   needsToAct?: number[];
   turnIdx?: number;
   lastResults?: LastResults;
+  quiz?: QuizRoundState;
+  usedQuestionIds?: string[];
 }
 
 export interface Player {

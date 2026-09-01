@@ -17,13 +17,13 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Mise à l'aveugle",
-  description: "Un jeu de cartes à boire, multijoueur, chacun sur son téléphone.",
+  title: "Cul-Sec",
+  description: "Jeux de soirée à boire, multijoueur, chacun sur son téléphone.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Mise à l'aveugle",
+    title: "Cul-Sec",
   },
   icons: {
     icon: [

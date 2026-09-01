@@ -36,7 +36,7 @@ async function run() {
     { name: "Cleo", slug: "cleo" },
   ];
 
-  let g: GameState = launchGame(players);
+  const g: GameState = launchGame(players);
   assert(g.phase === "roundIntro", "launchGame sets roundIntro phase");
   assert(g.playersPublic.length === 3, "3 players tracked");
 

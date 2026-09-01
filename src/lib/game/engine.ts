@@ -1,6 +1,7 @@
 import { makeShuffledDeck, shuffleArr } from "./cards";
 import { bestOf7, compareHand, evaluate3 } from "./evaluate";
 import { ROUND_TYPES, roundTypeById } from "./roundTypes";
+import { advanceQuizTurn, startQuizRound } from "../quiz/engine";
 import type {
   BettingOpts,
   Card,
@@ -71,6 +72,12 @@ export function launchGame(players: Player[]): GameState {
 
 export async function confirmRoundIntro(g: GameState, hands: HandStore): Promise<void> {
   const rt = roundTypeObjFrom(g);
+
+  if (rt.id === "quiz") {
+    startQuizRound(g);
+    return;
+  }
+
   const dealTargets = rt.id === "duel" ? g.duelists!.slice() : g.playersPublic.map((_, i) => i);
   g.dealTargets = dealTargets;
 
@@ -384,4 +391,12 @@ export function nextRound(g: GameState): void {
 
 export function endNight(g: GameState): void {
   g.phase = "final";
+}
+
+// Advances to the next player's quiz question, or — once the whole table
+// has had a turn — moves on to the next Manche (which may pick quiz again
+// or a card round type), exactly like a card round's "next round" button.
+export function quizAdvance(g: GameState): void {
+  const roundOver = advanceQuizTurn(g);
+  if (roundOver) nextRound(g);
 }
