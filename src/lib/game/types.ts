@@ -99,6 +99,8 @@ export interface QuizRoundState {
   distribution?: QuizDistributionEntry[];
 }
 
+export type CulSecRule = "last" | "first";
+
 export interface GameState {
   phase: GamePhase;
   round: number;
@@ -121,6 +123,9 @@ export interface GameState {
   lastResults?: LastResults;
   quiz?: QuizRoundState;
   usedQuestionIds?: string[];
+  totalRounds?: number;
+  culSecRule?: CulSecRule;
+  culSecTargetSlug?: string;
 }
 
 export interface Player {

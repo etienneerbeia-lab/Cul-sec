@@ -38,7 +38,10 @@ export default function QuizScreen({
       <div className="table-status">
         <div>
           <div className="label">Manche</div>
-          <div className="value">{game.round}</div>
+          <div className="value">
+            {game.round}
+            {game.totalRounds ? `/${game.totalRounds}` : ""}
+          </div>
         </div>
         <div>
           <div className="label">{TYPE_LABELS[q.question.type] ?? "Question"}</div>

@@ -25,7 +25,10 @@ export default function BettingScreen({
       <div className="table-status">
         <div>
           <div className="label">Manche</div>
-          <div className="value">{game.round}</div>
+          <div className="value">
+            {game.round}
+            {game.totalRounds ? `/${game.totalRounds}` : ""}
+          </div>
         </div>
         {opts.foldCost === "pot" ? (
           <div>

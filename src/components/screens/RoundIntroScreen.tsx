@@ -17,7 +17,10 @@ export default function RoundIntroScreen({
     <>
       <div className="pass-screen">
         <div className="glyph">{rt.icon}</div>
-        <div className="field-label">Manche {game.round}</div>
+        <div className="field-label">
+          Manche {game.round}
+          {game.totalRounds ? `/${game.totalRounds}` : ""}
+        </div>
         <div className="pass-name">{rt.label}</div>
         <div className="hint">{rt.tagline}</div>
         {rt.id === "duel" && game.duelists && (

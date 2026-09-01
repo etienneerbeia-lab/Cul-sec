@@ -10,7 +10,7 @@ import {
   type SessionResponse,
   type StateResponse,
 } from "@/lib/api-client";
-import type { Card, GameState, Player } from "@/lib/game/types";
+import type { Card, CulSecRule, GameState, Player } from "@/lib/game/types";
 import HomeScreen from "./screens/HomeScreen";
 import LobbyScreen from "./screens/LobbyScreen";
 import RoundIntroScreen from "./screens/RoundIntroScreen";
@@ -194,7 +194,9 @@ export default function GameApp() {
           isHost={isHost}
           busy={busy}
           error={error}
-          onLaunch={() => runAction(() => apiPost(`/api/rooms/${roomCode}/launch`))}
+          onLaunch={(totalRounds: number, culSecRule: CulSecRule) =>
+            runAction(() => apiPost(`/api/rooms/${roomCode}/launch`, { totalRounds, culSecRule }))
+          }
         />
       ) : phase === "roundIntro" ? (
         <RoundIntroScreen
@@ -245,7 +247,14 @@ export default function GameApp() {
           onEndNight={() => runAction(() => apiPost(`/api/rooms/${roomCode}/end-night`))}
         />
       ) : phase === "final" ? (
-        <FinalScreen game={game} onRestart={handleQuit} />
+        <FinalScreen
+          game={game}
+          mySlug={mySlug}
+          onAssignCulSec={(targetSlug) =>
+            runAction(() => apiPost(`/api/rooms/${roomCode}/assign-cul-sec`, { targetSlug }))
+          }
+          onRestart={handleQuit}
+        />
       ) : null}
 
       {error && phase !== "lobby" && <div className="hint error-text">{error}</div>}

@@ -5,6 +5,7 @@ import { advanceQuizTurn, startQuizRound } from "../quiz/engine";
 import type {
   BettingOpts,
   Card,
+  CulSecRule,
   GameState,
   Player,
   PlayerPublic,
@@ -50,7 +51,7 @@ export function setupRoundType(g: GameState): void {
   }
 }
 
-export function launchGame(players: Player[]): GameState {
+export function launchGame(players: Player[], totalRounds: number, culSecRule: CulSecRule): GameState {
   const playersPublic: PlayerPublic[] = players.map((p) => ({
     name: p.name,
     slug: p.slug,
@@ -65,6 +66,8 @@ export function launchGame(players: Player[]): GameState {
     startIndex: 0,
     lastRoundTypeId: null,
     playersPublic,
+    totalRounds,
+    culSecRule,
   };
   setupRoundType(g);
   return g;
@@ -378,6 +381,10 @@ function resolveDuelState(g: GameState, i1: number, card1: Card, i2: number, car
 }
 
 export function nextRound(g: GameState): void {
+  if (g.totalRounds && g.round >= g.totalRounds) {
+    g.phase = "final";
+    return;
+  }
   g.round += 1;
   g.startIndex = (g.startIndex + 1) % g.playersPublic.length;
   g.playersPublic.forEach((p) => {
@@ -391,6 +398,19 @@ export function nextRound(g: GameState): void {
 
 export function endNight(g: GameState): void {
   g.phase = "final";
+}
+
+// culSecRule "last": whoever drank the most does a cul sec — determined
+// automatically, no interaction needed. culSecRule "first": whoever drank
+// the least picks who among the others does the cul sec.
+export function culSecWinnerSlug(g: GameState): string | null {
+  if (g.playersPublic.length === 0) return null;
+  const sorted = [...g.playersPublic].sort((a, b) => a.gulpsTotal - b.gulpsTotal);
+  return sorted[0].slug;
+}
+
+export function assignCulSec(g: GameState, targetSlug: string): void {
+  g.culSecTargetSlug = targetSlug;
 }
 
 // Advances to the next player's quiz question, or — once the whole table
