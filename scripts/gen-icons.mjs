@@ -19,16 +19,16 @@ const svg = `
     </radialGradient>
   </defs>
 
-  <g transform="translate(38,172) scale(1.55)">
-    <path d="M32 24 L88 24 L78 96 Q76 108 60 108 Q44 108 42 96 Z" fill="none" stroke="#e0568c" stroke-width="4.5" stroke-linejoin="round"/>
-    <path d="M38 40 L82 40 L76 90 Q75 98 60 98 Q45 98 44 90 Z" fill="#e0568c" opacity="0.2"/>
-    <line x1="45" y1="56" x2="75" y2="56" stroke="#e0568c" stroke-width="3.5" opacity="0.55"/>
-  </g>
-
-  <g transform="translate(254,154) scale(1.55)">
-    <rect x="22" y="14" width="70" height="98" rx="10" fill="#f4ecd8" stroke="#e0568c" stroke-width="4" transform="rotate(-8 57 63)"/>
-    <rect x="38" y="22" width="70" height="98" rx="10" fill="#f4ecd8" stroke="#e0568c" stroke-width="4" transform="rotate(6 73 71)"/>
-    <text x="73" y="80" font-family="Georgia, 'Times New Roman', serif" font-weight="700" font-size="46" fill="#8b2635" text-anchor="middle" transform="rotate(6 73 71)">&#9824;</text>
+  <g transform="translate(56,56) scale(2.5)">
+    <g transform="rotate(-10 64 70)">
+      <rect x="26" y="18" width="76" height="104" rx="10" fill="#f4ecd8" stroke="#e0568c" stroke-width="3.5"/>
+      <text x="40" y="42" font-family="Georgia, 'Times New Roman', serif" font-weight="700" font-size="20" fill="#8b2635">&#9824;</text>
+    </g>
+    <g transform="rotate(8 84 78)">
+      <rect x="46" y="26" width="76" height="104" rx="10" fill="#f4ecd8" stroke="#e0568c" stroke-width="3.5"/>
+      <path d="M68 52 L100 52 L91 118 Q90 124 84 124 Q78 124 77 118 Z" fill="none" stroke="#e0568c" stroke-width="3.5" stroke-linejoin="round"/>
+      <path d="M72 64 L96 64 L89 112 Q88 116 84 116 Q80 116 79 112 Z" fill="#8b2635"/>
+    </g>
   </g>
 </svg>
 `;
