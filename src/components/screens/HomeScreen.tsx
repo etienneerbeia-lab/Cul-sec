@@ -43,7 +43,7 @@ export default function HomeScreen({
             <div className="how-it-works-row">
               <div className="how-it-works-num">2</div>
               <div className="how-it-works-text">
-                Chacun son tour : cartes ou Culture G, tiré au hasard.
+                Chacun son tour : un mini-jeu différent, tiré au hasard, à chaque manche.
               </div>
             </div>
             <div className="how-it-works-row">

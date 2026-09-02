@@ -50,6 +50,28 @@ export default function HomeMark() {
         >
           ♠
         </text>
+        <text
+          x="48"
+          y="42"
+          fontFamily="var(--font-fraunces), serif"
+          fontWeight="700"
+          fontSize="16"
+          fill="var(--wine)"
+          transform="rotate(6 73 71)"
+        >
+          C
+        </text>
+        <text
+          x="48"
+          y="42"
+          fontFamily="var(--font-fraunces), serif"
+          fontWeight="700"
+          fontSize="16"
+          fill="var(--wine)"
+          transform="rotate(6 73 71) rotate(180 73 71)"
+        >
+          S
+        </text>
       </svg>
     </div>
   );
