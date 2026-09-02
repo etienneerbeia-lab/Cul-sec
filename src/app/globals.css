@@ -613,15 +613,19 @@ label.field-label {
   gap: 22px;
   justify-content: center;
   margin: 18px 0;
-  perspective: 600px;
 }
+/* `perspective` lives on the scene wrapper (not the row) so every Die
+   carries its own 3D viewing context wherever it's used — the big roll
+   view, the small per-player recap rows, anywhere. */
 .die-scene {
   width: 64px;
   height: 64px;
+  perspective: 600px;
 }
 .die-scene.die-scene-small {
   width: 26px;
   height: 26px;
+  perspective: 260px;
 }
 .die-cube {
   --die-size: 64px;
@@ -630,17 +634,19 @@ label.field-label {
   position: relative;
   transform-style: preserve-3d;
   /* Idle resting tilt — shows this is a real 3D object even before it's
-     rolled. Overridden inline once a value settles, so the result reads
-     dead-on instead of at an angle. */
+     rolled. React drives every actual change to this transform (idle ->
+     rolling -> settled) as plain state, so this transition is the ONLY
+     thing animating the cube — no @keyframes involved. A roll always
+     targets the landed face's angle plus a couple of extra full turns
+     (see Die.tsx), which is what makes this read as a roll instead of a
+     snap: same resting orientation, much bigger visible rotation getting
+     there. Slow, decelerating easing so it looks like it's settling under
+     its own weight rather than just stopping. */
   transform: rotateX(-18deg) rotateY(24deg);
-  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform 1.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .die-cube.die-small {
   --die-size: 26px;
-}
-.die-cube.die-spinning {
-  animation: die3d-tumble 900ms linear infinite;
-  transition: none;
 }
 .die-face {
   position: absolute;
@@ -689,26 +695,6 @@ label.field-label {
 }
 .die-pip-empty {
   background: transparent;
-}
-/* Ends every axis on an exact multiple of 360deg so each loop restarts
-   with zero visual jump — lets the tumble run indefinitely while the
-   result is still unknown, however long that takes. */
-@keyframes die3d-tumble {
-  0% {
-    transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg);
-  }
-  25% {
-    transform: rotateX(200deg) rotateY(160deg) rotateZ(90deg);
-  }
-  50% {
-    transform: rotateX(380deg) rotateY(340deg) rotateZ(180deg);
-  }
-  75% {
-    transform: rotateX(560deg) rotateY(520deg) rotateZ(270deg);
-  }
-  100% {
-    transform: rotateX(720deg) rotateY(720deg) rotateZ(360deg);
-  }
 }
 .dice-tap-area {
   display: block;

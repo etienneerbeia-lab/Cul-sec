@@ -3,13 +3,17 @@ import type { GameState } from "@/lib/game/types";
 export default function FinalScreen({
   game,
   mySlug,
+  isHost,
   onAssignCulSec,
-  onRestart,
+  onRejouer,
+  onNewRoom,
 }: {
   game: GameState;
   mySlug: string;
+  isHost: boolean;
   onAssignCulSec: (targetSlug: string) => void;
-  onRestart: () => void;
+  onRejouer: () => void;
+  onNewRoom: () => void;
 }) {
   const sorted = [...game.playersPublic].sort((a, b) => b.gulpsTotal - a.gulpsTotal);
   const rule = game.culSecRule ?? "last";
@@ -85,7 +89,14 @@ export default function FinalScreen({
         ))}
       </div>
       <div className="spacer" />
-      <button className="btn-primary" onClick={onRestart}>
+      {isHost ? (
+        <button className="btn-primary" onClick={onRejouer}>
+          Rejouer
+        </button>
+      ) : (
+        <div className="hint">En attente que l&apos;hôte relance une partie...</div>
+      )}
+      <button className="btn-ghost" style={{ marginTop: 12 }} onClick={onNewRoom}>
         Nouvelle partie
       </button>
     </>

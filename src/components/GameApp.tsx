@@ -362,10 +362,12 @@ export default function GameApp() {
         <FinalScreen
           game={game}
           mySlug={mySlug}
+          isHost={isHost}
           onAssignCulSec={(targetSlug) =>
             runAction(() => apiPost(`/api/rooms/${roomCode}/assign-cul-sec`, { targetSlug }))
           }
-          onRestart={handleQuit}
+          onRejouer={() => runAction(() => apiPost(`/api/rooms/${roomCode}/restart`))}
+          onNewRoom={handleQuit}
         />
       ) : null}
 

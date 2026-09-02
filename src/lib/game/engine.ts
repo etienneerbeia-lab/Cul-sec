@@ -452,6 +452,22 @@ export function endNight(g: GameState): void {
   g.phase = "final";
 }
 
+// "Rejouer" from the final leaderboard — same room, same code, same
+// players still connected, but a clean slate: back to the lobby so the
+// host can pick round count/mini-games again, exactly like the very
+// first launch. Mirrors the minimal lobby GameState the client itself
+// creates right after POST /api/rooms (see GameApp.tsx's handleCreate) —
+// launchGame() rebuilds playersPublic from scratch off the room's current
+// player list when the host actually launches again, which is what
+// zeroes every gulp count; nothing here needs to touch gulps directly.
+export function restartToLobby(g: GameState): void {
+  g.phase = "lobby";
+  g.round = 0;
+  g.startIndex = 0;
+  g.lastRoundTypeId = null;
+  g.playersPublic = [];
+}
+
 // culSecRule "last": whoever drank the most does a cul sec — determined
 // automatically, no interaction needed. culSecRule "first": whoever drank
 // the least picks who among the others does the cul sec.
