@@ -16,8 +16,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ code
     getHost(code),
   ]);
 
+  // Duel deliberately isn't in this list: nobody, not even a duelist, sees
+  // their own card before it's actually revealed — that state comes only
+  // from game.duelReveal.revealedCards, same as everyone else.
   let myHand: Card[] | null = null;
-  if (session && game && ["betting", "showdown", "duelReveal"].includes(game.phase)) {
+  if (session && game && ["betting", "showdown"].includes(game.phase)) {
     const hand = await getHand(code, game.round, session.slug);
     myHand = hand.length ? hand : null;
   }

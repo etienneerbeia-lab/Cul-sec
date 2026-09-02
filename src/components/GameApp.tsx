@@ -258,7 +258,6 @@ export default function GameApp() {
         <DuelRevealScreen
           game={game}
           mySlug={mySlug}
-          myHand={myHand}
           busy={busy}
           onReveal={() => runAction(() => apiPost(`/api/rooms/${roomCode}/duel-reveal`))}
         />
