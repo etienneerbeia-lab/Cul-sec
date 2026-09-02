@@ -26,8 +26,14 @@ const svg = `
     </g>
     <g transform="rotate(8 84 78)">
       <rect x="46" y="26" width="76" height="104" rx="10" fill="#f4ecd8" stroke="#e0568c" stroke-width="3.5"/>
+      <text x="51" y="44" font-family="Georgia, 'Times New Roman', serif" font-weight="700" font-size="15" fill="#8b2635">C</text>
       <path d="M68 52 L100 52 L91 118 Q90 124 84 124 Q78 124 77 118 Z" fill="none" stroke="#e0568c" stroke-width="3.5" stroke-linejoin="round"/>
-      <path d="M72 64 L96 64 L89 112 Q88 116 84 116 Q80 116 79 112 Z" fill="#8b2635"/>
+      <path d="M72 64 L96 64 L89 112 Q88 116 84 116 Q80 116 79 112 Z" fill="#8b2635" opacity="0.93"/>
+      <ellipse cx="84" cy="64" rx="12" ry="1.5" fill="#b23347" opacity="0.7"/>
+      <path d="M74 58 L70 104" stroke="#f4ecd8" stroke-width="1.3" stroke-linecap="round" opacity="0.3"/>
+      <g transform="rotate(180 84 78)">
+        <text x="51" y="44" font-family="Georgia, 'Times New Roman', serif" font-weight="700" font-size="15" fill="#8b2635">S</text>
+      </g>
     </g>
   </g>
 </svg>

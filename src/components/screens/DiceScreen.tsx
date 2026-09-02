@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { DiceRoll, GameState } from "@/lib/game/types";
 import Die from "../Die";
 
-const ROLL_ANIM_MS = 1000;
+const ROLL_ANIM_MS = 1300;
 
 export default function DiceScreen({
   game,
@@ -53,19 +53,41 @@ export default function DiceScreen({
           <h3>Lancers</h3>
           <div className="players-list">
             {d.rolls.map((r) => (
-              <div className="player-chip" key={r.slug}>
-                <span className="pname">{r.name}</span>
-                <span className="pmeta dice-chip-result">
-                  <Die value={r.d1} small />
-                  <Die value={r.d2} small />
-                  {r.sum}
-                </span>
-              </div>
+              // Keyed by slug so each roll's row mounts exactly once, the
+              // instant it first appears via polling — that mount is what
+              // drives its own spin-then-settle reveal for spectators.
+              <RollRow key={r.slug} roll={r} skipAnim={r.slug === mySlug} />
             ))}
           </div>
         </>
       )}
     </>
+  );
+}
+
+// Live reveal for everyone watching: a roll that just landed still plays
+// its own spin-to-result animation the moment this viewer's poll picks it
+// up, instead of the result just popping into the list already resolved.
+// The active roller skips this — they already watched their own throw in
+// DiceMyTurn a moment ago.
+function RollRow({ roll, skipAnim }: { roll: DiceRoll; skipAnim: boolean }) {
+  const [revealed, setRevealed] = useState(skipAnim);
+
+  useEffect(() => {
+    if (skipAnim) return;
+    const t = setTimeout(() => setRevealed(true), ROLL_ANIM_MS);
+    return () => clearTimeout(t);
+  }, [skipAnim]);
+
+  return (
+    <div className="player-chip">
+      <span className="pname">{roll.name}</span>
+      <span className="pmeta dice-chip-result">
+        <Die value={revealed ? roll.d1 : null} rolling={!revealed} small />
+        <Die value={revealed ? roll.d2 : null} rolling={!revealed} small />
+        {revealed ? roll.sum : ""}
+      </span>
+    </div>
   );
 }
 
