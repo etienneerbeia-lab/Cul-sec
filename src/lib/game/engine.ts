@@ -141,7 +141,7 @@ export async function confirmRoundIntro(g: GameState, hands: HandStore): Promise
   }
 
   if (rt.id === "duel") {
-    g.duelReveal = { revealed: [false, false] };
+    g.duelReveal = { revealed: [false, false], revealedCards: [null, null] };
     g.phase = "duelReveal";
     return;
   }
@@ -159,17 +159,21 @@ export async function confirmRoundIntro(g: GameState, hands: HandStore): Promise
   }
 }
 
-// Called once a duelist presses "reveal" on their own screen. Resolves the
-// duel (and moves to showdown) only once both duelists have revealed —
-// until then the other stays a private hand, same as any other card.
+// Called once a duelist presses "reveal" on their own screen. Publishes
+// that card into revealedCards immediately — every client (both duelists,
+// every spectator) sees it flip face-up on the next poll, live, whether or
+// not the other duelist has gone yet. Resolves (and moves to showdown)
+// only once both have revealed — until then the other stays a private
+// hand, same as any other card.
 export async function revealDuelCard(g: GameState, playerIdx: number, hands: HandStore): Promise<void> {
   const [i1, i2] = g.duelists!;
   const pos = playerIdx === i1 ? 0 : 1;
+  const card = (await hands.getHand(g.round, g.playersPublic[playerIdx].slug))[0];
   g.duelReveal!.revealed[pos] = true;
+  g.duelReveal!.revealedCards[pos] = card;
   if (g.duelReveal!.revealed[0] && g.duelReveal!.revealed[1]) {
-    const c1 = (await hands.getHand(g.round, g.playersPublic[i1].slug))[0];
-    const c2 = (await hands.getHand(g.round, g.playersPublic[i2].slug))[0];
-    resolveDuelState(g, i1, c1, i2, c2);
+    const [c1, c2] = g.duelReveal!.revealedCards;
+    resolveDuelState(g, i1, c1!, i2, c2!);
   }
 }
 
@@ -205,6 +209,9 @@ function advanceTurn(g: GameState): { complete: boolean; soleSurvivor?: boolean 
 async function startBettingStreet(g: GameState, opts: BettingOpts, hands: HandStore): Promise<void> {
   g.bettingOpts = opts;
   g.currentBet = opts.mode === "check-or-bet" ? 0 : 1;
+  // Nothing's been bet on this street yet — a fold right now (or in
+  // response to a check) charges against the pot as it stands here.
+  g.foldReferencePot = g.pot;
   g.dealTargets!.forEach((i) => {
     if (!g.playersPublic[i].folded) g.playersPublic[i].bet = 0;
   });
@@ -235,7 +242,10 @@ async function advanceAfterAction(g: GameState, hands: HandStore): Promise<void>
 
 export async function actFold(g: GameState, hands: HandStore): Promise<void> {
   const idx = g.turnIdx!;
-  const cost = g.bettingOpts!.foldCost === "pot" ? 1 + g.pot! : 1;
+  // 1 + the pot as it stood before the bet/raise being declined — never
+  // the live pot, which would double-count that wager. See
+  // foldReferencePot's own comment in types.ts.
+  const cost = g.bettingOpts!.foldCost === "pot" ? 1 + (g.foldReferencePot ?? g.pot!) : 1;
   g.playersPublic[idx].folded = true;
   g.playersPublic[idx].gulpsTotal += cost;
   g.playersPublic[idx].foldCost = cost;
@@ -256,6 +266,10 @@ export async function actRaise(g: GameState, hands: HandStore): Promise<void> {
   const idx = g.turnIdx!;
   const newBet = g.currentBet! + 1;
   const delta = newBet - g.playersPublic[idx].bet;
+  // Snapshot before this raise's own contribution lands in the pot — a
+  // fold facing this raise charges against the table as it stood before
+  // it, not including it.
+  g.foldReferencePot = g.pot!;
   g.pot! += delta;
   g.playersPublic[idx].bet = newBet;
   g.currentBet = newBet;
@@ -272,6 +286,9 @@ export async function actBet(g: GameState, hands: HandStore): Promise<void> {
   const idx = g.turnIdx!;
   g.currentBet = 1;
   const delta = 1 - g.playersPublic[idx].bet;
+  // Same idea as actRaise: snapshot before this opening bet is added, so a
+  // fold facing it doesn't double-count the very wager it's declining.
+  g.foldReferencePot = g.pot!;
   g.pot! += delta;
   g.playersPublic[idx].bet = 1;
   g.needsToAct = g.turnOrder!.filter((i) => i !== idx && !g.playersPublic[i].folded);

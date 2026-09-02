@@ -25,7 +25,7 @@ export default function ShowdownScreen({
     <>
       {r.type === "duel" ? (
         <>
-          <h2>Duel éclair</h2>
+          <h2>Bataille</h2>
           <div className="community-row">
             {Object.entries(r.cards!).map(([name, card]) => (
               <PlayingCard key={name} card={card} small />
@@ -84,7 +84,7 @@ export default function ShowdownScreen({
         </>
       ) : r.type === "meme" ? (
         <>
-          <h2>Légende de mème</h2>
+          <h2>Make It Meme</h2>
           <img className="meme-image" src={r.memeUrl} alt="Mème" />
           <div className="players-list">
             {r.memeTallies!.map((t) => {
@@ -112,7 +112,7 @@ export default function ShowdownScreen({
         </>
       ) : r.type === "dice" ? (
         <>
-          <h2>Dés qui tremblent</h2>
+          <h2>Dés</h2>
           <div className="players-list">
             {r.diceRolls!.map((roll) => {
               const isLoser = r.diceLowest!.includes(roll.name);

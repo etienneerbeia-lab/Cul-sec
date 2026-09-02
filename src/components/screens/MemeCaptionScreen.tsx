@@ -54,7 +54,7 @@ export default function MemeCaptionScreen({
           </div>
         </div>
         <div>
-          <div className="label">Légende de mème</div>
+          <div className="label">Make It Meme</div>
           <div className="value">
             {respondedCount}/{total}
           </div>

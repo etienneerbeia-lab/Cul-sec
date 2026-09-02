@@ -1,27 +1,27 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { TIMED_ANSWER_MS } from "@/lib/game/types";
 import type { GameState, VoteChoice } from "@/lib/game/types";
 
 export default function VoteScreen({
   game,
   myVoteChoice,
-  isHost,
   busy,
   onSubmitVote,
-  onForceReveal,
 }: {
   game: GameState;
   myVoteChoice: VoteChoice | null;
-  isHost: boolean;
   busy: boolean;
   onSubmitVote: (choice: VoteChoice | null) => void;
-  onForceReveal: () => void;
 }) {
   const v = game.vote!;
   const respondedCount = v.responded.length;
   const total = game.playersPublic.length;
+  const waitingOn = useMemo(
+    () => game.playersPublic.filter((p) => !v.responded.includes(p.slug)).map((p) => p.name),
+    [game.playersPublic, v.responded]
+  );
 
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -75,7 +75,8 @@ export default function VoteScreen({
       {myVoteChoice ? (
         <div className="hint" style={{ marginTop: 16 }}>
           Tu as voté <strong>{myVoteChoice === "A" ? v.question.promptA : v.question.promptB}</strong>.
-          En attente des autres...
+          <br />
+          En attente du vote de {waitingOn.join(", ")}...
         </div>
       ) : (
         <div className="vote-options">
@@ -87,15 +88,6 @@ export default function VoteScreen({
             {v.question.promptB}
           </button>
         </div>
-      )}
-
-      {isHost && timeUp && respondedCount < total && (
-        <>
-          <div className="spacer" />
-          <button className="btn-ghost" disabled={busy} onClick={onForceReveal}>
-            Voir les résultats
-          </button>
-        </>
       )}
     </>
   );

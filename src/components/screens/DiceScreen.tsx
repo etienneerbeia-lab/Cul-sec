@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import type { DiceRoll, GameState } from "@/lib/game/types";
-import { useShakeDetect } from "@/lib/useShakeDetect";
 import Die from "../Die";
 
 const ROLL_ANIM_MS = 1000;
@@ -34,7 +33,7 @@ export default function DiceScreen({
           </div>
         </div>
         <div>
-          <div className="label">Dés qui tremblent</div>
+          <div className="label">Dés</div>
           <div className="value">
             {d.rolls.length}/{d.turnOrder.length}
           </div>
@@ -89,8 +88,6 @@ function DiceMyTurn({
     setTimeout(() => setRevealReady(true), ROLL_ANIM_MS);
   }
 
-  const shake = useShakeDetect(trigger, !rolling);
-
   const showResult = !!myRoll && revealReady;
   const showRollingDice = rolling && !showResult;
 
@@ -110,24 +107,20 @@ function DiceMyTurn({
   return (
     <>
       <div className="turn-name">À toi de jouer</div>
-      {shake.permission === "needed" ? (
-        <div className="hint">
-          Autorise l&apos;accès aux capteurs de mouvement pour pouvoir secouer ton téléphone.
+      <div className="hint">Appuie sur les dés pour les lancer</div>
+      <button
+        className="dice-tap-area"
+        disabled={busy || rolling}
+        onClick={trigger}
+        aria-label="Lancer les dés"
+      >
+        <div className="dice-row">
+          <Die value={null} rolling={showRollingDice} />
+          <Die value={null} rolling={showRollingDice} />
         </div>
-      ) : (
-        <div className="hint">Secoue ton téléphone pour lancer les dés</div>
-      )}
-      <div className="dice-row">
-        <Die value={null} rolling={showRollingDice} />
-        <Die value={null} rolling={showRollingDice} />
-      </div>
-      {shake.permission === "needed" && !rolling && (
-        <button className="btn-primary" disabled={busy} onClick={shake.requestPermission}>
-          Autoriser les capteurs
-        </button>
-      )}
+      </button>
       {!rolling && (
-        <button className="btn-ghost dice-fallback" disabled={busy} onClick={trigger}>
+        <button className="btn-primary" disabled={busy} onClick={trigger}>
           Lancer les dés
         </button>
       )}

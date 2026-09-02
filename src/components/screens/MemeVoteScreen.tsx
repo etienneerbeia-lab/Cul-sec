@@ -6,22 +6,22 @@ import type { GameState } from "@/lib/game/types";
 export default function MemeVoteScreen({
   game,
   mySlug,
-  isHost,
   busy,
   onSubmitVote,
-  onForceReveal,
 }: {
   game: GameState;
   mySlug: string;
-  isHost: boolean;
   busy: boolean;
   onSubmitVote: (authorSlug: string) => void;
-  onForceReveal: () => void;
 }) {
   const m = game.meme!;
   const respondedCount = m.voteResponded.length;
   const total = game.playersPublic.length;
   const iHaveVoted = m.voteResponded.includes(mySlug);
+  const waitingOn = useMemo(
+    () => game.playersPublic.filter((p) => !m.voteResponded.includes(p.slug)).map((p) => p.name),
+    [game.playersPublic, m.voteResponded]
+  );
 
   const options = useMemo(
     () => m.voteOrder.filter((slug) => slug !== mySlug && m.captions[slug]),
@@ -50,7 +50,7 @@ export default function MemeVoteScreen({
 
       {iHaveVoted ? (
         <div className="hint" style={{ marginTop: 16 }}>
-          Vote envoyé ! En attente des autres...
+          Vote envoyé ! En attente du vote de {waitingOn.join(", ")}...
         </div>
       ) : options.length === 0 ? (
         <div className="hint" style={{ marginTop: 16 }}>
@@ -73,15 +73,6 @@ export default function MemeVoteScreen({
               </button>
             ))}
           </div>
-        </>
-      )}
-
-      {isHost && respondedCount < total && (
-        <>
-          <div className="spacer" />
-          <button className="btn-ghost" disabled={busy} onClick={onForceReveal}>
-            Voir les résultats
-          </button>
         </>
       )}
     </>

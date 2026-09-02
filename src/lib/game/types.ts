@@ -156,6 +156,11 @@ export const TIMED_ANSWER_MS = 15000;
 
 export interface DuelRevealState {
   revealed: [boolean, boolean];
+  // Populated the instant each duelist reveals (not just once both have) —
+  // that's the whole point of the button: publishing that one card to the
+  // table. Null until its slot's `revealed` flips true, at which point
+  // it's plain public data like anything else in this object.
+  revealedCards: [Card | null, Card | null];
 }
 
 export type VoteChoice = "A" | "B";
@@ -261,6 +266,11 @@ export interface UndercoverClueEntry {
   cycle: number;
 }
 
+// How long a just-given clue stays pinned on screen for everyone before
+// the turn (or the phase, on the cycle's last clue) advances — long enough
+// to actually read it. Any player can also skip the wait early.
+export const CLUE_REVEAL_MS = 4000;
+
 export interface UndercoverRoundState {
   // Present in server-side state at all times, but the state API strips
   // all three from every response — the round's whole tension depends on
@@ -278,6 +288,12 @@ export interface UndercoverRoundState {
   // Full transcript across every cycle this manche — public as it happens,
   // there's nothing to hide about a spoken-aloud clue.
   clues: UndercoverClueEntry[];
+  // Set the instant a clue is submitted; cluePointer/phase only move once
+  // undercover-clue-advance is called (auto-fired by every client's own
+  // timer once this passes, or early via any player's "Continuer") — keeps
+  // the clue just given pinned on everyone's screen instead of jumping
+  // straight to the next speaker or to voting.
+  revealUntil?: number;
   // voter slug -> accused slug, current cycle/attempt only. Stripped from
   // the state API while the vote is live, same idea as the vote and meme
   // mini-games — only `voteResponded` (who's acted, not who they picked)
@@ -307,6 +323,12 @@ export interface GameState {
   community?: Card[];
   communityRevealed?: number;
   pot?: number;
+  // Snapshot of `pot` from just before the bet/raise currently on the
+  // table was added to it — foldCost "pot" charges 1 + this, never the
+  // live pot, so folding never counts the very wager you're declining to
+  // match. Reset at the start of each betting street, updated again on
+  // every new bet/raise; a call never touches it.
+  foldReferencePot?: number;
   street?: Street;
   bettingOpts?: BettingOpts;
   currentBet?: number;

@@ -17,6 +17,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cod
     return NextResponse.json({ error: "Ce n'est pas le moment." }, { status: 409 });
   }
 
+  if (game.undercover.revealUntil !== undefined) {
+    return NextResponse.json({ error: "L'indice précédent est encore affiché." }, { status: 409 });
+  }
   const activeSlug = game.undercover.clueOrder[game.undercover.cluePointer];
   if (session.slug !== activeSlug) {
     return NextResponse.json({ error: "Ce n'est pas ton tour." }, { status: 403 });

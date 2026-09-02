@@ -1,5 +1,6 @@
 import { checkAnswer } from "../quiz/match";
 import type { GameState, UndercoverOutcome } from "../game/types";
+import { CLUE_REVEAL_MS } from "../game/types";
 import { WORD_PAIRS } from "./words";
 
 const MAX_CLUE_LEN = 60;
@@ -38,13 +39,23 @@ export function startUndercoverRound(g: GameState): void {
   g.phase = "undercoverClue";
 }
 
-// Called once per player as their turn to clue comes up — advances
-// immediately to the next player (or to voting once the table's been all
-// the way around), no host action needed between speakers.
+// Called once per player as their turn to clue comes up. Doesn't advance
+// the turn right away — pins the clue on everyone's screen for
+// CLUE_REVEAL_MS (see advanceClueReveal) so there's time to actually read
+// it before the next speaker's turn or the move to voting.
 export function submitClue(g: GameState, slug: string, text: string): void {
   const u = g.undercover!;
   const player = g.playersPublic.find((p) => p.slug === slug)!;
   u.clues.push({ slug, name: player.name, text: text.trim().slice(0, MAX_CLUE_LEN), cycle: u.cycle });
+  u.revealUntil = Date.now() + CLUE_REVEAL_MS;
+}
+
+// Advances past the just-given clue — to the next speaker, or to voting if
+// that was the cycle's last clue. Called by any client once its own timer
+// reaches revealUntil, or early by any player clicking "Continuer".
+export function advanceClueReveal(g: GameState): void {
+  const u = g.undercover!;
+  u.revealUntil = undefined;
   u.cluePointer += 1;
   if (u.cluePointer >= u.clueOrder.length) {
     u.votes = {};

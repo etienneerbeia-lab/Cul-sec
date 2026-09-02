@@ -298,12 +298,10 @@ export default function GameApp() {
         <VoteScreen
           game={game}
           myVoteChoice={myVoteChoice}
-          isHost={isHost}
           busy={busy}
           onSubmitVote={(choice) =>
             runAction(() => apiPost(`/api/rooms/${roomCode}/vote-answer`, { choice }))
           }
-          onForceReveal={() => runAction(() => apiPost(`/api/rooms/${roomCode}/vote-reveal`))}
         />
       ) : phase === "memeCaption" ? (
         <MemeCaptionScreen
@@ -320,12 +318,10 @@ export default function GameApp() {
         <MemeVoteScreen
           game={game}
           mySlug={mySlug}
-          isHost={isHost}
           busy={busy}
           onSubmitVote={(authorSlug) =>
             runAction(() => apiPost(`/api/rooms/${roomCode}/meme-vote`, { authorSlug }))
           }
-          onForceReveal={() => runAction(() => apiPost(`/api/rooms/${roomCode}/meme-vote-reveal`))}
         />
       ) : phase === "dice" ? (
         <DiceScreen
@@ -343,17 +339,16 @@ export default function GameApp() {
           onSubmitClue={(text) =>
             runAction(() => apiPost(`/api/rooms/${roomCode}/undercover-clue`, { text }))
           }
+          onAdvance={() => runAction(() => apiPost(`/api/rooms/${roomCode}/undercover-clue-advance`))}
         />
       ) : phase === "undercoverVote" ? (
         <UndercoverVoteScreen
           game={game}
           mySlug={mySlug}
-          isHost={isHost}
           busy={busy}
           onSubmitVote={(targetSlug) =>
             runAction(() => apiPost(`/api/rooms/${roomCode}/undercover-vote`, { targetSlug }))
           }
-          onForceReveal={() => runAction(() => apiPost(`/api/rooms/${roomCode}/undercover-vote-reveal`))}
         />
       ) : phase === "undercoverGuess" ? (
         <UndercoverGuessScreen

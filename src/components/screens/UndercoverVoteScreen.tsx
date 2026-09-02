@@ -6,23 +6,26 @@ import type { GameState } from "@/lib/game/types";
 export default function UndercoverVoteScreen({
   game,
   mySlug,
-  isHost,
   busy,
   onSubmitVote,
-  onForceReveal,
 }: {
   game: GameState;
   mySlug: string;
-  isHost: boolean;
   busy: boolean;
   onSubmitVote: (targetSlug: string) => void;
-  onForceReveal: () => void;
 }) {
   const u = game.undercover!;
   const respondedCount = u.voteResponded.length;
   const total = u.remainingSlugs.length;
   const amEliminated = !u.remainingSlugs.includes(mySlug);
   const iHaveVoted = u.voteResponded.includes(mySlug);
+  const waitingOn = useMemo(
+    () =>
+      u.remainingSlugs
+        .filter((slug) => !u.voteResponded.includes(slug))
+        .map((slug) => game.playersPublic.find((p) => p.slug === slug)!.name),
+    [u.remainingSlugs, u.voteResponded, game.playersPublic]
+  );
 
   const candidates = useMemo(() => {
     const pool = u.tieBreakCandidates ?? u.remainingSlugs;
@@ -65,7 +68,7 @@ export default function UndercoverVoteScreen({
         </div>
       ) : iHaveVoted ? (
         <div className="hint" style={{ marginTop: 16 }}>
-          Vote envoyé ! En attente des autres...
+          Vote envoyé ! En attente du vote de {waitingOn.join(", ")}...
         </div>
       ) : (
         <>
@@ -84,15 +87,6 @@ export default function UndercoverVoteScreen({
               </button>
             ))}
           </div>
-        </>
-      )}
-
-      {isHost && respondedCount < total && (
-        <>
-          <div className="spacer" />
-          <button className="btn-ghost" disabled={busy} onClick={onForceReveal}>
-            Voir les résultats
-          </button>
         </>
       )}
     </>
