@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireHostSession } from "@/lib/auth";
 import { launchGame } from "@/lib/game/engine";
-import type { CulSecRule } from "@/lib/game/types";
+import { ROUND_TYPES } from "@/lib/game/roundTypes";
+import { MIN_ENABLED_ROUND_TYPES, type CulSecRule, type RoundTypeId } from "@/lib/game/types";
 import { getPlayers, roomExists, setGame } from "@/lib/store";
 
 const VALID_ROUND_COUNTS = new Set([5, 10, 20]);
+const VALID_ROUND_TYPE_IDS = new Set(ROUND_TYPES.map((t) => t.id));
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ code: string }> }) {
   const code = (await params).code.toUpperCase();
@@ -25,7 +27,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cod
     return NextResponse.json({ error: "Nombre de manches invalide." }, { status: 400 });
   }
 
-  const game = launchGame(players, totalRounds, culSecRule);
+  const enabledRoundTypeIds: RoundTypeId[] = Array.isArray(body?.enabledRoundTypeIds)
+    ? body.enabledRoundTypeIds.filter(
+        (id: unknown): id is RoundTypeId => typeof id === "string" && VALID_ROUND_TYPE_IDS.has(id as RoundTypeId)
+      )
+    : [];
+  if (enabledRoundTypeIds.length < MIN_ENABLED_ROUND_TYPES) {
+    return NextResponse.json(
+      { error: `Choisis au moins ${MIN_ENABLED_ROUND_TYPES} mini-jeux.` },
+      { status: 400 }
+    );
+  }
+
+  const game = launchGame(players, totalRounds, culSecRule, enabledRoundTypeIds);
   await setGame(code, game);
   return NextResponse.json({ ok: true });
 }

@@ -514,6 +514,16 @@ label.field-label {
   font-size: 1.3rem;
 }
 
+.meme-image {
+  display: block;
+  width: 100%;
+  max-height: 320px;
+  object-fit: contain;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.18);
+  margin: 14px 0;
+}
+
 .vote-options {
   display: flex;
   flex-direction: column;
@@ -579,8 +589,109 @@ label.field-label {
   justify-content: flex-end;
   margin-bottom: 6px;
 }
-.quit-bar button {
-  padding: 8px 14px;
-  font-size: 0.8rem;
-  width: auto;
+
+.icon-btn {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(236, 230, 245, 0.08);
+  border: 1.5px solid rgba(224, 86, 140, 0.45);
+  color: var(--offwhite);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+  line-height: 1;
+}
+.icon-btn:hover {
+  border-color: var(--gold);
+  background: rgba(236, 230, 245, 0.14);
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 6, 20, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 50;
+}
+.modal-card {
+  width: 100%;
+  max-width: 320px;
+  background: var(--felt);
+  border: 1.5px solid rgba(224, 86, 140, 0.4);
+  border-radius: 16px;
+  padding: 24px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+.modal-title {
+  font-family: var(--font-fraunces), serif;
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--cream);
+  margin-bottom: 8px;
+}
+.modal-card .hint {
+  margin-bottom: 0;
+}
+.modal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.minigame-toggle-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+.minigame-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  padding: 11px 14px;
+  border-radius: 10px;
+  background: rgba(236, 230, 245, 0.06);
+  border: 1.5px solid rgba(236, 230, 245, 0.2);
+  color: var(--offwhite);
+}
+.minigame-toggle.active {
+  background: rgba(224, 86, 140, 0.14);
+  border-color: var(--gold);
+}
+.minigame-toggle .mt-icon {
+  font-size: 1.25rem;
+  width: 1.5em;
+  text-align: center;
+  flex-shrink: 0;
+}
+.minigame-toggle .mt-label {
+  flex: 1;
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+.minigame-toggle .mt-check {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(236, 230, 245, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+  color: var(--felt-dark);
+}
+.minigame-toggle.active .mt-check {
+  background: var(--gold);
+  border-color: var(--gold);
 }

@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import type { CulSecRule, Player } from "@/lib/game/types";
+import { ROUND_TYPES } from "@/lib/game/roundTypes";
+import { MIN_ENABLED_ROUND_TYPES, type CulSecRule, type Player, type RoundTypeId } from "@/lib/game/types";
 
 const ROUND_OPTIONS = [5, 10, 20];
+const ALL_ROUND_TYPE_IDS = ROUND_TYPES.map((t) => t.id);
 
 export default function LobbyScreen({
   roomCode,
@@ -20,11 +22,24 @@ export default function LobbyScreen({
   isHost: boolean;
   busy: boolean;
   error: string;
-  onLaunch: (totalRounds: number, culSecRule: CulSecRule) => void;
+  onLaunch: (totalRounds: number, culSecRule: CulSecRule, enabledRoundTypeIds: RoundTypeId[]) => void;
 }) {
-  const enough = players.length >= 3;
   const [totalRounds, setTotalRounds] = useState(10);
   const [culSecRule, setCulSecRule] = useState<CulSecRule>("last");
+  const [enabledIds, setEnabledIds] = useState<Set<RoundTypeId>>(() => new Set(ALL_ROUND_TYPE_IDS));
+
+  function toggleRoundType(id: RoundTypeId) {
+    setEnabledIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  const enoughPlayers = players.length >= 3;
+  const enoughGames = enabledIds.size >= MIN_ENABLED_ROUND_TYPES;
+  const enough = enoughPlayers && enoughGames;
 
   return (
     <>
@@ -83,6 +98,28 @@ export default function LobbyScreen({
               Le premier distribue un cul sec
             </button>
           </div>
+
+          <label className="field-label" style={{ marginTop: 14 }}>
+            Mini-jeux actifs
+          </label>
+          <div className="minigame-toggle-list">
+            {ROUND_TYPES.map((t) => {
+              const active = enabledIds.has(t.id);
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  className={active ? "minigame-toggle active" : "minigame-toggle"}
+                  onClick={() => toggleRoundType(t.id)}
+                >
+                  <span className="mt-icon">{t.icon}</span>
+                  <span className="mt-label">{t.label}</span>
+                  <span className="mt-check">{active ? "✓" : ""}</span>
+                </button>
+              );
+            })}
+          </div>
+          {!enoughGames && <div className="hint error-text">Choisis au moins 2 mini-jeux.</div>}
         </>
       )}
 
@@ -93,11 +130,11 @@ export default function LobbyScreen({
           <button
             className="btn-primary"
             disabled={!enough || busy}
-            onClick={() => onLaunch(totalRounds, culSecRule)}
+            onClick={() => onLaunch(totalRounds, culSecRule, Array.from(enabledIds))}
           >
             Lancer la partie
           </button>
-          {!enough && <div className="hint">Il faut au moins 3 joueurs pour commencer.</div>}
+          {!enoughPlayers && <div className="hint">Il faut au moins 3 joueurs pour commencer.</div>}
         </>
       ) : (
         <div className="hint">En attente que l&apos;hôte lance la partie...</div>

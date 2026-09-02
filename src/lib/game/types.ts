@@ -10,7 +10,7 @@ export interface Card {
   suit: Suit;
 }
 
-export type RoundTypeId = "high" | "holdem" | "duel" | "quiz" | "vote";
+export type RoundTypeId = "high" | "holdem" | "duel" | "quiz" | "vote" | "meme";
 
 export interface RoundType {
   id: RoundTypeId;
@@ -19,6 +19,11 @@ export interface RoundType {
   icon: string;
   cards: number;
 }
+
+// The host must keep at least this many mini-games active in the lobby's
+// selector — below that, alternation (never repeating back-to-back) breaks
+// down and a 1-game "pool" would just replay the same thing every round.
+export const MIN_ENABLED_ROUND_TYPES = 2;
 
 export interface PlayerPublic {
   name: string;
@@ -39,6 +44,8 @@ export type GamePhase =
   | "quizRecap"
   | "duelReveal"
   | "vote"
+  | "memeCaption"
+  | "memeVote"
   | "final";
 
 export type Street = "single" | "preflop" | "flop" | "turn" | "river";
@@ -73,6 +80,11 @@ export interface LastResults {
   voteEntries?: { name: string; choice: VoteChoice }[];
   voteNonVoters?: string[];
   voteTie?: boolean;
+  // "meme" (Légende de mème)
+  memeUrl?: string;
+  memeTallies?: MemeVoteTally[];
+  memeLeastFunny?: string[];
+  memeNoCaptioners?: string[];
 }
 
 export type QuizQuestionType = "capital" | "flag" | "date";
@@ -153,6 +165,44 @@ export interface VoteRoundState {
   responded: string[];
 }
 
+// Legends of Memes — same 60s-to-write, private-until-resolved shape as
+// the other timed mini-games, just a longer clock since writing a caption
+// takes more than picking A or B.
+export const MEME_CAPTION_MS = 60000;
+
+export interface MemeTemplateRef {
+  id: string;
+  url: string;
+  width: number;
+  height: number;
+}
+
+export interface MemeVoteTally {
+  slug: string;
+  name: string;
+  caption: string;
+  votes: number;
+}
+
+export interface MemeRoundState {
+  template: MemeTemplateRef;
+  askedAt: number;
+  // slug -> caption text. Stripped entirely from the state API while
+  // phase is "memeCaption" (nobody, not even the author, needs the
+  // server to echo their own draft back) and sent as-is once voting
+  // starts, since the captions themselves are exactly what's being
+  // voted on — only the slug->author mapping stays implicit in the UI
+  // until the round resolves into lastResults.
+  captions: Record<string, string>;
+  captionResponded: string[];
+  // Shuffled once when voting starts so the option order stays stable
+  // across polls instead of reshuffling every 1.5s.
+  voteOrder: string[];
+  // voter slug -> author slug they voted for.
+  votes: Record<string, string>;
+  voteResponded: string[];
+}
+
 export type CulSecRule = "last" | "first";
 
 export interface GameState {
@@ -178,10 +228,16 @@ export interface GameState {
   quiz?: QuizRoundState;
   usedQuestionIds?: string[];
   totalRounds?: number;
+  // Which mini-games the host opted into at launch — setupRoundType only
+  // ever draws from this list. Optional only for defensiveness against an
+  // older/malformed saved state; every game launched through the lobby
+  // sets it explicitly.
+  enabledRoundTypeIds?: RoundTypeId[];
   culSecRule?: CulSecRule;
   culSecTargetSlug?: string;
   duelReveal?: DuelRevealState;
   vote?: VoteRoundState;
+  meme?: MemeRoundState;
 }
 
 export interface Player {

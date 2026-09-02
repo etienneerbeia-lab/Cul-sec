@@ -10,7 +10,7 @@ import {
   type SessionResponse,
   type StateResponse,
 } from "@/lib/api-client";
-import type { Card, CulSecRule, GameState, Player, VoteChoice } from "@/lib/game/types";
+import type { Card, CulSecRule, GameState, Player, RoundTypeId, VoteChoice } from "@/lib/game/types";
 import HomeScreen from "./screens/HomeScreen";
 import LobbyScreen from "./screens/LobbyScreen";
 import RoundIntroScreen from "./screens/RoundIntroScreen";
@@ -22,6 +22,8 @@ import QuizScreen from "./screens/QuizScreen";
 import QuizRecapScreen from "./screens/QuizRecapScreen";
 import DuelRevealScreen from "./screens/DuelRevealScreen";
 import VoteScreen from "./screens/VoteScreen";
+import MemeCaptionScreen from "./screens/MemeCaptionScreen";
+import MemeVoteScreen from "./screens/MemeVoteScreen";
 
 const POLL_MS = 1500;
 
@@ -36,6 +38,7 @@ export default function GameApp() {
   const [myVoteChoice, setMyVoteChoice] = useState<VoteChoice | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [showQuitConfirm, setShowQuitConfirm] = useState(false);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const roomCodeRef = useRef("");
@@ -183,14 +186,36 @@ export default function GameApp() {
     <div id="app">
       <div className="quit-bar">
         <button
-          className="btn-ghost"
-          onClick={() => {
-            if (confirm("Quitter la partie ?")) handleQuit();
-          }}
+          className="icon-btn"
+          aria-label="Quitter la partie"
+          onClick={() => setShowQuitConfirm(true)}
         >
-          Quitter
+          ✕
         </button>
       </div>
+
+      {showQuitConfirm && (
+        <div className="modal-overlay" onClick={() => setShowQuitConfirm(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-title">Quitter la partie ?</div>
+            <div className="hint">Tu pourras rejoindre à nouveau avec le code si besoin.</div>
+            <div className="modal-actions">
+              <button
+                className="btn-wine"
+                onClick={() => {
+                  setShowQuitConfirm(false);
+                  handleQuit();
+                }}
+              >
+                Quitter
+              </button>
+              <button className="btn-ghost" onClick={() => setShowQuitConfirm(false)}>
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {!game || phase === "lobby" ? (
         <LobbyScreen
@@ -200,8 +225,10 @@ export default function GameApp() {
           isHost={isHost}
           busy={busy}
           error={error}
-          onLaunch={(totalRounds: number, culSecRule: CulSecRule) =>
-            runAction(() => apiPost(`/api/rooms/${roomCode}/launch`, { totalRounds, culSecRule }))
+          onLaunch={(totalRounds: number, culSecRule: CulSecRule, enabledRoundTypeIds: RoundTypeId[]) =>
+            runAction(() =>
+              apiPost(`/api/rooms/${roomCode}/launch`, { totalRounds, culSecRule, enabledRoundTypeIds })
+            )
           }
         />
       ) : phase === "roundIntro" ? (
@@ -270,6 +297,28 @@ export default function GameApp() {
             runAction(() => apiPost(`/api/rooms/${roomCode}/vote-answer`, { choice }))
           }
           onForceReveal={() => runAction(() => apiPost(`/api/rooms/${roomCode}/vote-reveal`))}
+        />
+      ) : phase === "memeCaption" ? (
+        <MemeCaptionScreen
+          game={game}
+          mySlug={mySlug}
+          isHost={isHost}
+          busy={busy}
+          onSubmitCaption={(caption) =>
+            runAction(() => apiPost(`/api/rooms/${roomCode}/meme-caption`, { caption }))
+          }
+          onForceReveal={() => runAction(() => apiPost(`/api/rooms/${roomCode}/meme-caption-reveal`))}
+        />
+      ) : phase === "memeVote" ? (
+        <MemeVoteScreen
+          game={game}
+          mySlug={mySlug}
+          isHost={isHost}
+          busy={busy}
+          onSubmitVote={(authorSlug) =>
+            runAction(() => apiPost(`/api/rooms/${roomCode}/meme-vote`, { authorSlug }))
+          }
+          onForceReveal={() => runAction(() => apiPost(`/api/rooms/${roomCode}/meme-vote-reveal`))}
         />
       ) : phase === "quizRecap" ? (
         <QuizRecapScreen

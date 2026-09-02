@@ -47,6 +47,16 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ code
     publicGame = { ...publicGame, vote: { ...publicGame.vote, votes: {} } };
   }
 
+  // "Légende de mème": while everyone is still privately writing, nobody
+  // (not even the author) needs their caption echoed back by the server —
+  // the client already knows its own draft locally. Once voting starts the
+  // captions themselves become the public thing being judged, so they're
+  // sent as-is; only the slug->author mapping stays implicit until the
+  // round resolves into lastResults.
+  if (publicGame?.meme && publicGame.phase === "memeCaption") {
+    publicGame = { ...publicGame, meme: { ...publicGame.meme, captions: {} } };
+  }
+
   return NextResponse.json({
     players,
     game: publicGame,

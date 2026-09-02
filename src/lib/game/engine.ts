@@ -3,6 +3,7 @@ import { bestOf7, compareHand } from "./evaluate";
 import { ROUND_TYPES, roundTypeById } from "./roundTypes";
 import { advanceQuizTurn, startQuizRound } from "../quiz/engine";
 import { startVoteRound } from "../vote/engine";
+import { startMemeRound } from "../meme/engine";
 import type {
   BettingOpts,
   Card,
@@ -10,6 +11,7 @@ import type {
   GameState,
   Player,
   PlayerPublic,
+  RoundTypeId,
 } from "./types";
 
 export interface HandStore {
@@ -39,8 +41,14 @@ function roundTypeObjFrom(g: GameState) {
 }
 
 export function setupRoundType(g: GameState): void {
-  const pool = ROUND_TYPES.filter((t) => !g.lastRoundTypeId || t.id !== g.lastRoundTypeId);
-  const chosen = pool[Math.floor(Math.random() * pool.length)];
+  const enabled = g.enabledRoundTypeIds ?? ROUND_TYPES.map((t) => t.id);
+  const available = ROUND_TYPES.filter((t) => enabled.includes(t.id));
+  const pool = available.filter((t) => !g.lastRoundTypeId || t.id !== g.lastRoundTypeId);
+  // If disabling everything but one type down to just that type left it
+  // alone against lastRoundTypeId, fall back to the full enabled set so a
+  // 2-type lobby can still alternate rather than crash on an empty pool.
+  const drawFrom = pool.length > 0 ? pool : available;
+  const chosen = drawFrom[Math.floor(Math.random() * drawFrom.length)];
   g.lastRoundTypeId = chosen.id;
   g.roundTypeId = chosen.id;
   if (chosen.id === "duel") {
@@ -52,7 +60,12 @@ export function setupRoundType(g: GameState): void {
   }
 }
 
-export function launchGame(players: Player[], totalRounds: number, culSecRule: CulSecRule): GameState {
+export function launchGame(
+  players: Player[],
+  totalRounds: number,
+  culSecRule: CulSecRule,
+  enabledRoundTypeIds: RoundTypeId[]
+): GameState {
   const playersPublic: PlayerPublic[] = players.map((p) => ({
     name: p.name,
     slug: p.slug,
@@ -68,6 +81,7 @@ export function launchGame(players: Player[], totalRounds: number, culSecRule: C
     lastRoundTypeId: null,
     playersPublic,
     totalRounds,
+    enabledRoundTypeIds,
     culSecRule,
   };
   setupRoundType(g);
@@ -84,6 +98,11 @@ export async function confirmRoundIntro(g: GameState, hands: HandStore): Promise
 
   if (rt.id === "vote") {
     startVoteRound(g);
+    return;
+  }
+
+  if (rt.id === "meme") {
+    startMemeRound(g);
     return;
   }
 

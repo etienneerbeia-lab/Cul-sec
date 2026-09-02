@@ -81,6 +81,34 @@ export default function ShowdownScreen({
             ))}
           </div>
         </>
+      ) : r.type === "meme" ? (
+        <>
+          <h2>Légende de mème</h2>
+          <img className="meme-image" src={r.memeUrl} alt="Mème" />
+          <div className="players-list">
+            {r.memeTallies!.map((t) => {
+              const isLoser = r.memeLeastFunny!.includes(t.name);
+              return (
+                <div className="player-chip" key={t.slug}>
+                  <div>
+                    <div className="pname">{t.name}</div>
+                    <div className="pmeta">{t.caption}</div>
+                  </div>
+                  <span className="pmeta">
+                    {t.votes} vote{t.votes !== 1 ? "s" : ""}
+                    {isLoser && " — Boit 2 🥃"}
+                  </span>
+                </div>
+              );
+            })}
+            {r.memeNoCaptioners!.map((name) => (
+              <div className="player-chip folded" key={name}>
+                <span className="pname">{name}</span>
+                <span className="pmeta">N&apos;a pas écrit de légende</span>
+              </div>
+            ))}
+          </div>
+        </>
       ) : r.soleSurvivor ? (
         <>
           <h2>Tout le monde s&apos;est couché</h2>

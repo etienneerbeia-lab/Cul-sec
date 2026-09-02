@@ -36,6 +36,13 @@ export const ROUND_TYPES: RoundType[] = [
     icon: "🗳️",
     cards: 0,
   },
+  {
+    id: "meme",
+    label: "Légende de mème",
+    tagline: "Une image, une minute, ta meilleure légende. Le moins drôle boit.",
+    icon: "😂",
+    cards: 0,
+  },
 ];
 
 export function roundTypeById(id: string): RoundType {
