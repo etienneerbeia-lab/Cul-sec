@@ -43,6 +43,20 @@ export const ROUND_TYPES: RoundType[] = [
     icon: "😂",
     cards: 0,
   },
+  {
+    id: "dice",
+    label: "Dés qui tremblent",
+    tagline: "Secoue ton téléphone, chacun son tour. Le plus petit score boit.",
+    icon: "🎲",
+    cards: 0,
+  },
+  {
+    id: "undercover",
+    label: "Undercover",
+    tagline: "Même mot pour tous sauf un imposteur. Décrivez-le à voix haute, démasquez-le au vote.",
+    icon: "🕵️",
+    cards: 0,
+  },
 ];
 
 export function roundTypeById(id: string): RoundType {

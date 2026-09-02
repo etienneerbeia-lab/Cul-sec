@@ -44,6 +44,7 @@ export interface StateResponse {
   game: GameState | null;
   myHand: Card[] | null;
   myVoteChoice: "A" | "B" | null;
+  myUndercoverWord: string | null;
   mySlug: string | null;
   myName: string | null;
   isHost: boolean;

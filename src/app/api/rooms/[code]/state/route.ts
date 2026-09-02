@@ -57,11 +57,30 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ code
     publicGame = { ...publicGame, meme: { ...publicGame.meme, captions: {} } };
   }
 
+  // Undercover: the whole round hinges on nobody but the impostor knowing
+  // who the impostor is (or what their "close" word is) until it resolves
+  // — so those three fields never leave the server, and each session only
+  // ever learns its own word via myUndercoverWord below. Live votes are
+  // hidden the same way as the vote/meme mini-games.
+  let myUndercoverWord: string | null = null;
+  if (publicGame?.undercover) {
+    const u = publicGame.undercover;
+    if (session) {
+      myUndercoverWord =
+        session.slug === u.impostorSlug ? (u.isMisterWhite ? null : u.impostorWord ?? null) : u.secretWord ?? null;
+    }
+    publicGame = {
+      ...publicGame,
+      undercover: { ...u, secretWord: undefined, impostorSlug: undefined, impostorWord: undefined, votes: {} },
+    };
+  }
+
   return NextResponse.json({
     players,
     game: publicGame,
     myHand,
     myVoteChoice,
+    myUndercoverWord,
     mySlug: session?.slug ?? null,
     myName: session?.name ?? null,
     isHost: session ? session.slug === hostSlug : false,

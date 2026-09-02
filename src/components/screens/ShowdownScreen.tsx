@@ -3,6 +3,7 @@ import { bestOf7, handLabel5 } from "@/lib/game/evaluate";
 import { roundTypeById } from "@/lib/game/roundTypes";
 import type { GameState } from "@/lib/game/types";
 import PlayingCard from "../PlayingCard";
+import Die from "../Die";
 
 export default function ShowdownScreen({
   game,
@@ -108,6 +109,105 @@ export default function ShowdownScreen({
               </div>
             ))}
           </div>
+        </>
+      ) : r.type === "dice" ? (
+        <>
+          <h2>Dés qui tremblent</h2>
+          <div className="players-list">
+            {r.diceRolls!.map((roll) => {
+              const isLoser = r.diceLowest!.includes(roll.name);
+              return (
+                <div className="player-chip" key={roll.slug}>
+                  <span className="pname">{roll.name}</span>
+                  <span className="pmeta dice-chip-result">
+                    <Die value={roll.d1} small />
+                    <Die value={roll.d2} small />
+                    {roll.sum}
+                    {isLoser && " — Boit 2 🥃"}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      ) : r.type === "undercover" ? (
+        <>
+          <h2>Undercover</h2>
+          <div className="uc-word-banner">
+            <div className="uc-word-label">Le mot secret était</div>
+            <div className="uc-word-value">{r.undercoverWord}</div>
+          </div>
+          <div className="subtitle">
+            {r.undercoverImpostorName} était l&apos;imposteur
+            {r.undercoverIsMisterWhite
+              ? " (Mister White, sans mot)"
+              : ` (Undercover, avec le mot "${r.undercoverImpostorWord}")`}
+            .
+          </div>
+
+          {r.undercoverOutcome === "caught_correct_guess" && (
+            <div className="subtitle">
+              Démasqué, {r.undercoverImpostorName} a deviné le mot avec &quot;{r.undercoverGuessText}
+              &quot; ! Personne ne boit.
+            </div>
+          )}
+          {r.undercoverOutcome === "caught_wrong_guess" && (
+            <div className="subtitle">
+              Démasqué, {r.undercoverImpostorName} a proposé &quot;{r.undercoverGuessText}&quot; — raté.
+              Boit 2 🥃.
+            </div>
+          )}
+          {r.undercoverOutcome === "caught_direct" && (
+            <div className="subtitle">Démasqué directement, {r.undercoverImpostorName} boit 2 🥃.</div>
+          )}
+          {r.undercoverOutcome === "survived" && (
+            <div className="subtitle">
+              Jamais démasqué ! Tout le monde sauf {r.undercoverImpostorName} boit 2 🥃.
+            </div>
+          )}
+          {r.undercoverTieBreakByLottery && (
+            <div className="hint">Le dernier vote était à égalité — tranché au tirage au sort.</div>
+          )}
+
+          {r.undercoverOutcome === "survived" && (
+            <div className="players-list">
+              {game.playersPublic
+                .filter((p) => p.name !== r.undercoverImpostorName)
+                .map((p) => (
+                  <div className="player-chip" key={p.slug}>
+                    <span className="pname">{p.name}</span>
+                    <span className="pmeta">Boit 2 🥃</span>
+                  </div>
+                ))}
+            </div>
+          )}
+
+          {r.undercoverEliminationOrder!.length > 0 && (
+            <>
+              <h3>Éliminés en cours de manche</h3>
+              <div className="players-list">
+                {r.undercoverEliminationOrder!.map((name) => (
+                  <div className="player-chip folded" key={name}>
+                    <span className="pname">{name}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {r.undercoverClues!.length > 0 && (
+            <>
+              <h3>Indices donnés</h3>
+              <div className="players-list">
+                {r.undercoverClues!.map((c, i) => (
+                  <div className="player-chip" key={i}>
+                    <span className="pname">{c.name}</span>
+                    <span className="pmeta">{c.text}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </>
       ) : r.soleSurvivor ? (
         <>

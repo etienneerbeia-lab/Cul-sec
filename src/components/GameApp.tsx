@@ -24,6 +24,10 @@ import DuelRevealScreen from "./screens/DuelRevealScreen";
 import VoteScreen from "./screens/VoteScreen";
 import MemeCaptionScreen from "./screens/MemeCaptionScreen";
 import MemeVoteScreen from "./screens/MemeVoteScreen";
+import DiceScreen from "./screens/DiceScreen";
+import UndercoverClueScreen from "./screens/UndercoverClueScreen";
+import UndercoverVoteScreen from "./screens/UndercoverVoteScreen";
+import UndercoverGuessScreen from "./screens/UndercoverGuessScreen";
 
 const POLL_MS = 1500;
 
@@ -36,6 +40,7 @@ export default function GameApp() {
   const [game, setGame] = useState<GameState | null>(null);
   const [myHand, setMyHand] = useState<Card[] | null>(null);
   const [myVoteChoice, setMyVoteChoice] = useState<VoteChoice | null>(null);
+  const [myUndercoverWord, setMyUndercoverWord] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [showQuitConfirm, setShowQuitConfirm] = useState(false);
@@ -50,6 +55,7 @@ export default function GameApp() {
       setGame(data.game);
       setMyHand(data.myHand);
       setMyVoteChoice(data.myVoteChoice);
+      setMyUndercoverWord(data.myUndercoverWord);
       setIsHost(data.isHost);
     } catch {
       // transient network hiccup — next poll retries
@@ -140,6 +146,7 @@ export default function GameApp() {
     setGame(null);
     setMyHand(null);
     setMyVoteChoice(null);
+    setMyUndercoverWord(null);
     setError("");
   }
 
@@ -319,6 +326,43 @@ export default function GameApp() {
             runAction(() => apiPost(`/api/rooms/${roomCode}/meme-vote`, { authorSlug }))
           }
           onForceReveal={() => runAction(() => apiPost(`/api/rooms/${roomCode}/meme-vote-reveal`))}
+        />
+      ) : phase === "dice" ? (
+        <DiceScreen
+          game={game}
+          mySlug={mySlug}
+          busy={busy}
+          onRoll={() => runAction(() => apiPost(`/api/rooms/${roomCode}/dice-roll`))}
+        />
+      ) : phase === "undercoverClue" ? (
+        <UndercoverClueScreen
+          game={game}
+          mySlug={mySlug}
+          myWord={myUndercoverWord}
+          busy={busy}
+          onSubmitClue={(text) =>
+            runAction(() => apiPost(`/api/rooms/${roomCode}/undercover-clue`, { text }))
+          }
+        />
+      ) : phase === "undercoverVote" ? (
+        <UndercoverVoteScreen
+          game={game}
+          mySlug={mySlug}
+          isHost={isHost}
+          busy={busy}
+          onSubmitVote={(targetSlug) =>
+            runAction(() => apiPost(`/api/rooms/${roomCode}/undercover-vote`, { targetSlug }))
+          }
+          onForceReveal={() => runAction(() => apiPost(`/api/rooms/${roomCode}/undercover-vote-reveal`))}
+        />
+      ) : phase === "undercoverGuess" ? (
+        <UndercoverGuessScreen
+          game={game}
+          myWord={myUndercoverWord}
+          busy={busy}
+          onSubmitGuess={(guess) =>
+            runAction(() => apiPost(`/api/rooms/${roomCode}/undercover-guess`, { guess }))
+          }
         />
       ) : phase === "quizRecap" ? (
         <QuizRecapScreen

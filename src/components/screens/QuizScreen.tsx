@@ -82,17 +82,10 @@ export default function QuizScreen({
 
       {q.status === "asking" && (isMe ? <AnswerForm onSubmit={onSubmitAnswer} busy={busy} /> : <div className="hint">En attente de {activePlayer.name}...</div>)}
 
-      {q.status === "distributing" &&
-        (isMe ? (
-          <DistributeForm players={game.playersPublic} mySlug={mySlug} onConfirm={onDistribute} busy={busy} />
-        ) : (
-          <div className="hint">
-            Bonne réponse ! {activePlayer.name} distribue ses 2 gorgées...
-          </div>
-        ))}
-
-      {q.status === "result" && (
+      {q.status !== "asking" && (
         <>
+          <div className="quiz-given-label">{activePlayer.name} a répondu</div>
+          <div className="quiz-given-answer">{q.lastAnswerGiven ? q.lastAnswerGiven : "(pas de réponse)"}</div>
           <div className={`quiz-result-banner ${q.correct ? "correct" : "incorrect"}`}>
             {q.correct ? "Bonne réponse !" : "Mauvaise réponse"}
           </div>
@@ -101,6 +94,18 @@ export default function QuizScreen({
               La bonne réponse était : <strong>{q.question.answer}</strong>
             </div>
           )}
+        </>
+      )}
+
+      {q.status === "distributing" &&
+        (isMe ? (
+          <DistributeForm players={game.playersPublic} mySlug={mySlug} onConfirm={onDistribute} busy={busy} />
+        ) : (
+          <div className="hint">{activePlayer.name} distribue ses 2 gorgées...</div>
+        ))}
+
+      {q.status === "result" && (
+        <>
           <div className="players-list">
             {q.correct ? (
               (q.distribution ?? []).map((d) => (
@@ -185,7 +190,7 @@ function DistributeForm({
 
   return (
     <div>
-      <div className="hint">Bonne réponse ! Distribue 2 gorgées comme tu veux.</div>
+      <div className="hint">Distribue 2 gorgées comme tu veux.</div>
       <div className="players-list">
         {others.map((p) => {
           const amount = amounts[p.slug] ?? 0;
