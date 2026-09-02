@@ -33,7 +33,7 @@ export default function DiceScreen({
           </div>
         </div>
         <div>
-          <div className="label">Dés</div>
+          <div className="label">Lancé de dés</div>
           <div className="value">
             {d.rolls.length}/{d.turnOrder.length}
           </div>

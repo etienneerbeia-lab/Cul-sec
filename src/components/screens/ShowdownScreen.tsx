@@ -112,7 +112,7 @@ export default function ShowdownScreen({
         </>
       ) : r.type === "dice" ? (
         <>
-          <h2>Dés</h2>
+          <h2>Lancé de dés</h2>
           <div className="players-list">
             {r.diceRolls!.map((roll) => {
               const isLoser = r.diceLowest!.includes(roll.name);
