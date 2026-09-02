@@ -5,6 +5,11 @@ import type { GameState } from "@/lib/game/types";
 import PlayingCard from "../PlayingCard";
 import Die from "../Die";
 
+// Note: "duel" results never reach this component — GameApp keeps duel
+// on DuelRevealScreen for its whole lifecycle (see that component's own
+// comment) so the two revealed cards never disappear behind a screen
+// change. Every other round type still resolves here as before.
+
 export default function ShowdownScreen({
   game,
   isHost,
@@ -23,25 +28,7 @@ export default function ShowdownScreen({
 
   return (
     <>
-      {r.type === "duel" ? (
-        <>
-          <h2>Bataille</h2>
-          <div className="community-row">
-            {Object.entries(r.cards!).map(([name, card]) => (
-              <PlayingCard key={name} card={card} small />
-            ))}
-          </div>
-          {r.tie ? (
-            <div className="subtitle">
-              {r.names![0]} et {r.names![1]} tirent la même carte. Les deux boivent 1 🥃.
-            </div>
-          ) : (
-            <div className="subtitle">
-              {r.winner} bat {r.loser}. {r.loser} boit 2 🥃.
-            </div>
-          )}
-        </>
-      ) : r.type === "vote" ? (
+      {r.type === "vote" ? (
         <>
           <h2>Tu préfères...</h2>
           <div className="vote-result-labels">

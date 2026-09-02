@@ -1,15 +1,17 @@
 "use client";
 
-import type { GameState } from "@/lib/game/types";
+import { useEffect, useRef, useState } from "react";
+import type { DiceRoll, GameState, PlayerPublic } from "@/lib/game/types";
 import Die from "../Die";
 
-// No local timers, no "rolling" placeholder state. The active player taps,
-// the roll is submitted, and the very next poll (or the immediate refresh
-// right after the POST resolves, for the roller themself) delivers the
-// real result — at which point every Die below mounts (or updates) with
-// that value and plays its own roll animation. Same mechanism for the
-// roller and every spectator: whoever's screen learns the result, animates
-// it, whenever that happens to land for them.
+const FLICKER_MS = 1000;
+const HOLD_MS = 1500;
+const FLICKER_TICK_MS = 90;
+
+function randFace(): number {
+  return 1 + Math.floor(Math.random() * 6);
+}
+
 export default function DiceScreen({
   game,
   mySlug,
@@ -22,9 +24,16 @@ export default function DiceScreen({
   onRoll: () => void;
 }) {
   const d = game.dice!;
+  // How many of d.rolls this viewer has already watched play out on the
+  // big stage below. Starts at the count already present on mount (a
+  // fresh page load mid-round shouldn't replay the whole history), then
+  // only ever catches up one roll at a time as fresh ones land — that's
+  // what makes every viewer watch each turn's animation live instead of
+  // just seeing the table fill in silently.
+  const [shownCount, setShownCount] = useState(() => d.rolls.length);
+  const pendingRoll: DiceRoll | null = shownCount < d.rolls.length ? d.rolls[shownCount] : null;
   const activePlayer = game.playersPublic[d.playerIdx];
-  const isMe = activePlayer.slug === mySlug;
-  const myRoll = d.rolls.find((r) => r.slug === mySlug);
+  const isMeActive = activePlayer.slug === mySlug;
 
   return (
     <>
@@ -44,45 +53,17 @@ export default function DiceScreen({
         </div>
       </div>
 
-      {isMe ? (
-        myRoll ? (
-          <>
-            <div className="dice-sum">{myRoll.d1 + myRoll.d2}</div>
-            <div className="dice-row">
-              <Die value={myRoll.d1} />
-              <Die value={myRoll.d2} />
-            </div>
-            <div className="hint">En attente des autres joueurs...</div>
-          </>
-        ) : (
-          <>
-            <div className="turn-name">À toi de jouer</div>
-            <div className="hint">Appuie sur les dés pour les lancer</div>
-            <button
-              className="dice-tap-area"
-              disabled={busy}
-              onClick={onRoll}
-              aria-label="Lancer les dés"
-            >
-              <div className="dice-row">
-                <Die value={null} />
-                <Die value={null} />
-              </div>
-            </button>
-            <button className="btn-primary" disabled={busy} onClick={onRoll}>
-              Lancer les dés
-            </button>
-          </>
-        )
+      {pendingRoll ? (
+        <TurnReveal roll={pendingRoll} onDone={() => setShownCount((n) => n + 1)} />
       ) : (
-        <div className="hint">En attente de {activePlayer.name}...</div>
+        <LiveTurn activePlayer={activePlayer} isMe={isMeActive} busy={busy} onRoll={onRoll} />
       )}
 
-      {d.rolls.length > 0 && (
+      {shownCount > 0 && (
         <>
           <h3>Lancers</h3>
           <div className="players-list">
-            {d.rolls.map((r) => (
+            {d.rolls.slice(0, shownCount).map((r) => (
               <div className="player-chip" key={r.slug}>
                 <span className="pname">{r.name}</span>
                 <span className="pmeta dice-chip-result">
@@ -95,6 +76,109 @@ export default function DiceScreen({
           </div>
         </>
       )}
+    </>
+  );
+}
+
+// The active player's own dice, shown big to EVERYONE (only the active
+// player gets the button) — this is what makes "someone's turn" visible
+// to the whole table before they've even rolled.
+function LiveTurn({
+  activePlayer,
+  isMe,
+  busy,
+  onRoll,
+}: {
+  activePlayer: PlayerPublic;
+  isMe: boolean;
+  busy: boolean;
+  onRoll: () => void;
+}) {
+  const [tapped, setTapped] = useState(false);
+  const [faces, setFaces] = useState<[number, number]>([randFace(), randFace()]);
+
+  useEffect(() => {
+    if (!tapped) return;
+    const id = setInterval(() => setFaces([randFace(), randFace()]), FLICKER_TICK_MS);
+    return () => clearInterval(id);
+  }, [tapped]);
+
+  function trigger() {
+    if (tapped || busy) return;
+    setTapped(true);
+    onRoll();
+  }
+
+  const diceRow = (
+    <div className={`dice-row${tapped ? " dice-flicker" : ""}`}>
+      <Die value={tapped ? faces[0] : null} />
+      <Die value={tapped ? faces[1] : null} />
+    </div>
+  );
+
+  return (
+    <>
+      <div className="turn-name">{isMe ? "À toi de jouer" : `Au tour de ${activePlayer.name}`}</div>
+      {!tapped && (
+        <div className="hint">
+          {isMe ? "Appuie sur les dés pour les lancer" : `En attente de ${activePlayer.name}...`}
+        </div>
+      )}
+      {isMe && !tapped ? (
+        <button className="dice-tap-area" disabled={busy} onClick={trigger} aria-label="Lancer les dés">
+          {diceRow}
+        </button>
+      ) : (
+        diceRow
+      )}
+      {isMe && !tapped && (
+        <button className="btn-primary" disabled={busy} onClick={trigger}>
+          Lancer les dés
+        </button>
+      )}
+    </>
+  );
+}
+
+// A completed roll this viewer hasn't watched yet — flickers for
+// everyone the same way (nobody, not even the roller, sees the real
+// numbers land before this plays out), then holds the settled result
+// clearly on screen for a beat before handing back to the parent, which
+// advances to the next player's LiveTurn.
+function TurnReveal({ roll, onDone }: { roll: DiceRoll; onDone: () => void }) {
+  const [phase, setPhase] = useState<"flicker" | "hold">("flicker");
+  const [faces, setFaces] = useState<[number, number]>([randFace(), randFace()]);
+  const onDoneRef = useRef(onDone);
+  useEffect(() => {
+    onDoneRef.current = onDone;
+  });
+
+  useEffect(() => {
+    if (phase !== "flicker") return;
+    const tick = setInterval(() => setFaces([randFace(), randFace()]), FLICKER_TICK_MS);
+    const settle = setTimeout(() => setPhase("hold"), FLICKER_MS);
+    return () => {
+      clearInterval(tick);
+      clearTimeout(settle);
+    };
+  }, [phase]);
+
+  useEffect(() => {
+    if (phase !== "hold") return;
+    const t = setTimeout(() => onDoneRef.current(), HOLD_MS);
+    return () => clearTimeout(t);
+  }, [phase]);
+
+  const flickering = phase === "flicker";
+
+  return (
+    <>
+      <div className="turn-name">{roll.name}</div>
+      {!flickering && <div className="dice-sum">{roll.sum}</div>}
+      <div className={`dice-row${flickering ? " dice-flicker" : ""}`}>
+        <Die value={flickering ? faces[0] : roll.d1} />
+        <Die value={flickering ? faces[1] : roll.d2} />
+      </div>
     </>
   );
 }

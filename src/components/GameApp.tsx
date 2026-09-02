@@ -254,12 +254,15 @@ export default function GameApp() {
             runAction(() => apiPost(`/api/rooms/${roomCode}/act`, { action }))
           }
         />
-      ) : phase === "duelReveal" ? (
+      ) : phase === "duelReveal" || (phase === "showdown" && game.lastResults?.type === "duel") ? (
         <DuelRevealScreen
           game={game}
           mySlug={mySlug}
+          isHost={isHost}
           busy={busy}
           onReveal={() => runAction(() => apiPost(`/api/rooms/${roomCode}/duel-reveal`))}
+          onNextRound={() => runAction(() => apiPost(`/api/rooms/${roomCode}/next-round`))}
+          onEndNight={() => runAction(() => apiPost(`/api/rooms/${roomCode}/end-night`))}
         />
       ) : phase === "showdown" ? (
         <ShowdownScreen

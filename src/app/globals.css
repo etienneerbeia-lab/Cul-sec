@@ -614,76 +614,36 @@ label.field-label {
   justify-content: center;
   margin: 18px 0;
 }
-/* `perspective` lives on the scene wrapper (not the row) so every Die
-   carries its own 3D viewing context wherever it's used — the big roll
-   view, the small per-player recap rows, anywhere. */
-.die-scene {
+/* Plain 2D pip card — two earlier attempts at a real CSS 3D cube never
+   rendered reliably, so the "rolling" motion comes entirely from Die.tsx
+   swapping the displayed face rapidly (see .dice-flicker below) rather
+   than from any 3D transform. */
+.die-2d {
   width: 64px;
   height: 64px;
-  perspective: 600px;
-}
-.die-scene.die-scene-small {
-  width: 26px;
-  height: 26px;
-  perspective: 260px;
-}
-.die-cube {
-  --die-size: 64px;
-  width: var(--die-size);
-  height: var(--die-size);
-  position: relative;
-  transform-style: preserve-3d;
-  /* Idle resting tilt — shows this is a real 3D object even before it's
-     rolled. React drives every actual change to this transform (idle ->
-     rolling -> settled) as plain state, so this transition is the ONLY
-     thing animating the cube — no @keyframes involved. A roll always
-     targets the landed face's angle plus a couple of extra full turns
-     (see Die.tsx), which is what makes this read as a roll instead of a
-     snap: same resting orientation, much bigger visible rotation getting
-     there. Slow, decelerating easing so it looks like it's settling under
-     its own weight rather than just stopping. */
-  transform: rotateX(-18deg) rotateY(24deg);
-  transition: transform 1.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.die-cube.die-small {
-  --die-size: 26px;
-}
-.die-face {
-  position: absolute;
-  inset: 0;
-  width: var(--die-size);
-  height: var(--die-size);
+  border-radius: 12px;
   background: var(--cream);
   border: 2px solid var(--gold);
-  border-radius: 14%;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+  padding: 8px;
+}
+.die-2d.die-2d-idle {
+  opacity: 0.6;
+}
+.die-2d.die-2d-small {
+  width: 26px;
+  height: 26px;
+  padding: 4px;
+  border-radius: 6px;
+  border-width: 1px;
+}
+.die-2d-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(3, 1fr);
+  width: 100%;
+  height: 100%;
   gap: 2px;
-  padding: 13%;
-  backface-visibility: hidden;
-}
-.die-cube.die-small .die-face {
-  border-width: 1px;
-}
-.die-face-front {
-  transform: translateZ(calc(var(--die-size) / 2));
-}
-.die-face-back {
-  transform: rotateY(180deg) translateZ(calc(var(--die-size) / 2));
-}
-.die-face-right {
-  transform: rotateY(90deg) translateZ(calc(var(--die-size) / 2));
-}
-.die-face-left {
-  transform: rotateY(-90deg) translateZ(calc(var(--die-size) / 2));
-}
-.die-face-top {
-  transform: rotateX(90deg) translateZ(calc(var(--die-size) / 2));
-}
-.die-face-bottom {
-  transform: rotateX(-90deg) translateZ(calc(var(--die-size) / 2));
 }
 .die-pip {
   border-radius: 50%;
@@ -695,6 +655,27 @@ label.field-label {
 }
 .die-pip-empty {
   background: transparent;
+}
+/* Applied to .dice-row while a die is mid-"roll" — each die wobbles in
+   place (small rotate + scale pulse) while Die.tsx swaps its face every
+   ~90ms, together reading as a fast slot-machine-style roll. */
+.dice-flicker .die-2d {
+  animation: dice-wobble 0.15s ease-in-out infinite;
+}
+@keyframes dice-wobble {
+  0%,
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+  25% {
+    transform: rotate(-6deg) scale(1.05);
+  }
+  50% {
+    transform: rotate(0deg) scale(0.96);
+  }
+  75% {
+    transform: rotate(6deg) scale(1.05);
+  }
 }
 .dice-tap-area {
   display: block;
