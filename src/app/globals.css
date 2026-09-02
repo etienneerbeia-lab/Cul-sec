@@ -514,6 +514,60 @@ label.field-label {
   font-size: 1.3rem;
 }
 
+.vote-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 20px 0;
+}
+.vote-option {
+  padding: 22px 18px;
+  border-radius: 12px;
+  background: rgba(236, 230, 245, 0.06);
+  border: 1.5px solid rgba(236, 230, 245, 0.25);
+  color: var(--offwhite);
+  font-family: var(--font-fraunces), serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.3;
+}
+.vote-option:hover {
+  border-color: var(--gold);
+}
+.vote-divider {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin: -2px 0;
+}
+.vote-result-bar {
+  display: flex;
+  height: 14px;
+  border-radius: 7px;
+  overflow: hidden;
+  margin: 12px 0 18px;
+  background: rgba(236, 230, 245, 0.12);
+}
+.vote-result-bar .vrb-a {
+  background: var(--gold);
+}
+.vote-result-bar .vrb-b {
+  background: var(--wine-bright);
+}
+.vote-result-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--muted);
+  gap: 10px;
+}
+.vote-result-labels strong {
+  color: var(--offwhite);
+}
+
 .name-inputs {
   display: flex;
   flex-direction: column;

@@ -2,6 +2,7 @@ import { makeShuffledDeck, shuffleArr } from "./cards";
 import { bestOf7, compareHand } from "./evaluate";
 import { ROUND_TYPES, roundTypeById } from "./roundTypes";
 import { advanceQuizTurn, startQuizRound } from "../quiz/engine";
+import { startVoteRound } from "../vote/engine";
 import type {
   BettingOpts,
   Card,
@@ -78,6 +79,11 @@ export async function confirmRoundIntro(g: GameState, hands: HandStore): Promise
 
   if (rt.id === "quiz") {
     startQuizRound(g);
+    return;
+  }
+
+  if (rt.id === "vote") {
+    startVoteRound(g);
     return;
   }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { QUIZ_TIME_LIMIT_MS } from "@/lib/game/types";
+import { TIMED_ANSWER_MS } from "@/lib/game/types";
 import type { GameState } from "@/lib/game/types";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -41,7 +41,7 @@ export default function QuizScreen({
     return () => clearInterval(id);
   }, [q.status, q.askedAt]);
 
-  const remainingMs = Math.max(0, QUIZ_TIME_LIMIT_MS - (now - q.askedAt));
+  const remainingMs = Math.max(0, TIMED_ANSWER_MS - (now - q.askedAt));
   const remainingSec = Math.ceil(remainingMs / 1000);
 
   const timedOutForRef = useRef<number | null>(null);
@@ -75,7 +75,7 @@ export default function QuizScreen({
 
       {q.status === "asking" && (
         <div className="quiz-timer">
-          <div className="quiz-timer-bar" style={{ width: `${(remainingMs / QUIZ_TIME_LIMIT_MS) * 100}%` }} />
+          <div className="quiz-timer-bar" style={{ width: `${(remainingMs / TIMED_ANSWER_MS) * 100}%` }} />
           <span className="quiz-timer-text">{remainingSec}s</span>
         </div>
       )}

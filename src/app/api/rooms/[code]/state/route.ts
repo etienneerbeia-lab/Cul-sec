@@ -25,7 +25,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ code
   // Never let the answer reach any client before the active player has
   // actually submitted — the question prompt itself is public (everyone
   // watches along), only the answer stays server-side until resolved.
-  const publicGame =
+  let publicGame =
     game && game.quiz && game.quiz.status === "asking"
       ? {
           ...game,
@@ -36,10 +36,22 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ code
         }
       : game;
 
+  // Same idea for "Tu préfères": everyone sees the prompt, nobody sees who
+  // voted for what (not even a live vote count, to avoid bandwagoning)
+  // until the round resolves and moves on to phase "showdown".
+  let myVoteChoice: "A" | "B" | null = null;
+  if (publicGame?.vote) {
+    // `responded` (who has acted) stays public so the "waiting on the
+    // table" screen can show progress — it never says *what* anyone chose.
+    if (session) myVoteChoice = publicGame.vote.votes[session.slug] ?? null;
+    publicGame = { ...publicGame, vote: { ...publicGame.vote, votes: {} } };
+  }
+
   return NextResponse.json({
     players,
     game: publicGame,
     myHand,
+    myVoteChoice,
     mySlug: session?.slug ?? null,
     myName: session?.name ?? null,
     isHost: session ? session.slug === hostSlug : false,

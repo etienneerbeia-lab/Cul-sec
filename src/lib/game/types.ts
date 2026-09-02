@@ -10,7 +10,7 @@ export interface Card {
   suit: Suit;
 }
 
-export type RoundTypeId = "high" | "holdem" | "duel" | "quiz";
+export type RoundTypeId = "high" | "holdem" | "duel" | "quiz" | "vote";
 
 export interface RoundType {
   id: RoundTypeId;
@@ -38,6 +38,7 @@ export type GamePhase =
   | "quiz"
   | "quizRecap"
   | "duelReveal"
+  | "vote"
   | "final";
 
 export type Street = "single" | "preflop" | "flop" | "turn" | "river";
@@ -64,6 +65,14 @@ export interface LastResults {
   loser?: string;
   names?: string[];
   cards?: Record<string, Card>;
+  // "vote" (Tu préfères)
+  promptA?: string;
+  promptB?: string;
+  countA?: number;
+  countB?: number;
+  voteEntries?: { name: string; choice: VoteChoice }[];
+  voteNonVoters?: string[];
+  voteTie?: boolean;
 }
 
 export type QuizQuestionType = "capital" | "flag" | "date";
@@ -112,10 +121,36 @@ export interface QuizRoundState {
   history?: QuizHistoryEntry[];
 }
 
-export const QUIZ_TIME_LIMIT_MS = 15000;
+// Shared 15s-to-answer countdown, reused as-is by every timed mini-game
+// (Culture G and Tu préfères) so their pace feels consistent.
+export const TIMED_ANSWER_MS = 15000;
 
 export interface DuelRevealState {
   revealed: [boolean, boolean];
+}
+
+export type VoteChoice = "A" | "B";
+
+export interface VoteQuestionState {
+  id: string;
+  promptA: string;
+  promptB: string;
+}
+
+export interface VoteRoundState {
+  question: VoteQuestionState;
+  askedAt: number;
+  // slug -> choice, real votes only (a timeout never adds an entry here).
+  // Kept private server-side while the round is live — the state API
+  // strips this to a bare count so no one can see who's voted for what
+  // before the reveal. Once resolved, the round moves straight to phase
+  // "showdown" with the full breakdown in lastResults, same as every
+  // other mini-game's result.
+  votes: Record<string, VoteChoice>;
+  // Every slug that has been accounted for so far, whether they voted or
+  // timed out — separate from `votes` because a timeout must still close
+  // out that player's turn without counting toward either camp.
+  responded: string[];
 }
 
 export type CulSecRule = "last" | "first";
@@ -146,6 +181,7 @@ export interface GameState {
   culSecRule?: CulSecRule;
   culSecTargetSlug?: string;
   duelReveal?: DuelRevealState;
+  vote?: VoteRoundState;
 }
 
 export interface Player {

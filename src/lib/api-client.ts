@@ -43,6 +43,7 @@ export interface StateResponse {
   players: Player[];
   game: GameState | null;
   myHand: Card[] | null;
+  myVoteChoice: "A" | "B" | null;
   mySlug: string | null;
   myName: string | null;
   isHost: boolean;

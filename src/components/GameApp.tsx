@@ -10,7 +10,7 @@ import {
   type SessionResponse,
   type StateResponse,
 } from "@/lib/api-client";
-import type { Card, CulSecRule, GameState, Player } from "@/lib/game/types";
+import type { Card, CulSecRule, GameState, Player, VoteChoice } from "@/lib/game/types";
 import HomeScreen from "./screens/HomeScreen";
 import LobbyScreen from "./screens/LobbyScreen";
 import RoundIntroScreen from "./screens/RoundIntroScreen";
@@ -21,6 +21,7 @@ import FinalScreen from "./screens/FinalScreen";
 import QuizScreen from "./screens/QuizScreen";
 import QuizRecapScreen from "./screens/QuizRecapScreen";
 import DuelRevealScreen from "./screens/DuelRevealScreen";
+import VoteScreen from "./screens/VoteScreen";
 
 const POLL_MS = 1500;
 
@@ -32,6 +33,7 @@ export default function GameApp() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [game, setGame] = useState<GameState | null>(null);
   const [myHand, setMyHand] = useState<Card[] | null>(null);
+  const [myVoteChoice, setMyVoteChoice] = useState<VoteChoice | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -44,6 +46,7 @@ export default function GameApp() {
       setPlayers(data.players);
       setGame(data.game);
       setMyHand(data.myHand);
+      setMyVoteChoice(data.myVoteChoice);
       setIsHost(data.isHost);
     } catch {
       // transient network hiccup — next poll retries
@@ -133,6 +136,7 @@ export default function GameApp() {
     setPlayers([]);
     setGame(null);
     setMyHand(null);
+    setMyVoteChoice(null);
     setError("");
   }
 
@@ -255,6 +259,17 @@ export default function GameApp() {
           }
           onNext={() => runAction(() => apiPost(`/api/rooms/${roomCode}/quiz-next`))}
           onEndNight={() => runAction(() => apiPost(`/api/rooms/${roomCode}/end-night`))}
+        />
+      ) : phase === "vote" ? (
+        <VoteScreen
+          game={game}
+          myVoteChoice={myVoteChoice}
+          isHost={isHost}
+          busy={busy}
+          onSubmitVote={(choice) =>
+            runAction(() => apiPost(`/api/rooms/${roomCode}/vote-answer`, { choice }))
+          }
+          onForceReveal={() => runAction(() => apiPost(`/api/rooms/${roomCode}/vote-reveal`))}
         />
       ) : phase === "quizRecap" ? (
         <QuizRecapScreen

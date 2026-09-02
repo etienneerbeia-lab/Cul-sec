@@ -29,6 +29,13 @@ export const ROUND_TYPES: RoundType[] = [
     icon: "🧠",
     cards: 0,
   },
+  {
+    id: "vote",
+    label: "Tu préfères",
+    tagline: "Un dilemme, deux camps. Vote en secret : le camp minoritaire boit.",
+    icon: "🗳️",
+    cards: 0,
+  },
 ];
 
 export function roundTypeById(id: string): RoundType {

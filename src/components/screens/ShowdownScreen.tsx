@@ -40,6 +40,47 @@ export default function ShowdownScreen({
             </div>
           )}
         </>
+      ) : r.type === "vote" ? (
+        <>
+          <h2>Tu préfères...</h2>
+          <div className="vote-result-labels">
+            <span>{r.promptA}</span>
+            <span>{r.promptB}</span>
+          </div>
+          <div className="vote-result-bar">
+            {r.countA! > 0 && (
+              <div className="vrb-a" style={{ flex: r.countA }} />
+            )}
+            {r.countB! > 0 && (
+              <div className="vrb-b" style={{ flex: r.countB }} />
+            )}
+          </div>
+          <div className="subtitle">
+            {r.voteTie
+              ? `Égalité parfaite (${r.countA}-${r.countB}) : personne ne boit.`
+              : `${r.countA} contre ${r.countB} — le camp minoritaire boit 2 🥃.`}
+          </div>
+          <div className="players-list">
+            {r.voteEntries!.map((entry) => (
+              <div className="player-chip" key={entry.name}>
+                <span className="pname">{entry.name}</span>
+                <span className="pmeta">
+                  {entry.choice === "A" ? r.promptA : r.promptB}
+                  {!r.voteTie &&
+                    ((entry.choice === "A" && r.countA! < r.countB!) ||
+                      (entry.choice === "B" && r.countB! < r.countA!)) &&
+                    " — Boit 2 🥃"}
+                </span>
+              </div>
+            ))}
+            {r.voteNonVoters!.map((name) => (
+              <div className="player-chip folded" key={name}>
+                <span className="pname">{name}</span>
+                <span className="pmeta">N&apos;a pas voté à temps</span>
+              </div>
+            ))}
+          </div>
+        </>
       ) : r.soleSurvivor ? (
         <>
           <h2>Tout le monde s&apos;est couché</h2>
