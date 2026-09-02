@@ -2,6 +2,7 @@ import type {
   GameState,
   PlayerPublic,
   QuizDistributionEntry,
+  QuizHistoryEntry,
   QuizQuestionState,
 } from "../game/types";
 import type { Difficulty } from "./types";
@@ -76,6 +77,7 @@ export function startQuizRound(g: GameState): void {
     playerIdx: order[0],
     status: "asking",
     question: pickQuestion(g),
+    askedAt: Date.now(),
   };
   g.phase = "quiz";
 }
@@ -112,9 +114,23 @@ export function applyQuizDistribution(
   q.status = "result";
 }
 
+function recordHistoryEntry(g: GameState): void {
+  const q = g.quiz!;
+  const entry: QuizHistoryEntry = {
+    playerName: g.playersPublic[q.playerIdx].name,
+    type: q.question.type,
+    prompt: q.question.prompt,
+    givenAnswer: q.lastAnswerGiven ?? "",
+    correct: !!q.correct,
+    correctAnswer: q.question.answer ?? "",
+  };
+  q.history = [...(q.history ?? []), entry];
+}
+
 // Returns true if the quiz round (full table) is now over.
 export function advanceQuizTurn(g: GameState): boolean {
   const q = g.quiz!;
+  recordHistoryEntry(g);
   if (q.turnPointer + 1 >= q.turnOrder.length) {
     return true;
   }
@@ -122,6 +138,7 @@ export function advanceQuizTurn(g: GameState): boolean {
   q.playerIdx = q.turnOrder[q.turnPointer];
   q.status = "asking";
   q.question = pickQuestion(g);
+  q.askedAt = Date.now();
   q.lastAnswerGiven = undefined;
   q.correct = undefined;
   q.distribution = undefined;

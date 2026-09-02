@@ -10,7 +10,7 @@ export interface Card {
   suit: Suit;
 }
 
-export type RoundTypeId = "high" | "low" | "teenpatti" | "holdem" | "duel" | "quiz";
+export type RoundTypeId = "high" | "holdem" | "duel" | "quiz";
 
 export interface RoundType {
   id: RoundTypeId;
@@ -36,6 +36,8 @@ export type GamePhase =
   | "communityReveal"
   | "showdown"
   | "quiz"
+  | "quizRecap"
+  | "duelReveal"
   | "final";
 
 export type Street = "single" | "preflop" | "flop" | "turn" | "river";
@@ -88,15 +90,32 @@ export interface QuizDistributionEntry {
   amount: number;
 }
 
+export interface QuizHistoryEntry {
+  playerName: string;
+  type: QuizQuestionType;
+  prompt: string;
+  givenAnswer: string;
+  correct: boolean;
+  correctAnswer: string;
+}
+
 export interface QuizRoundState {
   turnOrder: number[];
   turnPointer: number;
   playerIdx: number;
   status: QuizTurnStatus;
   question: QuizQuestionState;
+  askedAt: number;
   lastAnswerGiven?: string;
   correct?: boolean;
   distribution?: QuizDistributionEntry[];
+  history?: QuizHistoryEntry[];
+}
+
+export const QUIZ_TIME_LIMIT_MS = 15000;
+
+export interface DuelRevealState {
+  revealed: [boolean, boolean];
 }
 
 export type CulSecRule = "last" | "first";
@@ -126,6 +145,7 @@ export interface GameState {
   totalRounds?: number;
   culSecRule?: CulSecRule;
   culSecTargetSlug?: string;
+  duelReveal?: DuelRevealState;
 }
 
 export interface Player {

@@ -1,7 +1,8 @@
 import type { BetAction } from "@/lib/api-client";
-import { streetLabel } from "@/lib/game/roundTypes";
+import { roundTypeById, streetLabel } from "@/lib/game/roundTypes";
 import type { Card, GameState } from "@/lib/game/types";
 import MyHandBlock from "../MyHandBlock";
+import PlayingCard from "../PlayingCard";
 
 export default function BettingScreen({
   game,
@@ -19,9 +20,12 @@ export default function BettingScreen({
   const opts = game.bettingOpts!;
   const meIdx = game.playersPublic.findIndex((p) => p.slug === mySlug);
   const myTurn = game.turnIdx === meIdx;
+  const rt = roundTypeById(game.roundTypeId as string);
+  const revealedCommunity = (game.community ?? []).slice(0, game.communityRevealed ?? 0);
 
   return (
     <>
+      <div className="mode-label">{rt.label}</div>
       <div className="table-status">
         <div>
           <div className="label">Manche</div>
@@ -43,6 +47,17 @@ export default function BettingScreen({
         )}
       </div>
       {game.street && game.street !== "single" && <div className="hint">{streetLabel(game.street)}</div>}
+
+      {revealedCommunity.length > 0 && (
+        <div>
+          <label className="field-label">Cartes communes</label>
+          <div className="community-row">
+            {revealedCommunity.map((c, i) => (
+              <PlayingCard key={i} card={c} small />
+            ))}
+          </div>
+        </div>
+      )}
 
       <MyHandBlock myHand={myHand} />
 

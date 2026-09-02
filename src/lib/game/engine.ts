@@ -1,5 +1,5 @@
 import { makeShuffledDeck, shuffleArr } from "./cards";
-import { bestOf7, compareHand, evaluate3 } from "./evaluate";
+import { bestOf7, compareHand } from "./evaluate";
 import { ROUND_TYPES, roundTypeById } from "./roundTypes";
 import { advanceQuizTurn, startQuizRound } from "../quiz/engine";
 import type {
@@ -104,10 +104,8 @@ export async function confirmRoundIntro(g: GameState, hands: HandStore): Promise
   }
 
   if (rt.id === "duel") {
-    const [i1, i2] = g.duelists!;
-    const c1 = (await hands.getHand(g.round, g.playersPublic[i1].slug))[0];
-    const c2 = (await hands.getHand(g.round, g.playersPublic[i2].slug))[0];
-    resolveDuelState(g, i1, c1, i2, c2);
+    g.duelReveal = { revealed: [false, false] };
+    g.phase = "duelReveal";
     return;
   }
 
@@ -120,8 +118,21 @@ export async function confirmRoundIntro(g: GameState, hands: HandStore): Promise
     await startBettingStreet(g, { mode: "check-or-bet", foldCost: "pot" }, hands);
   } else {
     g.street = "single";
-    const foldCost = rt.id === "teenpatti" ? "pot" : "flat";
-    await startBettingStreet(g, { mode: "always-bet", foldCost }, hands);
+    await startBettingStreet(g, { mode: "always-bet", foldCost: "flat" }, hands);
+  }
+}
+
+// Called once a duelist presses "reveal" on their own screen. Resolves the
+// duel (and moves to showdown) only once both duelists have revealed —
+// until then the other stays a private hand, same as any other card.
+export async function revealDuelCard(g: GameState, playerIdx: number, hands: HandStore): Promise<void> {
+  const [i1, i2] = g.duelists!;
+  const pos = playerIdx === i1 ? 0 : 1;
+  g.duelReveal!.revealed[pos] = true;
+  if (g.duelReveal!.revealed[0] && g.duelReveal!.revealed[1]) {
+    const c1 = (await hands.getHand(g.round, g.playersPublic[i1].slug))[0];
+    const c2 = (await hands.getHand(g.round, g.playersPublic[i2].slug))[0];
+    resolveDuelState(g, i1, c1, i2, c2);
   }
 }
 
@@ -286,29 +297,15 @@ async function resolveSimple(g: GameState, hands: HandStore): Promise<void> {
 
   const winners: string[] = [];
   const losers: string[] = [];
-  if (rt.id === "teenpatti") {
-    const evals = activeIdx.map((i) => ({ i, e: evaluate3(handMap[i]) }));
-    evals.sort((a, b) => compareHand(a.e, b.e));
-    const bestE = evals[0].e;
-    evals.forEach(({ i, e }) => {
-      if (compareHand(e, bestE) === 0) winners.push(g.playersPublic[i].name);
-      else {
-        losers.push(g.playersPublic[i].name);
-        g.playersPublic[i].gulpsTotal += g.currentBet!;
-      }
-    });
-  } else {
-    const cmp = rt.id === "low" ? (a: number, b: number) => a - b : (a: number, b: number) => b - a;
-    const sorted = [...activeIdx].sort((x, y) => cmp(handMap[x][0].value, handMap[y][0].value));
-    const bestVal = handMap[sorted[0]][0].value;
-    activeIdx.forEach((i) => {
-      if (handMap[i][0].value === bestVal) winners.push(g.playersPublic[i].name);
-      else {
-        losers.push(g.playersPublic[i].name);
-        g.playersPublic[i].gulpsTotal += g.currentBet!;
-      }
-    });
-  }
+  const sorted = [...activeIdx].sort((x, y) => handMap[y][0].value - handMap[x][0].value);
+  const bestVal = handMap[sorted[0]][0].value;
+  activeIdx.forEach((i) => {
+    if (handMap[i][0].value === bestVal) winners.push(g.playersPublic[i].name);
+    else {
+      losers.push(g.playersPublic[i].name);
+      g.playersPublic[i].gulpsTotal += g.currentBet!;
+    }
+  });
   g.lastResults = {
     type: rt.id,
     soleSurvivor: false,
@@ -414,9 +411,13 @@ export function assignCulSec(g: GameState, targetSlug: string): void {
 }
 
 // Advances to the next player's quiz question, or — once the whole table
-// has had a turn — moves on to the next Manche (which may pick quiz again
-// or a card round type), exactly like a card round's "next round" button.
+// has had a turn — shows the recap of everyone's answers before the next
+// Manche (which may pick quiz again or a card round type).
 export function quizAdvance(g: GameState): void {
   const roundOver = advanceQuizTurn(g);
-  if (roundOver) nextRound(g);
+  if (roundOver) g.phase = "quizRecap";
+}
+
+export function quizRecapContinue(g: GameState): void {
+  nextRound(g);
 }

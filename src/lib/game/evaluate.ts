@@ -5,34 +5,6 @@ export interface HandEval {
   tie: number[];
 }
 
-export function evaluate3(cards: Card[]): HandEval {
-  const values = cards.map((c) => c.value).sort((a, b) => b - a);
-  const suits = cards.map((c) => c.suit.sym);
-  const isFlush = suits.every((s) => s === suits[0]);
-  let isSeq = false;
-  let seqHigh: number | null = null;
-  if (values[0] - values[1] === 1 && values[1] - values[2] === 1) {
-    isSeq = true;
-    seqHigh = values[0];
-  } else if (values[0] === 14 && values[1] === 3 && values[2] === 2) {
-    isSeq = true;
-    seqHigh = 3;
-  }
-  const countMap: Record<number, number> = {};
-  values.forEach((v) => (countMap[v] = (countMap[v] || 0) + 1));
-  const groups = Object.keys(countMap)
-    .map((v) => ({ v: Number(v), c: countMap[Number(v)] }))
-    .sort((a, b) => b.c - a.c || b.v - a.v);
-  const tie = groups.map((g) => g.v);
-
-  if (groups[0].c === 3) return { rank: 5, tie };
-  if (isSeq && isFlush) return { rank: 4, tie: [seqHigh as number] };
-  if (isSeq) return { rank: 3, tie: [seqHigh as number] };
-  if (isFlush) return { rank: 2, tie: values };
-  if (groups[0].c === 2) return { rank: 1, tie };
-  return { rank: 0, tie: values };
-}
-
 export function evaluate5(cards: Card[]): HandEval {
   const values = cards.map((c) => c.value).sort((a, b) => b - a);
   const suits = cards.map((c) => c.suit.sym);
@@ -108,10 +80,6 @@ export function bestOf7(cards7: Card[]): HandEval {
     if (!best || compareHand(e, best) < 0) best = e;
   }
   return best as HandEval;
-}
-
-export function handLabel3(e: HandEval): string {
-  return ["Carte haute", "Paire", "Couleur", "Suite", "Suite couleur", "Brelan"][e.rank];
 }
 
 export function handLabel5(e: HandEval): string {

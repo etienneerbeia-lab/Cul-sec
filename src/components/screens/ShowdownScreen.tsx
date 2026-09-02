@@ -1,5 +1,6 @@
 import { valueLabel } from "@/lib/game/cards";
-import { bestOf7, evaluate3, handLabel3, handLabel5 } from "@/lib/game/evaluate";
+import { bestOf7, handLabel5 } from "@/lib/game/evaluate";
+import { roundTypeById } from "@/lib/game/roundTypes";
 import type { GameState } from "@/lib/game/types";
 import PlayingCard from "../PlayingCard";
 
@@ -75,34 +76,9 @@ export default function ShowdownScreen({
             })}
           </div>
         </>
-      ) : r.type === "teenpatti" ? (
-        <>
-          <h2>Abattage</h2>
-          <div className="subtitle">Mise finale : {r.betAmount} 🥃 pour les perdants.</div>
-          <div className="players-list">
-            {Object.entries(r.hands!).map(([name, hand]) => {
-              const isW = r.winners!.includes(name);
-              const evalHand = evaluate3(hand);
-              return (
-                <div className="player-chip" key={name}>
-                  <div>
-                    <div className="pname">{name}</div>
-                    <div className="pmeta">
-                      {(isW ? "Gagne — " : `Boit ${r.betAmount} — `) + handLabel3(evalHand)}
-                    </div>
-                  </div>
-                  <div className="community-row" style={{ margin: 0 }}>
-                    {hand.map((c, i) => (
-                      <PlayingCard key={i} card={c} small />
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </>
       ) : (
         <>
+          <div className="mode-label">{roundTypeById(r.type).label}</div>
           <h2>Showdown</h2>
           <div className="subtitle">Mise engagée : {r.betAmount} 🥃 pour les perdants.</div>
           <div className="players-list">

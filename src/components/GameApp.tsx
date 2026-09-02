@@ -19,6 +19,8 @@ import CommunityRevealScreen from "./screens/CommunityRevealScreen";
 import ShowdownScreen from "./screens/ShowdownScreen";
 import FinalScreen from "./screens/FinalScreen";
 import QuizScreen from "./screens/QuizScreen";
+import QuizRecapScreen from "./screens/QuizRecapScreen";
+import DuelRevealScreen from "./screens/DuelRevealScreen";
 
 const POLL_MS = 1500;
 
@@ -215,6 +217,14 @@ export default function GameApp() {
             runAction(() => apiPost(`/api/rooms/${roomCode}/act`, { action }))
           }
         />
+      ) : phase === "duelReveal" ? (
+        <DuelRevealScreen
+          game={game}
+          mySlug={mySlug}
+          myHand={myHand}
+          busy={busy}
+          onReveal={() => runAction(() => apiPost(`/api/rooms/${roomCode}/duel-reveal`))}
+        />
       ) : phase === "communityReveal" ? (
         <CommunityRevealScreen
           game={game}
@@ -244,6 +254,14 @@ export default function GameApp() {
             runAction(() => apiPost(`/api/rooms/${roomCode}/quiz-distribute`, { targets }))
           }
           onNext={() => runAction(() => apiPost(`/api/rooms/${roomCode}/quiz-next`))}
+          onEndNight={() => runAction(() => apiPost(`/api/rooms/${roomCode}/end-night`))}
+        />
+      ) : phase === "quizRecap" ? (
+        <QuizRecapScreen
+          game={game}
+          isHost={isHost}
+          busy={busy}
+          onContinue={() => runAction(() => apiPost(`/api/rooms/${roomCode}/quiz-recap-continue`))}
           onEndNight={() => runAction(() => apiPost(`/api/rooms/${roomCode}/end-night`))}
         />
       ) : phase === "final" ? (

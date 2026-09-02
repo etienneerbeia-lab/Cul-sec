@@ -9,20 +9,6 @@ export const ROUND_TYPES: RoundType[] = [
     cards: 1,
   },
   {
-    id: "low",
-    label: "Carte la plus basse",
-    tagline: "Une carte chacun, cachée. La plus faible gagne, pour une fois.",
-    icon: "🂢",
-    cards: 1,
-  },
-  {
-    id: "teenpatti",
-    label: "Trois cartes",
-    tagline: "Trois cartes secrètes, une seule mise. Meilleure main gagne.",
-    icon: "🃏",
-    cards: 3,
-  },
-  {
     id: "holdem",
     label: "Texas express",
     tagline: "Deux cartes, flop, turn, river. Qui se couche boit le pot.",

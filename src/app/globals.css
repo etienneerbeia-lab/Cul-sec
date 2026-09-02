@@ -271,6 +271,15 @@ label.field-label {
   text-align: center;
 }
 
+.mode-label {
+  font-family: var(--font-fraunces), serif;
+  font-weight: 700;
+  font-style: italic;
+  font-size: 1.05rem;
+  color: var(--gold);
+  margin-bottom: 10px;
+}
+
 .table-status {
   display: flex;
   justify-content: space-between;
@@ -421,6 +430,30 @@ label.field-label {
   line-height: 1.3;
   margin: 10px 0 6px;
 }
+.quiz-timer {
+  position: relative;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(236, 230, 245, 0.12);
+  margin: 12px 0 6px;
+  overflow: hidden;
+}
+.quiz-timer-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  background: var(--gold);
+  transition: width 0.2s linear;
+}
+.quiz-timer-text {
+  display: block;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
 .quiz-result-banner {
   font-family: var(--font-fraunces), serif;
   font-size: 1.4rem;

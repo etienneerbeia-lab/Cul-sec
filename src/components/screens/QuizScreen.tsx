@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { QUIZ_TIME_LIMIT_MS } from "@/lib/game/types";
 import type { GameState } from "@/lib/game/types";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -33,6 +34,24 @@ export default function QuizScreen({
   const isMe = activePlayer.slug === mySlug;
   const isLastPlayer = q.turnPointer + 1 >= q.turnOrder.length;
 
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (q.status !== "asking") return;
+    const id = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(id);
+  }, [q.status, q.askedAt]);
+
+  const remainingMs = Math.max(0, QUIZ_TIME_LIMIT_MS - (now - q.askedAt));
+  const remainingSec = Math.ceil(remainingMs / 1000);
+
+  const timedOutForRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (q.status === "asking" && isMe && remainingMs <= 0 && timedOutForRef.current !== q.askedAt) {
+      timedOutForRef.current = q.askedAt;
+      onSubmitAnswer("");
+    }
+  }, [q.status, isMe, remainingMs, q.askedAt, onSubmitAnswer]);
+
   return (
     <>
       <div className="table-status">
@@ -53,6 +72,13 @@ export default function QuizScreen({
         <div className="quiz-flag">{q.question.flagEmoji}</div>
       )}
       <div className="quiz-prompt">{q.question.prompt}</div>
+
+      {q.status === "asking" && (
+        <div className="quiz-timer">
+          <div className="quiz-timer-bar" style={{ width: `${(remainingMs / QUIZ_TIME_LIMIT_MS) * 100}%` }} />
+          <span className="quiz-timer-text">{remainingSec}s</span>
+        </div>
+      )}
 
       {q.status === "asking" && (isMe ? <AnswerForm onSubmit={onSubmitAnswer} busy={busy} /> : <div className="hint">En attente de {activePlayer.name}...</div>)}
 
