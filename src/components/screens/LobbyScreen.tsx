@@ -99,27 +99,29 @@ export default function LobbyScreen({
             </button>
           </div>
 
-          <label className="field-label" style={{ marginTop: 14 }}>
-            Mini-jeux actifs
-          </label>
-          <div className="minigame-toggle-list">
-            {ROUND_TYPES.map((t) => {
-              const active = enabledIds.has(t.id);
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  className={active ? "minigame-toggle active" : "minigame-toggle"}
-                  onClick={() => toggleRoundType(t.id)}
-                >
-                  <span className="mt-icon">{t.icon}</span>
-                  <span className="mt-label">{t.label}</span>
-                  <span className="mt-check">{active ? "✓" : ""}</span>
-                </button>
-              );
-            })}
+          <div style={{ marginBottom: 24 }}>
+            <label className="field-label" style={{ marginTop: 14 }}>
+              Mini-jeux actifs
+            </label>
+            <div className="minigame-toggle-list">
+              {ROUND_TYPES.map((t) => {
+                const active = enabledIds.has(t.id);
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    className={active ? "minigame-toggle active" : "minigame-toggle"}
+                    onClick={() => toggleRoundType(t.id)}
+                  >
+                    <span className="mt-icon">{t.icon}</span>
+                    <span className="mt-label">{t.label}</span>
+                    <span className="mt-check">{active ? "✓" : ""}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {!enoughGames && <div className="hint error-text">Choisis au moins 2 mini-jeux.</div>}
           </div>
-          {!enoughGames && <div className="hint error-text">Choisis au moins 2 mini-jeux.</div>}
         </>
       )}
 

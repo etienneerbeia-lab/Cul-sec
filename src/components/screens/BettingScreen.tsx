@@ -4,6 +4,26 @@ import type { Card, GameState } from "@/lib/game/types";
 import MyHandBlock from "../MyHandBlock";
 import PlayingCard from "../PlayingCard";
 
+// Rendered once per slot with a stable key across the whole hand, so a
+// slot going from null -> a real card is a genuine prop change on an
+// already-mounted instance — that's what makes the CSS transition on
+// `.poker-card-flip` actually fire and read as a live flip, the same
+// trick DuelCard uses for duel reveals. Must live outside BettingScreen:
+// a component defined inside another component's render body gets a new
+// identity every render, which would remount it on every poll instead.
+function PokerCommunityCard({ card }: { card: Card | null }) {
+  return (
+    <div className="poker-card-slot">
+      <div className={`poker-card-flip${card ? " is-revealed" : ""}`}>
+        <div className="poker-card-face back">
+          <div className="poker-card-back-mini" />
+        </div>
+        <div className="poker-card-face front">{card && <PlayingCard card={card} small />}</div>
+      </div>
+    </div>
+  );
+}
+
 export default function BettingScreen({
   game,
   myHand,
@@ -90,13 +110,9 @@ export default function BettingScreen({
               <div className="poker-street-label">{streetLabel(game.street)}</div>
             )}
             <div className="poker-community">
-              {communitySlots.map((c, i) =>
-                c ? (
-                  <PlayingCard key={i} card={c} small />
-                ) : (
-                  <div className="poker-card-placeholder" key={i} />
-                )
-              )}
+              {communitySlots.map((c, i) => (
+                <PokerCommunityCard key={i} card={c} />
+              ))}
             </div>
             <div className="poker-pot">
               <span className="poker-pot-label">Pot</span>

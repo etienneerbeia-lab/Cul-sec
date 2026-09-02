@@ -295,10 +295,6 @@ export async function actBet(g: GameState, hands: HandStore): Promise<void> {
   await advanceAfterAction(g, hands);
 }
 
-export async function continueAfterCommunity(g: GameState, hands: HandStore): Promise<void> {
-  await startBettingStreet(g, { mode: "check-or-bet", foldCost: "pot" }, hands);
-}
-
 // ---------- Resolution ----------
 function finishNoShowdown(g: GameState): void {
   const activeIdx = g.dealTargets!.filter((i) => !g.playersPublic[i].folded);
@@ -307,21 +303,26 @@ function finishNoShowdown(g: GameState): void {
   g.phase = "showdown";
 }
 
+// Card(s) publish into `community`/`communityRevealed` immediately and
+// betting on the next street starts right away in the same "betting"
+// phase — no host gate in between. The client is what makes the newly
+// revealed card(s) actually feel "live": it flips them in place the
+// instant a poll picks up the higher `communityRevealed` count.
 async function streetComplete(g: GameState, hands: HandStore): Promise<void> {
   const rt = roundTypeObjFrom(g);
   if (rt.id === "holdem") {
     if (g.street === "preflop") {
       g.communityRevealed = 3;
       g.street = "flop";
-      g.phase = "communityReveal";
+      await startBettingStreet(g, { mode: "check-or-bet", foldCost: "pot" }, hands);
     } else if (g.street === "flop") {
       g.communityRevealed = 4;
       g.street = "turn";
-      g.phase = "communityReveal";
+      await startBettingStreet(g, { mode: "check-or-bet", foldCost: "pot" }, hands);
     } else if (g.street === "turn") {
       g.communityRevealed = 5;
       g.street = "river";
-      g.phase = "communityReveal";
+      await startBettingStreet(g, { mode: "check-or-bet", foldCost: "pot" }, hands);
     } else {
       await resolveHoldem(g, hands);
     }

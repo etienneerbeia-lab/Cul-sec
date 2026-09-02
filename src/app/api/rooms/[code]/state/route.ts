@@ -17,7 +17,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ code
   ]);
 
   let myHand: Card[] | null = null;
-  if (session && game && ["betting", "communityReveal", "showdown", "duelReveal"].includes(game.phase)) {
+  if (session && game && ["betting", "showdown", "duelReveal"].includes(game.phase)) {
     const hand = await getHand(code, game.round, session.slug);
     myHand = hand.length ? hand : null;
   }

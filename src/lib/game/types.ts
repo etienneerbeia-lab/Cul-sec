@@ -38,7 +38,6 @@ export type GamePhase =
   | "lobby"
   | "roundIntro"
   | "betting"
-  | "communityReveal"
   | "showdown"
   | "quiz"
   | "quizRecap"

@@ -15,7 +15,6 @@ import HomeScreen from "./screens/HomeScreen";
 import LobbyScreen from "./screens/LobbyScreen";
 import RoundIntroScreen from "./screens/RoundIntroScreen";
 import BettingScreen from "./screens/BettingScreen";
-import CommunityRevealScreen from "./screens/CommunityRevealScreen";
 import ShowdownScreen from "./screens/ShowdownScreen";
 import FinalScreen from "./screens/FinalScreen";
 import QuizScreen from "./screens/QuizScreen";
@@ -262,14 +261,6 @@ export default function GameApp() {
           myHand={myHand}
           busy={busy}
           onReveal={() => runAction(() => apiPost(`/api/rooms/${roomCode}/duel-reveal`))}
-        />
-      ) : phase === "communityReveal" ? (
-        <CommunityRevealScreen
-          game={game}
-          myHand={myHand}
-          isHost={isHost}
-          busy={busy}
-          onContinue={() => runAction(() => apiPost(`/api/rooms/${roomCode}/continue-community`))}
         />
       ) : phase === "showdown" ? (
         <ShowdownScreen
