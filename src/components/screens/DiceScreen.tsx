@@ -54,7 +54,13 @@ export default function DiceScreen({
       </div>
 
       {pendingRoll ? (
-        <TurnReveal roll={pendingRoll} onDone={() => setShownCount((n) => n + 1)} />
+        // Keyed by slug so back-to-back rolls (two bots can land well
+        // under the flicker+hold duration apart) always remount this
+        // fresh instead of reusing an instance still sitting in "hold"
+        // from the previous roll — without the key, `phase` never resets
+        // to "flicker" and the hold-timeout effect (dep: [phase]) never
+        // re-fires either, freezing the screen on the earlier roll forever.
+        <TurnReveal key={pendingRoll.slug} roll={pendingRoll} onDone={() => setShownCount((n) => n + 1)} />
       ) : (
         <LiveTurn activePlayer={activePlayer} isMe={isMeActive} busy={busy} onRoll={onRoll} />
       )}
