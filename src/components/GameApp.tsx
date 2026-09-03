@@ -231,6 +231,7 @@ export default function GameApp() {
           isHost={isHost}
           busy={busy}
           error={error}
+          previousEnabledRoundTypeIds={game?.enabledRoundTypeIds}
           onLaunch={(totalRounds: number, culSecRule: CulSecRule, enabledRoundTypeIds: RoundTypeId[]) =>
             runAction(() =>
               apiPost(`/api/rooms/${roomCode}/launch`, { totalRounds, culSecRule, enabledRoundTypeIds })

@@ -14,6 +14,7 @@ export default function LobbyScreen({
   isHost,
   busy,
   error,
+  previousEnabledRoundTypeIds,
   onLaunch,
 }: {
   roomCode: string;
@@ -22,11 +23,18 @@ export default function LobbyScreen({
   isHost: boolean;
   busy: boolean;
   error: string;
+  // Set from the game's last launch (e.g. after "Rejouer" sends everyone
+  // back here) so the host doesn't have to re-tick every mini-game by
+  // hand — undefined/empty for a brand-new room, which falls back to
+  // "everything on" like before.
+  previousEnabledRoundTypeIds?: RoundTypeId[];
   onLaunch: (totalRounds: number, culSecRule: CulSecRule, enabledRoundTypeIds: RoundTypeId[]) => void;
 }) {
   const [totalRounds, setTotalRounds] = useState(10);
   const [culSecRule, setCulSecRule] = useState<CulSecRule>("last");
-  const [enabledIds, setEnabledIds] = useState<Set<RoundTypeId>>(() => new Set(ALL_ROUND_TYPE_IDS));
+  const [enabledIds, setEnabledIds] = useState<Set<RoundTypeId>>(
+    () => new Set(previousEnabledRoundTypeIds?.length ? previousEnabledRoundTypeIds : ALL_ROUND_TYPE_IDS)
+  );
 
   function toggleRoundType(id: RoundTypeId) {
     setEnabledIds((prev) => {
