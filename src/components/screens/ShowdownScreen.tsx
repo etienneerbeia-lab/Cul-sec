@@ -3,12 +3,11 @@ import { bestOf7, handLabel5 } from "@/lib/game/evaluate";
 import { roundTypeById } from "@/lib/game/roundTypes";
 import type { GameState } from "@/lib/game/types";
 import PlayingCard from "../PlayingCard";
-import Die from "../Die";
 
-// Note: "duel" results never reach this component — GameApp keeps duel
-// on DuelRevealScreen for its whole lifecycle (see that component's own
-// comment) so the two revealed cards never disappear behind a screen
-// change. Every other round type still resolves here as before.
+// Note: "duel" and "dice" results never reach this component — GameApp
+// keeps each on its own screen (DuelRevealScreen / DiceScreen) for its
+// whole lifecycle so the revealed cards / rolls never disappear behind a
+// screen change. Every other round type still resolves here as before.
 
 export default function ShowdownScreen({
   game,
@@ -95,26 +94,6 @@ export default function ShowdownScreen({
                 <span className="pmeta">N&apos;a pas écrit de légende</span>
               </div>
             ))}
-          </div>
-        </>
-      ) : r.type === "dice" ? (
-        <>
-          <h2>Lancé de dés</h2>
-          <div className="players-list">
-            {r.diceRolls!.map((roll) => {
-              const isLoser = r.diceLowest!.includes(roll.name);
-              return (
-                <div className="player-chip" key={roll.slug}>
-                  <span className="pname">{roll.name}</span>
-                  <span className="pmeta dice-chip-result">
-                    <Die value={roll.d1} small />
-                    <Die value={roll.d2} small />
-                    {roll.sum}
-                    {isLoser && " — Boit 2 🥃"}
-                  </span>
-                </div>
-              );
-            })}
           </div>
         </>
       ) : r.type === "undercover" ? (

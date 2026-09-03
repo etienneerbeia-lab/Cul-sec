@@ -264,6 +264,16 @@ export default function GameApp() {
           onNextRound={() => runAction(() => apiPost(`/api/rooms/${roomCode}/next-round`))}
           onEndNight={() => runAction(() => apiPost(`/api/rooms/${roomCode}/end-night`))}
         />
+      ) : phase === "dice" || (phase === "showdown" && game.lastResults?.type === "dice") ? (
+        <DiceScreen
+          game={game}
+          mySlug={mySlug}
+          isHost={isHost}
+          busy={busy}
+          onRoll={() => runAction(() => apiPost(`/api/rooms/${roomCode}/dice-roll`))}
+          onNextRound={() => runAction(() => apiPost(`/api/rooms/${roomCode}/next-round`))}
+          onEndNight={() => runAction(() => apiPost(`/api/rooms/${roomCode}/end-night`))}
+        />
       ) : phase === "showdown" ? (
         <ShowdownScreen
           game={game}
@@ -315,13 +325,6 @@ export default function GameApp() {
           onSubmitVote={(authorSlug) =>
             runAction(() => apiPost(`/api/rooms/${roomCode}/meme-vote`, { authorSlug }))
           }
-        />
-      ) : phase === "dice" ? (
-        <DiceScreen
-          game={game}
-          mySlug={mySlug}
-          busy={busy}
-          onRoll={() => runAction(() => apiPost(`/api/rooms/${roomCode}/dice-roll`))}
         />
       ) : phase === "undercoverClue" ? (
         <UndercoverClueScreen

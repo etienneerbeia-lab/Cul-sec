@@ -15,13 +15,19 @@ function randFace(): number {
 export default function DiceScreen({
   game,
   mySlug,
+  isHost,
   busy,
   onRoll,
+  onNextRound,
+  onEndNight,
 }: {
   game: GameState;
   mySlug: string;
+  isHost: boolean;
   busy: boolean;
   onRoll: () => void;
+  onNextRound: () => void;
+  onEndNight: () => void;
 }) {
   const d = game.dice!;
   // How many of d.rolls this viewer has already watched play out on the
@@ -34,6 +40,14 @@ export default function DiceScreen({
   const pendingRoll: DiceRoll | null = shownCount < d.rolls.length ? d.rolls[shownCount] : null;
   const activePlayer = game.playersPublic[d.playerIdx];
   const isMeActive = activePlayer.slug === mySlug;
+  // The engine resolves the round (phase -> "showdown") the instant the
+  // LAST roll lands, in that same request — same tick as the roll itself,
+  // before this viewer has watched it play out. So "resolved" alone isn't
+  // enough to show results: this stays on the reveal animation until the
+  // replay queue actually catches up, same idea as the duel screen never
+  // navigating away, just gated on the queue instead of a reveal button.
+  const resolved = game.phase === "showdown" && !pendingRoll;
+  const r = resolved ? game.lastResults : undefined;
 
   return (
     <>
@@ -61,6 +75,13 @@ export default function DiceScreen({
         // to "flicker" and the hold-timeout effect (dep: [phase]) never
         // re-fires either, freezing the screen on the earlier roll forever.
         <TurnReveal key={pendingRoll.slug} roll={pendingRoll} onDone={() => setShownCount((n) => n + 1)} />
+      ) : resolved ? (
+        <div className="pass-screen" style={{ flex: "0 0 auto", padding: "8px 0 4px" }}>
+          <div className="glyph">🎲</div>
+          <div className="subtitle" style={{ marginBottom: 0 }}>
+            {r!.diceLowest!.length > 1 ? r!.diceLowest!.join(" et ") + " boivent 2 🥃." : r!.diceLowest![0] + " boit 2 🥃."}
+          </div>
+        </div>
       ) : (
         <LiveTurn activePlayer={activePlayer} isMe={isMeActive} busy={busy} onRoll={onRoll} />
       )}
@@ -69,17 +90,39 @@ export default function DiceScreen({
         <>
           <h3>Lancers</h3>
           <div className="players-list">
-            {d.rolls.slice(0, shownCount).map((r) => (
-              <div className="player-chip" key={r.slug}>
-                <span className="pname">{r.name}</span>
-                <span className="pmeta dice-chip-result">
-                  <Die value={r.d1} small />
-                  <Die value={r.d2} small />
-                  {r.sum}
-                </span>
-              </div>
-            ))}
+            {d.rolls.slice(0, shownCount).map((roll) => {
+              const isLoser = resolved && r!.diceLowest!.includes(roll.name);
+              return (
+                <div className="player-chip" key={roll.slug}>
+                  <span className="pname">{roll.name}</span>
+                  <span className="pmeta dice-chip-result">
+                    <Die value={roll.d1} small />
+                    <Die value={roll.d2} small />
+                    {roll.sum}
+                    {isLoser && " — Boit 2 🥃"}
+                  </span>
+                </div>
+              );
+            })}
           </div>
+        </>
+      )}
+
+      {resolved && (
+        <>
+          <div className="spacer" />
+          {isHost ? (
+            <>
+              <button className="btn-primary" disabled={busy} onClick={onNextRound}>
+                Manche suivante
+              </button>
+              <button className="btn-ghost" style={{ marginTop: 12 }} disabled={busy} onClick={onEndNight}>
+                Terminer la soirée
+              </button>
+            </>
+          ) : (
+            <div className="hint">En attente de l&apos;hôte pour continuer...</div>
+          )}
         </>
       )}
     </>
