@@ -1140,10 +1140,17 @@ label.field-label {
   font-size: 1.1rem;
   min-height: 1.4em;
 }
+/* Grid, not flex-wrap: a fixed number of equal-width columns computed
+   purely from the row's own width — never from what's inside each seat.
+   flex-wrap re-decides how many seats fit per row on every render based
+   on each seat's current content width, so a hand growing by one card
+   (or shrinking after a round resets) could silently reflow the whole
+   arrangement — 3-across one moment, 2-over-1 the next. A seat's cards
+   wrap onto a second line inside its own fixed cell instead (see
+   .poker-community's own flex-wrap) rather than ever changing the grid. */
 .bj-seats {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   gap: 10px;
 }
 .bj-seat {
@@ -1155,7 +1162,7 @@ label.field-label {
   border-radius: 14px;
   background: rgba(0, 0, 0, 0.24);
   border: 1.5px solid rgba(236, 230, 245, 0.15);
-  min-width: 96px;
+  min-width: 0;
   transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease, background 0.2s ease;
 }
 .bj-seat.active {
