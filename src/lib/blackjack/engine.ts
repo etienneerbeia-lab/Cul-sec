@@ -1,5 +1,6 @@
 import { makeShuffledDeck } from "../game/cards";
 import type {
+  BlackjackDealEvent,
   BlackjackHand,
   BlackjackPendingDistribution,
   BlackjackPlayerState,
@@ -7,6 +8,27 @@ import type {
   Card,
   GameState,
 } from "../game/types";
+
+// How many entries of `log` (already sliced to whatever the viewer has
+// caught up to) refer to this specific target — directly usable as "how
+// many of this hand's/dealer's cards should currently be shown", since
+// entries are always appended in the same order the underlying cards[]
+// array itself was built in. Shared between server (push order) and
+// client (render order) so the two can never drift apart.
+export function revealedCount(
+  log: BlackjackDealEvent[],
+  target: BlackjackDealEvent["target"],
+  slug?: string,
+  handId?: number
+): number {
+  let n = 0;
+  for (const e of log) {
+    if (e.target !== target) continue;
+    if (target === "player" && (e.slug !== slug || e.handId !== handId)) continue;
+    n++;
+  }
+  return n;
+}
 
 // card.value runs 2-14 (11=Valet, 12=Dame, 13=Roi, 14=As) — 10/J/Q/K all
 // count 10, an Ace counts 11 unless that would bust the hand, in which case
@@ -32,8 +54,8 @@ export function handValue(cards: Card[]): number {
   return total;
 }
 
-function newHand(bet: number, fromSplit = false, isSplitAces = false): BlackjackHand {
-  return { cards: [], bet, status: "playing", doubled: false, isSplitAces, fromSplit };
+function newHand(id: number, bet: number, fromSplit = false, isSplitAces = false): BlackjackHand {
+  return { id, cards: [], bet, status: "playing", doubled: false, isSplitAces, fromSplit };
 }
 
 export function startBlackjackRound(g: GameState): void {
@@ -53,6 +75,7 @@ export function startBlackjackRound(g: GameState): void {
     turnPointer: 0,
     dealer: { cards: [], hiddenCard: null },
     deck: [],
+    dealLog: [],
     distributionQueue: [],
   };
   g.phase = "blackjack";
@@ -85,24 +108,34 @@ function findNextActionable(g: GameState): boolean {
   return false;
 }
 
-// Deals the full initial layout in one shot: a card to each player, one to
-// the dealer, a second to each player, a second face-down to the dealer —
-// exactly the order asked for. Every player card is public the instant
-// this resolves (no per-card pacing beyond what the client chooses to
-// animate), only the dealer's second card stays hidden server-side.
+// Deals the full initial layout — a card to each player, one to the
+// dealer, a second to each player, a second face-down to the dealer —
+// exactly the order asked for, logging each placement into `dealLog` so
+// every client replays it card by card instead of seeing it all land at
+// once. Only the dealer's second card stays hidden server-side (its
+// placement is still logged as a face-down "dealer-hidden" event so the
+// card-back itself appears in the right spot in the sequence).
 function dealInitial(g: GameState): void {
   const bj = g.blackjack!;
   const deck = makeShuffledDeck();
 
   bj.players.forEach((p) => {
-    p.hands = [newHand(bj.bets[p.slug])];
+    p.hands = [newHand(0, bj.bets[p.slug])];
     p.activeHandIdx = 0;
   });
 
-  bj.players.forEach((p) => p.hands[0].cards.push(deck.shift()!));
+  bj.players.forEach((p) => {
+    p.hands[0].cards.push(deck.shift()!);
+    bj.dealLog.push({ target: "player", slug: p.slug, handId: 0 });
+  });
   bj.dealer.cards.push(deck.shift()!);
-  bj.players.forEach((p) => p.hands[0].cards.push(deck.shift()!));
+  bj.dealLog.push({ target: "dealer-up" });
+  bj.players.forEach((p) => {
+    p.hands[0].cards.push(deck.shift()!);
+    bj.dealLog.push({ target: "player", slug: p.slug, handId: 0 });
+  });
   bj.dealer.hiddenCard = deck.shift()!;
+  bj.dealLog.push({ target: "dealer-hidden" });
   bj.deck = deck;
 
   bj.players.forEach((p) => {
@@ -120,6 +153,10 @@ function currentHand(g: GameState): { player: BlackjackPlayerState; hand: Blackj
   return { player, hand: player.hands[player.activeHandIdx] };
 }
 
+function logPlayerCard(g: GameState, slug: string, handId: number): void {
+  g.blackjack!.dealLog.push({ target: "player", slug, handId });
+}
+
 function advanceAfterHand(g: GameState): void {
   const bj = g.blackjack!;
   bj.players[bj.turnPointer].activeHandIdx++;
@@ -128,8 +165,9 @@ function advanceAfterHand(g: GameState): void {
 
 export function blackjackHit(g: GameState): void {
   const bj = g.blackjack!;
-  const { hand } = currentHand(g);
+  const { player, hand } = currentHand(g);
   hand.cards.push(bj.deck.shift()!);
+  logPlayerCard(g, player.slug, hand.id);
   if (handValue(hand.cards) > 21) {
     hand.status = "bust";
     advanceAfterHand(g);
@@ -147,10 +185,11 @@ export function blackjackStand(g: GameState): void {
 
 export function blackjackDouble(g: GameState): void {
   const bj = g.blackjack!;
-  const { hand } = currentHand(g);
+  const { player, hand } = currentHand(g);
   hand.bet *= 2;
   hand.doubled = true;
   hand.cards.push(bj.deck.shift()!);
+  logPlayerCard(g, player.slug, hand.id);
   hand.status = handValue(hand.cards) > 21 ? "bust" : "stand";
   advanceAfterHand(g);
 }
@@ -164,7 +203,11 @@ export function blackjackSplit(g: GameState): void {
   const [c1, c2] = hand.cards;
   const wasAces = c1.value === 14;
 
-  const second = newHand(hand.bet, true, wasAces);
+  // `hands.length` is a safe fresh id here regardless of where this splice
+  // lands positionally — it only ever grows, so it can never collide with
+  // an id handed out by an earlier split, even one that inserted itself
+  // ahead of this one in the array.
+  const second = newHand(player.hands.length, hand.bet, true, wasAces);
   second.cards = [c2];
   hand.cards = [c1];
   hand.fromSplit = true;
@@ -172,7 +215,9 @@ export function blackjackSplit(g: GameState): void {
   player.hands.splice(player.activeHandIdx + 1, 0, second);
 
   hand.cards.push(bj.deck.shift()!);
+  logPlayerCard(g, player.slug, hand.id);
   second.cards.push(bj.deck.shift()!);
+  logPlayerCard(g, player.slug, second.id);
 
   if (wasAces) {
     hand.status = "stand";
@@ -191,6 +236,7 @@ function startDealerTurn(g: GameState): void {
   bj.dealer.hiddenCard = null;
   while (handValue(bj.dealer.cards) < 17) {
     bj.dealer.cards.push(bj.deck.shift()!);
+    bj.dealLog.push({ target: "dealer-hit" });
   }
   resolveBlackjackRound(g);
 }

@@ -372,6 +372,13 @@ export interface UndercoverRoundState {
 export type BlackjackHandStatus = "playing" | "stand" | "bust" | "blackjack";
 
 export interface BlackjackHand {
+  // Stable for this hand's whole life, unlike its position in the
+  // player's `hands` array — a re-split inserts a new hand right after
+  // the one being split, which shifts the array index of any later hand
+  // that already exists (from an earlier split). `dealLog` entries key on
+  // this instead of array position so they never point at the wrong hand
+  // after such a shift.
+  id: number;
   cards: Card[];
   bet: number;
   status: BlackjackHandStatus;
@@ -399,6 +406,22 @@ export interface BlackjackDealerState {
   // from every response before then, same idea as quiz/undercover's
   // hidden fields.
   hiddenCard: Card | null;
+}
+
+// One entry per card actually placed on the table, in dealing order —
+// never mutated once appended, only ever grows for the whole round. The
+// client replays this list one entry at a time (same idea as dice's
+// roll-by-roll replay queue) instead of ever jumping straight to whatever
+// the server has already fully dealt, which is what makes every viewer
+// watch the deal (and every later hit/double/split) happen card by card
+// instead of all at once. Never carries the actual card value — the card
+// itself is already sitting in the right hand's `cards` array (fully
+// public data, see BlackjackRoundState's own comment), this just says
+// "reveal the next one for this target now".
+export interface BlackjackDealEvent {
+  target: "player" | "dealer-up" | "dealer-hidden" | "dealer-hit";
+  slug?: string; // only for "player"
+  handId?: number; // only for "player" — BlackjackHand.id, not an array index
 }
 
 export interface BlackjackPendingDistribution {
@@ -431,6 +454,7 @@ export interface BlackjackRoundState {
   // Remaining undealt cards — always stripped from the state API, there's
   // no reason a client ever needs to see future draws.
   deck: Card[];
+  dealLog: BlackjackDealEvent[];
   // Winning hands waiting to distribute their gorgées, in resolution
   // order; the front entry is whoever's turn it is to distribute right now.
   distributionQueue: BlackjackPendingDistribution[];

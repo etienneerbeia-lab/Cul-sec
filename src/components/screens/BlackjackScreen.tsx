@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { BlackjackAction } from "@/lib/api-client";
-import { handValue } from "@/lib/blackjack/engine";
+import { handValue, revealedCount } from "@/lib/blackjack/engine";
 import type { BlackjackHand, GameState } from "@/lib/game/types";
 import PlayingCard from "../PlayingCard";
 
@@ -12,6 +12,12 @@ const STATUS_LABEL: Record<string, string> = {
   bust: "Sauté",
   blackjack: "Blackjack !",
 };
+
+// How long each card sits before the next one in `dealLog` appears —
+// applies uniformly to the initial deal, a hit, a double, a split, and
+// every dealer draw, so the table always deals one card at a time in
+// front of everyone instead of an action's whole result landing at once.
+const CARD_REVEAL_MS = 500;
 
 // One persistent screen for the whole round — betting, dealing, every
 // player's turn, the dealer's turn, and the win distributions all happen
@@ -43,16 +49,37 @@ export default function BlackjackScreen({
   const bj = game.blackjack!;
   const resolved = game.phase === "showdown";
 
-  const activePlayer = bj.stage === "playerTurns" ? bj.players[bj.turnPointer] : null;
+  // Starts at whatever's already been dealt at mount time (a fresh page
+  // load mid-round catches up to "now", it doesn't replay the round from
+  // card one) then only ever advances one entry at a time, on a timer —
+  // exactly the dice screen's roll-replay pattern, applied to individual
+  // cards instead of whole rolls.
+  const [shownCount, setShownCount] = useState(() => bj.dealLog.length);
+  useEffect(() => {
+    if (shownCount >= bj.dealLog.length) return;
+    const t = setTimeout(() => setShownCount((n) => n + 1), CARD_REVEAL_MS);
+    return () => clearTimeout(t);
+  }, [shownCount, bj.dealLog.length]);
+
+  const dealingCaughtUp = shownCount >= bj.dealLog.length;
+  const visibleLog = useMemo(() => bj.dealLog.slice(0, shownCount), [bj.dealLog, shownCount]);
+
+  const activePlayer = dealingCaughtUp && bj.stage === "playerTurns" ? bj.players[bj.turnPointer] : null;
   const activeHand = activePlayer ? activePlayer.hands[activePlayer.activeHandIdx] : null;
   const isMyTurn = activePlayer?.slug === mySlug;
 
-  // The dealer's hole card is only ever present in `dealer.cards` (as a
-  // second entry) once actually revealed — see the state route's redaction.
-  const dealerRevealed = bj.dealer.cards.length > 1;
-  const dealerTotal = handValue(bj.dealer.cards);
+  const dealerUpShown = revealedCount(visibleLog, "dealer-up") >= 1;
+  const dealerHiddenShown = revealedCount(visibleLog, "dealer-hidden") >= 1;
+  const dealerHitShown = revealedCount(visibleLog, "dealer-hit");
+  const holeRevealed = bj.dealer.cards.length > 1;
+  const dealerVisibleCards = [
+    ...(dealerUpShown ? [bj.dealer.cards[0]] : []),
+    ...(dealerHiddenShown && holeRevealed ? [bj.dealer.cards[1]] : []),
+    ...bj.dealer.cards.slice(2, 2 + dealerHitShown),
+  ];
+  const dealerTotal = handValue(dealerVisibleCards);
 
-  const pendingDistribution = bj.distributionQueue[0];
+  const pendingDistribution = dealingCaughtUp ? bj.distributionQueue[0] : undefined;
   const isMyDistribution = pendingDistribution?.slug === mySlug;
 
   return (
@@ -71,85 +98,92 @@ export default function BlackjackScreen({
         </div>
       </div>
 
-      <div className="mode-label">Croupier</div>
-      <div className="poker-community" style={{ marginTop: 0 }}>
-        {bj.dealer.cards.map((c, i) => (
-          <PlayingCard key={i} card={c} small />
-        ))}
-        {!dealerRevealed && (
-          <div className="poker-card-slot">
-            <div className="poker-card-flip">
-              <div className="poker-card-face back">
-                <div className="poker-card-back-mini" />
+      <div className="bj-table">
+        <div className="bj-dealer-zone">
+          <div className="bj-dealer-label">Croupier</div>
+          <div className="poker-community" style={{ margin: 0 }}>
+            {dealerUpShown && (
+              <div className="bj-card-in" key="up">
+                <PlayingCard card={bj.dealer.cards[0]} small />
               </div>
-            </div>
-          </div>
-        )}
-      </div>
-      {dealerRevealed && (
-        <div className="hint" style={{ marginTop: -6 }}>
-          Total : {dealerTotal}
-          {dealerTotal > 21 ? " — Sauté !" : ""}
-        </div>
-      )}
-
-      {bj.stage === "betting" && <BettingArea bj={bj} mySlug={mySlug} busy={busy} onBet={onBet} />}
-
-      <h3>Joueurs</h3>
-      <div className="players-list">
-        {bj.players.flatMap((p) =>
-          p.hands.map((hand, handIdx) => {
-            const isTurn = activePlayer?.slug === p.slug && activePlayer.activeHandIdx === handIdx;
-            const result = resolved
-              ? game.lastResults?.blackjackResults?.find((r) => r.slug === p.slug && r.handIdx === handIdx)
-              : undefined;
-            return (
-              <div className={`player-chip${isTurn ? " active-turn" : ""}`} key={`${p.slug}-${handIdx}`}>
-                <div style={{ width: "100%" }}>
-                  <div className="pname">
-                    {p.name}
-                    {p.hands.length > 1 ? ` — main ${handIdx + 1}` : ""}
-                  </div>
-                  <div className="community-row" style={{ margin: "6px 0" }}>
-                    {hand.cards.map((c, i) => (
-                      <PlayingCard key={i} card={c} small />
-                    ))}
-                  </div>
-                  <div className="pmeta">
-                    Total {handValue(hand.cards)} — Mise {hand.bet} 🥃
-                    {bj.stage !== "betting" && ` — ${STATUS_LABEL[hand.status]}`}
-                  </div>
-                  {result && (
-                    <div className="pmeta">
-                      {result.outcome === "push"
-                        ? "Égalité — personne ne boit"
-                        : result.outcome === "lose"
-                          ? `Boit ${result.amount} 🥃`
-                          : result.distributedTo
-                            ? `Fait distribuer ${result.amount} 🥃 : ` +
-                              result.distributedTo.map((d) => `${d.name} (${d.amount})`).join(", ")
-                            : `Distribue ${result.amount} 🥃...`}
-                    </div>
-                  )}
+            )}
+            {dealerHiddenShown &&
+              (holeRevealed ? (
+                <div className="bj-card-in" key="hole">
+                  <PlayingCard card={bj.dealer.cards[1]} small />
                 </div>
+              ) : (
+                <div className="poker-card-slot bj-card-in" key="hole-back">
+                  <div className="poker-card-flip">
+                    <div className="poker-card-face back">
+                      <div className="poker-card-back-mini" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            {bj.dealer.cards.slice(2, 2 + dealerHitShown).map((c, i) => (
+              <div className="bj-card-in" key={`hit-${i}`}>
+                <PlayingCard card={c} small />
+              </div>
+            ))}
+          </div>
+          <div className="bj-dealer-total">
+            {dealerVisibleCards.length > 0 &&
+              `Total : ${dealerTotal}${dealerTotal > 21 ? " — Sauté !" : ""}`}
+          </div>
+        </div>
+
+        <div className="bj-seats">
+          {bj.players.map((p) => {
+            const isActiveSeat = dealingCaughtUp && activePlayer?.slug === p.slug;
+            const isDistribSeat = dealingCaughtUp && pendingDistribution?.slug === p.slug;
+            return (
+              <div className={`bj-seat${isActiveSeat || isDistribSeat ? " active" : ""}`} key={p.slug}>
+                <div className="bj-seat-name">{p.name}</div>
+                {p.hands.length === 0 ? (
+                  <div className="bj-seat-waiting">
+                    {bj.betResponded.includes(p.slug) ? `${bj.bets[p.slug]} 🥃` : "..."}
+                  </div>
+                ) : (
+                  p.hands.map((hand) => {
+                    const visibleCount = revealedCount(visibleLog, "player", p.slug, hand.id);
+                    const cards = hand.cards.slice(0, visibleCount);
+                    const isActiveHand = isActiveSeat && activePlayer!.hands[activePlayer!.activeHandIdx]?.id === hand.id;
+                    return (
+                      <div className={`bj-seat-hand${isActiveHand ? " active-hand" : ""}`} key={hand.id}>
+                        <div className="poker-community" style={{ margin: 0 }}>
+                          {cards.map((c, ci) => (
+                            <div className="bj-card-in" key={ci}>
+                              <PlayingCard card={c} small />
+                            </div>
+                          ))}
+                        </div>
+                        <div className="bj-seat-meta">
+                          Total {handValue(cards)} · <strong>{hand.bet} 🥃</strong>
+                          {dealingCaughtUp && bj.stage !== "betting" && ` · ${STATUS_LABEL[hand.status]}`}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             );
-          })
-        )}
+          })}
+        </div>
       </div>
 
-      {bj.stage === "playerTurns" &&
-        activePlayer &&
-        activeHand &&
-        (isMyTurn ? (
+      {!dealingCaughtUp ? (
+        <div className="hint">Distribution en cours...</div>
+      ) : bj.stage === "betting" ? (
+        <BettingArea bj={bj} mySlug={mySlug} busy={busy} onBet={onBet} />
+      ) : bj.stage === "playerTurns" && activePlayer && activeHand ? (
+        isMyTurn ? (
           <ActionBar hand={activeHand} onAct={onAct} busy={busy} />
         ) : (
           <div className="hint">Au tour de {activePlayer.name}...</div>
-        ))}
-
-      {bj.stage === "distributing" &&
-        pendingDistribution &&
-        (isMyDistribution ? (
+        )
+      ) : bj.stage === "distributing" && pendingDistribution ? (
+        isMyDistribution ? (
           <DistributeForm
             players={game.playersPublic}
             mySlug={mySlug}
@@ -161,10 +195,36 @@ export default function BlackjackScreen({
           <div className="hint">
             {pendingDistribution.name} distribue {pendingDistribution.amount} 🥃...
           </div>
-        ))}
+        )
+      ) : null}
 
-      {resolved && (
+      {resolved && dealingCaughtUp && (
         <>
+          <h3>Résultats</h3>
+          <div className="players-list">
+            {(game.lastResults?.blackjackResults ?? []).map((r) => {
+              const multiHand = bj.players.find((p) => p.slug === r.slug)!.hands.length > 1;
+              return (
+                <div className="player-chip" key={`${r.slug}-${r.handIdx}`}>
+                  <span className="pname">
+                    {r.name}
+                    {multiHand ? ` — main ${r.handIdx + 1}` : ""}
+                  </span>
+                  <span className="pmeta">
+                    {r.outcome === "push"
+                      ? "Égalité — personne ne boit"
+                      : r.outcome === "lose"
+                        ? `Boit ${r.amount} 🥃`
+                        : r.distributedTo
+                          ? `Fait distribuer ${r.amount} 🥃 : ` +
+                            r.distributedTo.map((d) => `${d.name} (${d.amount})`).join(", ")
+                          : `Distribue ${r.amount} 🥃...`}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
           <div className="spacer" />
           {isHost ? (
             <>

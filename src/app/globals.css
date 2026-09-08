@@ -1109,6 +1109,111 @@ label.field-label {
   font-weight: 700;
 }
 
+/* ---- Blackjack: dealer up top, players in a row below ---- */
+.bj-table {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 10px 0 14px;
+}
+.bj-dealer-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 10px;
+  border-radius: 20px;
+  background: radial-gradient(ellipse at 50% 0%, var(--felt) 0%, var(--felt-dark) 100%);
+  border: 2px solid var(--gold-dim);
+  box-shadow: inset 0 0 0 5px rgba(0, 0, 0, 0.14), inset 0 0 36px rgba(0, 0, 0, 0.3);
+}
+.bj-dealer-label {
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.bj-dealer-total {
+  font-family: var(--font-fraunces), serif;
+  font-weight: 700;
+  color: var(--gold);
+  font-size: 1.1rem;
+  min-height: 1.4em;
+}
+.bj-seats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+.bj-seat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.24);
+  border: 1.5px solid rgba(236, 230, 245, 0.15);
+  min-width: 96px;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease, background 0.2s ease;
+}
+.bj-seat.active {
+  border-color: var(--gold);
+  background: rgba(224, 86, 140, 0.14);
+  box-shadow: 0 0 0 3px var(--gold-glow), 0 0 14px var(--gold-glow);
+  transform: scale(1.04);
+}
+.bj-seat-name {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--offwhite);
+  white-space: nowrap;
+}
+.bj-seat-hand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  border-radius: 8px;
+}
+.bj-seat-hand.active-hand {
+  outline: 1.5px dashed var(--gold);
+}
+.bj-seat-waiting {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.bj-seat-meta {
+  font-size: 0.74rem;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.35;
+}
+.bj-seat-meta strong {
+  color: var(--gold);
+  font-weight: 700;
+}
+
+/* A newly-dealt card fades and pops in — real DOM elements appearing for
+   the first time (the reveal queue below only ever appends), so a plain
+   @keyframes entrance is safe here: no risk of the transition-on-existing-
+   element pitfall that ruled out @keyframes for the flip animations. */
+@keyframes bj-card-in {
+  from {
+    opacity: 0;
+    transform: scale(0.7) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+.bj-card-in {
+  animation: bj-card-in 0.35s ease-out;
+}
+
 /* ---- Duel éclair: face-down cards that flip live for everyone ---- */
 .duel-card-row {
   display: flex;
