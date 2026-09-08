@@ -120,7 +120,7 @@ export default function BlackjackScreen({
       <div className="bj-table">
         <div className="bj-dealer-zone">
           <div className="bj-dealer-label">Croupier</div>
-          <div className="poker-community" style={{ margin: 0 }}>
+          <div className="bj-cards-row">
             {dealerUpShown && (
               <div className="bj-card-in" key="up">
                 <PlayingCard card={bj.dealer.cards[0]} small />
@@ -170,7 +170,7 @@ export default function BlackjackScreen({
                     const isActiveHand = isActiveSeat && activePlayer!.hands[activePlayer!.activeHandIdx]?.id === hand.id;
                     return (
                       <div className={`bj-seat-hand${isActiveHand ? " active-hand" : ""}`} key={hand.id}>
-                        <div className="poker-community" style={{ margin: 0 }}>
+                        <div className="bj-cards-row">
                           {cards.map((c, ci) => (
                             <div className="bj-card-in" key={ci}>
                               <PlayingCard card={c} small />

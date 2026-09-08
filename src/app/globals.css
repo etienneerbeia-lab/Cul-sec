@@ -1140,6 +1140,31 @@ label.field-label {
   font-size: 1.1rem;
   min-height: 1.4em;
 }
+/* Dedicated row for a dealer's or a seat's cards — kept independent of
+   .poker-community (which has no flex-wrap of its own; it only ever holds
+   a fixed, already-known number of community cards) rather than patched
+   with overrides, since a hand here can grow to any number of cards and
+   genuinely needs to wrap onto more lines instead of overflowing. */
+.bj-cards-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  width: 100%;
+}
+.bj-cards-row .playing-card.small {
+  width: 44px;
+  height: 62px;
+  padding: 5px;
+  border-radius: 8px;
+  border-width: 1.5px;
+}
+.bj-cards-row .playing-card.small .corner {
+  font-size: 0.6rem;
+}
+.bj-cards-row .playing-card.small .center-suit {
+  font-size: 1rem;
+}
 /* Grid, not flex-wrap: a fixed number of equal-width columns computed
    purely from the row's own width — never from what's inside each seat.
    flex-wrap re-decides how many seats fit per row on every render based
@@ -1184,6 +1209,8 @@ label.field-label {
   gap: 4px;
   padding: 4px 6px;
   border-radius: 8px;
+  width: 100%;
+  min-width: 0;
 }
 .bj-seat-hand.active-hand {
   outline: 1.5px dashed var(--gold);
