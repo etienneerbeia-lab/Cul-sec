@@ -82,6 +82,25 @@ export default function BlackjackScreen({
   const pendingDistribution = dealingCaughtUp ? bj.distributionQueue[0] : undefined;
   const isMyDistribution = pendingDistribution?.slug === mySlug;
 
+  // How many gorgées each player actually drinks this round: whatever they
+  // lost on a hand (bust or a low total) plus whatever anyone else's win
+  // distributed onto them — a winner who wasn't also a distribution target
+  // ends up at 0 here even though they "handled" gorgées, which is exactly
+  // the point (they gave them away, they didn't drink them).
+  const totalsBySlug = useMemo(() => {
+    const totals: Record<string, number> = {};
+    game.playersPublic.forEach((p) => {
+      totals[p.slug] = 0;
+    });
+    (game.lastResults?.blackjackResults ?? []).forEach((r) => {
+      if (r.outcome === "lose") totals[r.slug] = (totals[r.slug] ?? 0) + r.amount;
+      (r.distributedTo ?? []).forEach((d) => {
+        totals[d.slug] = (totals[d.slug] ?? 0) + d.amount;
+      });
+    });
+    return totals;
+  }, [game.lastResults, game.playersPublic]);
+
   return (
     <>
       <div className="table-status">
@@ -200,10 +219,23 @@ export default function BlackjackScreen({
 
       {resolved && dealingCaughtUp && (
         <>
+          <h3>Total des gorgées</h3>
+          <div className="players-list">
+            {game.playersPublic.map((p) => (
+              <div className="player-chip" key={p.slug}>
+                <span className="pname">{p.name}</span>
+                <span className="pmeta">
+                  <strong>{totalsBySlug[p.slug] ?? 0} 🥃</strong>
+                </span>
+              </div>
+            ))}
+          </div>
+
           <h3>Résultats</h3>
           <div className="players-list">
             {(game.lastResults?.blackjackResults ?? []).map((r) => {
               const multiHand = bj.players.find((p) => p.slug === r.slug)!.hands.length > 1;
+              const plural = r.amount > 1 ? "s" : "";
               return (
                 <div className="player-chip" key={`${r.slug}-${r.handIdx}`}>
                   <span className="pname">
@@ -212,13 +244,15 @@ export default function BlackjackScreen({
                   </span>
                   <span className="pmeta">
                     {r.outcome === "push"
-                      ? "Égalité — personne ne boit"
+                      ? `${r.name} : égalité, personne ne boit`
                       : r.outcome === "lose"
-                        ? `Boit ${r.amount} 🥃`
-                        : r.distributedTo
-                          ? `Fait distribuer ${r.amount} 🥃 : ` +
-                            r.distributedTo.map((d) => `${d.name} (${d.amount})`).join(", ")
-                          : `Distribue ${r.amount} 🥃...`}
+                        ? `${r.name} boit ${r.amount} gorgée${plural}`
+                        : r.distributedTo && r.distributedTo.length > 0
+                          ? `${r.name} distribue ${r.amount} gorgée${plural} à ` +
+                            (r.distributedTo.length === 1
+                              ? r.distributedTo[0].name
+                              : r.distributedTo.map((d) => `${d.name} (${d.amount})`).join(", "))
+                          : `${r.name} distribue ${r.amount} gorgée${plural}...`}
                   </span>
                 </div>
               );
