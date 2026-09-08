@@ -147,7 +147,10 @@ export default function DiceScreen({
             return (
               <div key={gi}>
                 <h3>{group.level === null ? "Lancers" : `Départage ${group.level}`}</h3>
-                {group.banner && <div className="hint">{group.banner}</div>}
+                {/* Only while the round's still live — once resolved, the
+                    top summary and the "— Boit N" tag on the loser's own
+                    row already say everything this sentence would repeat. */}
+                {group.banner && !resolved && <div className="hint">{group.banner}</div>}
                 <div className="players-list">
                   {visible.map((roll) => {
                     const isLoser = resolved && group.rolls === lastGroup.rolls && roll.name === r!.diceLowest![0];
