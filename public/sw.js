@@ -1,5 +1,16 @@
-const CACHE_NAME = "maa-shell-v1";
-const SHELL_URLS = ["/", "/manifest.json", "/icon-192.png", "/icon-512.png"];
+// Bumped so any existing install's cache (which may hold a now-broken "/"
+// from before it was removed below) gets dropped by the activate handler
+// instead of lingering forever.
+const CACHE_NAME = "maa-shell-v2";
+// Deliberately NOT caching "/" — it's the one URL that changes on every
+// deploy (its HTML references that build's hashed JS/CSS files), so a
+// precached copy goes stale the moment the next deploy ships. Once stale,
+// it's actively harmful: the very first transient network blip falls back
+// to it, and it points at JS chunks Vercel no longer serves, breaking the
+// installed PWA until its cache is cleared. Only cache things that don't
+// change (or don't matter if briefly stale) — a network failure on "/"
+// now just surfaces the browser's normal offline error instead.
+const SHELL_URLS = ["/manifest.json", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
