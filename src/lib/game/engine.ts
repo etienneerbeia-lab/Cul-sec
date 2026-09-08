@@ -6,6 +6,7 @@ import { startVoteRound } from "../vote/engine";
 import { startMemeRound } from "../meme/engine";
 import { startDiceRound } from "../dice/engine";
 import { startUndercoverRound } from "../undercover/engine";
+import { startBlackjackRound } from "../blackjack/engine";
 import type {
   BettingOpts,
   Card,
@@ -115,6 +116,11 @@ export async function confirmRoundIntro(g: GameState, hands: HandStore): Promise
 
   if (rt.id === "undercover") {
     startUndercoverRound(g);
+    return;
+  }
+
+  if (rt.id === "blackjack") {
+    startBlackjackRound(g);
     return;
   }
 

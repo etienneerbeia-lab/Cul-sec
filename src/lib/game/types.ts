@@ -10,7 +10,16 @@ export interface Card {
   suit: Suit;
 }
 
-export type RoundTypeId = "high" | "holdem" | "duel" | "quiz" | "vote" | "meme" | "dice" | "undercover";
+export type RoundTypeId =
+  | "high"
+  | "holdem"
+  | "duel"
+  | "quiz"
+  | "vote"
+  | "meme"
+  | "dice"
+  | "undercover"
+  | "blackjack";
 
 export interface RoundType {
   id: RoundTypeId;
@@ -49,6 +58,7 @@ export type GamePhase =
   | "undercoverClue"
   | "undercoverVote"
   | "undercoverGuess"
+  | "blackjack"
   | "final";
 
 export type Street = "single" | "preflop" | "flop" | "turn" | "river";
@@ -91,6 +101,15 @@ export interface LastResults {
   // "dice" (Dés qui tremblent)
   diceRolls?: DiceRoll[];
   diceLowest?: string[];
+  // Gulps the sole loser named in diceLowest actually drinks — the base
+  // 2, or double that per tie-break level it took to separate them (4,
+  // 8, 16...). Absent only on very old saved games from before tie-break
+  // existed, where diceLowest could still list more than one name.
+  diceLowestAmount?: number;
+  // Empty/absent if the round settled without a tie. One entry per
+  // tie-break level that occurred, in order, for the recap to show the
+  // whole chain rather than just the final result.
+  diceTieBreaks?: DiceTieBreakRound[];
   // "undercover"
   undercoverWord?: string;
   undercoverImpostorWord?: string;
@@ -101,6 +120,11 @@ export interface LastResults {
   undercoverClues?: UndercoverClueEntry[];
   undercoverEliminationOrder?: string[];
   undercoverTieBreakByLottery?: boolean;
+  // "blackjack"
+  blackjackResults?: BlackjackResultEntry[];
+  blackjackDealerCards?: Card[];
+  blackjackDealerTotal?: number;
+  blackjackDealerBust?: boolean;
 }
 
 export type QuizQuestionType = "capital" | "flag" | "date";
@@ -235,6 +259,29 @@ export interface DiceRoll {
   sum: number;
 }
 
+// A completed tie-break level, once every tied player has rolled again —
+// either it settled (one sole lowest sum) or it's about to be superseded
+// by the next level. Kept both as history (see DiceRoundState below) and
+// as the shape LastResults.diceTieBreaks reuses for the final recap.
+export interface DiceTieBreakRound {
+  level: number; // 1 for the first departage, 2 for the next if it also ties, etc.
+  amount: number; // gulps the sole loser of THIS level drinks — base*2^level
+  tiedSum: number; // the sum that was tied, which triggered this level
+  participantSlugs: string[]; // who's contesting, in the same relative order as the main round
+  participantNames: string[];
+  rolls: DiceRoll[];
+}
+
+// The currently in-progress tie-break level — same shape as a finished
+// DiceTieBreakRound plus its own live turn pointer, since it's rolled
+// through exactly like the main round (rollDice() just routes to this
+// instead once it's set).
+export interface DiceTieBreakState extends DiceTieBreakRound {
+  turnOrder: number[]; // playersPublic indices, parallel to participantSlugs/Names
+  turnPointer: number;
+  playerIdx: number;
+}
+
 export interface DiceRoundState {
   turnOrder: number[];
   turnPointer: number;
@@ -242,6 +289,15 @@ export interface DiceRoundState {
   // Completed rolls so far, in the order they happened — doubles as the
   // live "who's rolled what" table every client renders while it fills up.
   rolls: DiceRoll[];
+  // Set the moment the main round (or a previous tie-break level) ends
+  // in a tie for lowest sum — only the tied players re-roll here. Stays
+  // within phase "dice" the whole time, same as the main round; nothing
+  // moves to "showdown" until a level finally produces a sole loser.
+  tieBreak?: DiceTieBreakState;
+  // Every tie-break level once it's been resolved (superseded by the
+  // next level, or the one that finally decided the round) — lets the
+  // live "Lancers" table and the final recap show the whole chain.
+  tieBreakHistory?: DiceTieBreakRound[];
 }
 
 // Undercover: everyone gets the same secret word except one impostor —
@@ -308,6 +364,79 @@ export interface UndercoverRoundState {
   tieBreakByLottery?: boolean;
 }
 
+// Blackjack: the house (an automatic dealer, never a player) against
+// everyone at the table. Unlike every other card mini-game, hands are
+// public in full — the state API only ever redacts the dealer's hole card
+// (and the undealt deck, which nobody has a reason to see) until the
+// dealer's own turn.
+export type BlackjackHandStatus = "playing" | "stand" | "bust" | "blackjack";
+
+export interface BlackjackHand {
+  cards: Card[];
+  bet: number;
+  status: BlackjackHandStatus;
+  doubled: boolean;
+  // A hand split from a pair of Aces: classic rule, gets exactly one more
+  // card and no further action (no hit/double/re-split) — the engine
+  // enforces this by auto-standing it immediately after the split.
+  isSplitAces: boolean;
+  fromSplit: boolean;
+}
+
+export interface BlackjackPlayerState {
+  slug: string;
+  name: string;
+  // A second (or third...) entry appears here the instant this player
+  // splits — they're then played one after another via `activeHandIdx`
+  // before the turn moves to the next player.
+  hands: BlackjackHand[];
+  activeHandIdx: number;
+}
+
+export interface BlackjackDealerState {
+  cards: Card[];
+  // Non-null only until the dealer's own turn — the state API strips it
+  // from every response before then, same idea as quiz/undercover's
+  // hidden fields.
+  hiddenCard: Card | null;
+}
+
+export interface BlackjackPendingDistribution {
+  slug: string;
+  name: string;
+  handIdx: number;
+  amount: number;
+}
+
+export interface BlackjackResultEntry {
+  slug: string;
+  name: string;
+  handIdx: number;
+  cards: Card[];
+  total: number;
+  bet: number;
+  outcome: "win" | "lose" | "push" | "blackjack";
+  amount: number;
+  distributedTo?: { slug: string; name: string; amount: number }[];
+}
+
+export interface BlackjackRoundState {
+  stage: "betting" | "playerTurns" | "dealerTurn" | "distributing" | "result";
+  bets: Record<string, number>;
+  betResponded: string[];
+  // Table order, one entry per player, fixed for the whole round.
+  players: BlackjackPlayerState[];
+  turnPointer: number;
+  dealer: BlackjackDealerState;
+  // Remaining undealt cards — always stripped from the state API, there's
+  // no reason a client ever needs to see future draws.
+  deck: Card[];
+  // Winning hands waiting to distribute their gorgées, in resolution
+  // order; the front entry is whoever's turn it is to distribute right now.
+  distributionQueue: BlackjackPendingDistribution[];
+  results?: BlackjackResultEntry[];
+}
+
 export type CulSecRule = "last" | "first";
 
 export interface GameState {
@@ -351,6 +480,7 @@ export interface GameState {
   meme?: MemeRoundState;
   dice?: DiceRoundState;
   undercover?: UndercoverRoundState;
+  blackjack?: BlackjackRoundState;
 }
 
 export interface Player {

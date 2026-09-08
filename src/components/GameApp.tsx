@@ -6,6 +6,7 @@ import {
   apiGet,
   apiPost,
   type BetAction,
+  type BlackjackAction,
   type RoomResponse,
   type SessionResponse,
   type StateResponse,
@@ -27,6 +28,7 @@ import DiceScreen from "./screens/DiceScreen";
 import UndercoverClueScreen from "./screens/UndercoverClueScreen";
 import UndercoverVoteScreen from "./screens/UndercoverVoteScreen";
 import UndercoverGuessScreen from "./screens/UndercoverGuessScreen";
+import BlackjackScreen from "./screens/BlackjackScreen";
 
 const POLL_MS = 1500;
 
@@ -272,6 +274,22 @@ export default function GameApp() {
           isHost={isHost}
           busy={busy}
           onRoll={() => runAction(() => apiPost(`/api/rooms/${roomCode}/dice-roll`))}
+          onNextRound={() => runAction(() => apiPost(`/api/rooms/${roomCode}/next-round`))}
+          onEndNight={() => runAction(() => apiPost(`/api/rooms/${roomCode}/end-night`))}
+        />
+      ) : phase === "blackjack" || (phase === "showdown" && game.lastResults?.type === "blackjack") ? (
+        <BlackjackScreen
+          game={game}
+          mySlug={mySlug}
+          isHost={isHost}
+          busy={busy}
+          onBet={(amount) => runAction(() => apiPost(`/api/rooms/${roomCode}/blackjack-bet`, { amount }))}
+          onAct={(action: BlackjackAction) =>
+            runAction(() => apiPost(`/api/rooms/${roomCode}/blackjack-act`, { action }))
+          }
+          onDistribute={(targets) =>
+            runAction(() => apiPost(`/api/rooms/${roomCode}/blackjack-distribute`, { targets }))
+          }
           onNextRound={() => runAction(() => apiPost(`/api/rooms/${roomCode}/next-round`))}
           onEndNight={() => runAction(() => apiPost(`/api/rooms/${roomCode}/end-night`))}
         />

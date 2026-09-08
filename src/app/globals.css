@@ -361,6 +361,10 @@ label.field-label {
 .player-chip.folded {
   opacity: 0.45;
 }
+.player-chip.active-turn {
+  border-color: var(--gold);
+  background: rgba(224, 86, 140, 0.12);
+}
 .player-chip .pname {
   font-weight: 600;
 }
@@ -708,6 +712,16 @@ label.field-label {
   display: flex;
   align-items: center;
   gap: 4px;
+}
+.dice-tiebreak-banner {
+  background: rgba(139, 38, 53, 0.22);
+  border: 1px solid rgba(178, 51, 71, 0.5);
+  border-radius: 12px;
+  padding: 12px 16px;
+  text-align: center;
+  margin: 0 0 14px;
+  font-size: 0.9rem;
+  color: var(--offwhite);
 }
 .vote-result-labels {
   display: flex;

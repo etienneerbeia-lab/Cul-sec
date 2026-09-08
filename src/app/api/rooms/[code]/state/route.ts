@@ -78,6 +78,24 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ code
     };
   }
 
+  // Blackjack: every player's cards are public by design (see that
+  // engine's own comment), only the dealer's hole card stays hidden until
+  // its own turn — and the undealt deck never needs to leave the server.
+  if (publicGame?.blackjack) {
+    publicGame = {
+      ...publicGame,
+      blackjack: {
+        ...publicGame.blackjack,
+        deck: [],
+        // Both "still hidden" and "already revealed" serialize to `null`
+        // here — the client tells them apart via `dealer.cards.length`
+        // (1 card dealt vs. 2) instead, so this never needs to leak the
+        // actual card while it's still a secret.
+        dealer: { ...publicGame.blackjack.dealer, hiddenCard: null },
+      },
+    };
+  }
+
   return NextResponse.json({
     players,
     game: publicGame,

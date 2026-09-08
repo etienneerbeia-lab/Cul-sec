@@ -57,6 +57,13 @@ export const ROUND_TYPES: RoundType[] = [
     icon: "🕵️",
     cards: 0,
   },
+  {
+    id: "blackjack",
+    label: "Blackjack",
+    tagline: "Mise ta gorgée, affronte la banque. Bats le croupier ou bois ta mise.",
+    icon: "🎰",
+    cards: 0,
+  },
 ];
 
 export function roundTypeById(id: string): RoundType {

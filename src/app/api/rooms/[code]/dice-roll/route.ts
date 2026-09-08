@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
-import { rollDice } from "@/lib/dice/engine";
+import { diceActiveSlug, rollDice } from "@/lib/dice/engine";
 import { getGame, setGame } from "@/lib/store";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ code: string }> }) {
@@ -13,7 +13,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cod
     return NextResponse.json({ error: "Ce n'est pas le moment." }, { status: 409 });
   }
 
-  const activeSlug = game.playersPublic[game.dice.playerIdx].slug;
+  const activeSlug = diceActiveSlug(game);
   if (session.slug !== activeSlug) {
     return NextResponse.json({ error: "Ce n'est pas ton tour." }, { status: 403 });
   }

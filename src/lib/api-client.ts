@@ -51,3 +51,4 @@ export interface StateResponse {
 }
 
 export type BetAction = "fold" | "call" | "raise" | "check" | "bet";
+export type BlackjackAction = "hit" | "stand" | "double" | "split";

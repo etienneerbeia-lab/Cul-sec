@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { DiceRoll, GameState, PlayerPublic } from "@/lib/game/types";
+import type { DiceRoll, DiceTieBreakRound, GameState, PlayerPublic } from "@/lib/game/types";
 import Die from "../Die";
 
 const FLICKER_MS = 1000;
@@ -10,6 +10,41 @@ const FLICKER_TICK_MS = 90;
 
 function randFace(): number {
   return 1 + Math.floor(Math.random() * 6);
+}
+
+function tieBreakBanner(tb: Pick<DiceTieBreakRound, "participantNames" | "tiedSum" | "amount">): string {
+  return `Égalité entre ${tb.participantNames.join(", ")} à ${tb.tiedSum} — départage, le perdant boira ${tb.amount} 🥃.`;
+}
+
+// The full roll history as an ordered sequence of groups: the main round
+// first, then one group per tie-break level (completed ones from
+// tieBreakHistory, plus the currently-live one if a level is still in
+// progress) — chronological order, which is also turn order within each
+// group. Flattening this is what lets the existing "replay one roll at a
+// time" mechanism below extend to tie-break levels for free.
+interface RollGroup {
+  level: number | null; // null for the main round, 1/2/3... per tie-break level
+  banner: string | null;
+  rolls: DiceRoll[];
+}
+
+function buildGroups(game: GameState): RollGroup[] {
+  const d = game.dice!;
+  const groups: RollGroup[] = [{ level: null, banner: null, rolls: d.rolls }];
+  (d.tieBreakHistory ?? []).forEach((tb) =>
+    groups.push({ level: tb.level, banner: tieBreakBanner(tb), rolls: tb.rolls })
+  );
+  if (d.tieBreak) groups.push({ level: d.tieBreak.level, banner: tieBreakBanner(d.tieBreak), rolls: d.tieBreak.rolls });
+  return groups;
+}
+
+function groupAtIndex(groups: RollGroup[], index: number): RollGroup | null {
+  let offset = 0;
+  for (const g of groups) {
+    if (index < offset + g.rolls.length) return g;
+    offset += g.rolls.length;
+  }
+  return null;
 }
 
 export default function DiceScreen({
@@ -30,24 +65,34 @@ export default function DiceScreen({
   onEndNight: () => void;
 }) {
   const d = game.dice!;
-  // How many of d.rolls this viewer has already watched play out on the
+  const groups = buildGroups(game);
+  const allRolls = groups.flatMap((g) => g.rolls);
+  // How many of allRolls this viewer has already watched play out on the
   // big stage below. Starts at the count already present on mount (a
   // fresh page load mid-round shouldn't replay the whole history), then
   // only ever catches up one roll at a time as fresh ones land — that's
   // what makes every viewer watch each turn's animation live instead of
-  // just seeing the table fill in silently.
-  const [shownCount, setShownCount] = useState(() => d.rolls.length);
-  const pendingRoll: DiceRoll | null = shownCount < d.rolls.length ? d.rolls[shownCount] : null;
-  const activePlayer = game.playersPublic[d.playerIdx];
+  // just seeing the table fill in silently. Extends across tie-break
+  // levels transparently since it's driven off the flattened sequence.
+  const [shownCount, setShownCount] = useState(() => allRolls.length);
+  const pendingRoll: DiceRoll | null = shownCount < allRolls.length ? allRolls[shownCount] : null;
+  const pendingGroup = pendingRoll ? groupAtIndex(groups, shownCount) : null;
+
+  const activePlayerIdx = d.tieBreak ? d.tieBreak.playerIdx : d.playerIdx;
+  const activePlayer = game.playersPublic[activePlayerIdx];
   const isMeActive = activePlayer.slug === mySlug;
+  const liveBanner = d.tieBreak ? tieBreakBanner(d.tieBreak) : null;
+
   // The engine resolves the round (phase -> "showdown") the instant the
-  // LAST roll lands, in that same request — same tick as the roll itself,
-  // before this viewer has watched it play out. So "resolved" alone isn't
-  // enough to show results: this stays on the reveal animation until the
-  // replay queue actually catches up, same idea as the duel screen never
-  // navigating away, just gated on the queue instead of a reveal button.
+  // decisive roll lands, in that same request — same tick as the roll
+  // itself, before this viewer has watched it play out. So "resolved"
+  // alone isn't enough to show results: this stays on the reveal
+  // animation until the replay queue actually catches up, same idea as
+  // the duel screen never navigating away, just gated on the queue
+  // instead of a reveal button.
   const resolved = game.phase === "showdown" && !pendingRoll;
   const r = resolved ? game.lastResults : undefined;
+  const lastGroup = groups[groups.length - 1];
 
   return (
     <>
@@ -68,43 +113,60 @@ export default function DiceScreen({
       </div>
 
       {pendingRoll ? (
-        // Keyed by slug so back-to-back rolls (two bots can land well
-        // under the flicker+hold duration apart) always remount this
-        // fresh instead of reusing an instance still sitting in "hold"
-        // from the previous roll — without the key, `phase` never resets
-        // to "flicker" and the hold-timeout effect (dep: [phase]) never
-        // re-fires either, freezing the screen on the earlier roll forever.
-        <TurnReveal key={pendingRoll.slug} roll={pendingRoll} onDone={() => setShownCount((n) => n + 1)} />
+        <>
+          {pendingGroup?.banner && <div className="dice-tiebreak-banner">{pendingGroup.banner}</div>}
+          {/* Keyed by slug so back-to-back rolls (two bots can land well
+              under the flicker+hold duration apart) always remount this
+              fresh instead of reusing an instance still sitting in "hold"
+              from the previous roll — without the key, `phase` never
+              resets to "flicker" and the hold-timeout effect (dep:
+              [phase]) never re-fires either, freezing the screen on the
+              earlier roll forever. */}
+          <TurnReveal key={pendingRoll.slug} roll={pendingRoll} onDone={() => setShownCount((n) => n + 1)} />
+        </>
       ) : resolved ? (
         <div className="pass-screen" style={{ flex: "0 0 auto", padding: "8px 0 4px" }}>
           <div className="glyph">🎲</div>
           <div className="subtitle" style={{ marginBottom: 0 }}>
-            {r!.diceLowest!.length > 1 ? r!.diceLowest!.join(" et ") + " boivent 2 🥃." : r!.diceLowest![0] + " boit 2 🥃."}
+            {r!.diceLowest![0]} boit {r!.diceLowestAmount} 🥃.
           </div>
         </div>
       ) : (
-        <LiveTurn activePlayer={activePlayer} isMe={isMeActive} busy={busy} onRoll={onRoll} />
+        <>
+          {liveBanner && <div className="dice-tiebreak-banner">{liveBanner}</div>}
+          <LiveTurn activePlayer={activePlayer} isMe={isMeActive} busy={busy} onRoll={onRoll} />
+        </>
       )}
 
       {shownCount > 0 && (
         <>
-          <h3>Lancers</h3>
-          <div className="players-list">
-            {d.rolls.slice(0, shownCount).map((roll) => {
-              const isLoser = resolved && r!.diceLowest!.includes(roll.name);
-              return (
-                <div className="player-chip" key={roll.slug}>
-                  <span className="pname">{roll.name}</span>
-                  <span className="pmeta dice-chip-result">
-                    <Die value={roll.d1} small />
-                    <Die value={roll.d2} small />
-                    {roll.sum}
-                    {isLoser && " — Boit 2 🥃"}
-                  </span>
+          {groups.map((group, gi) => {
+            const start = groups.slice(0, gi).reduce((n, g2) => n + g2.rolls.length, 0);
+            const visible = group.rolls.slice(0, Math.max(0, shownCount - start));
+            if (visible.length === 0) return null;
+            return (
+              <div key={gi}>
+                <h3>{group.level === null ? "Lancers" : `Départage ${group.level}`}</h3>
+                {group.banner && <div className="hint">{group.banner}</div>}
+                <div className="players-list">
+                  {visible.map((roll) => {
+                    const isLoser = resolved && group.rolls === lastGroup.rolls && roll.name === r!.diceLowest![0];
+                    return (
+                      <div className="player-chip" key={roll.slug}>
+                        <span className="pname">{roll.name}</span>
+                        <span className="pmeta dice-chip-result">
+                          <Die value={roll.d1} small />
+                          <Die value={roll.d2} small />
+                          {roll.sum}
+                          {isLoser && ` — Boit ${r!.diceLowestAmount} 🥃`}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })}
         </>
       )}
 
@@ -131,7 +193,8 @@ export default function DiceScreen({
 
 // The active player's own dice, shown big to EVERYONE (only the active
 // player gets the button) — this is what makes "someone's turn" visible
-// to the whole table before they've even rolled.
+// to the whole table before they've even rolled. Reused as-is for
+// tie-break turns; the banner above it is what explains the stakes.
 function LiveTurn({
   activePlayer,
   isMe,
@@ -193,7 +256,7 @@ function LiveTurn({
 // everyone the same way (nobody, not even the roller, sees the real
 // numbers land before this plays out), then holds the settled result
 // clearly on screen for a beat before handing back to the parent, which
-// advances to the next player's LiveTurn.
+// advances to the next player's LiveTurn (or the next tie-break level).
 function TurnReveal({ roll, onDone }: { roll: DiceRoll; onDone: () => void }) {
   const [phase, setPhase] = useState<"flicker" | "hold">("flicker");
   const [faces, setFaces] = useState<[number, number]>([randFace(), randFace()]);
