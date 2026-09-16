@@ -34,11 +34,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cod
   const path = Array.isArray(body?.path) ? body.path : null;
   const finalPos = body?.finalPos;
   const sunk = body?.sunk === true;
+  const wentInWater = body?.wentInWater === true;
   if (!path || path.length === 0 || !path.every(isPoint) || !isPoint(finalPos)) {
     return NextResponse.json({ error: "Coup invalide." }, { status: 400 });
   }
 
-  applyGolfShot(game, session.slug, path, finalPos, sunk);
+  applyGolfShot(game, session.slug, path, finalPos, sunk, wentInWater);
   await setGame(code, game);
   return NextResponse.json({ ok: true });
 }

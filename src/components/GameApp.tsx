@@ -286,8 +286,8 @@ export default function GameApp() {
           mySlug={mySlug}
           isHost={isHost}
           busy={busy}
-          onShoot={(path: GolfPoint[], finalPos: GolfPoint, sunk: boolean) =>
-            runAction(() => apiPost(`/api/rooms/${roomCode}/golf-shot`, { path, finalPos, sunk }))
+          onShoot={(path: GolfPoint[], finalPos: GolfPoint, sunk: boolean, wentInWater: boolean) =>
+            runAction(() => apiPost(`/api/rooms/${roomCode}/golf-shot`, { path, finalPos, sunk, wentInWater }))
           }
           onNextRound={() => runAction(() => apiPost(`/api/rooms/${roomCode}/next-round`))}
           onEndNight={() => runAction(() => apiPost(`/api/rooms/${roomCode}/end-night`))}

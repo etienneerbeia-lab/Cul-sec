@@ -9,7 +9,7 @@ const MAX_STEPS = 8 * 60; // 8 simulated seconds — bigger courses, faster ball
 const DRAG_PER_SEC = 1.15; // multiplicative velocity decay per second, on grass
 const SAND_DRAG_PER_SEC = 7; // much stronger decay while the ball's center is over sand
 const STOP_SPEED = 8; // units/s — below this the ball is considered at rest
-const BOUNCE_RESTITUTION = 0.82; // energy kept (as speed) after bouncing off a wall/obstacle
+const BOUNCE_RESTITUTION = 0.82; // energy kept (as speed) after bouncing off a wall/bumper
 const SINK_SPEED_THRESHOLD = 150; // units/s — too fast over the hole just lips out
 
 export const GOLF_MAX_PULL = 110; // course units — how far back the slingshot drag maxes out
@@ -43,6 +43,7 @@ export interface GolfShotResult {
   path: GolfPoint[];
   finalPos: GolfPoint;
   sunk: boolean;
+  wentInWater: boolean;
 }
 
 // Deterministic given (course, startPos, velocity) — same inputs always
@@ -54,11 +55,23 @@ export function simulateShot(course: GolfCourse, startPos: GolfPoint, velocity: 
   let v: GolfPoint = { x: velocity.x, y: velocity.y };
   const path: GolfPoint[] = [{ x: round1(pos.x), y: round1(pos.y) }];
   let sunk = false;
+  let wentInWater = false;
+  let teleported = false;
 
   for (let step = 0; step < MAX_STEPS; step++) {
     const inSand = course.sandZones.some((z) => Math.hypot(pos.x - z.x, pos.y - z.y) < z.radius);
     const drag = inSand ? SAND_DRAG_PER_SEC : DRAG_PER_SEC;
     v = { x: v.x * (1 - drag * GOLF_STEP_DT), y: v.y * (1 - drag * GOLF_STEP_DT) };
+
+    // A slope is a constant push on velocity, applied while the ball
+    // sits over it — gentle enough to curve a trajectory, not redirect
+    // it outright.
+    for (const slope of course.slopes) {
+      if (Math.hypot(pos.x - slope.x, pos.y - slope.y) < slope.radius) {
+        v = { x: v.x + slope.forceX * GOLF_STEP_DT, y: v.y + slope.forceY * GOLF_STEP_DT };
+      }
+    }
+
     const speed = len(v);
     if (speed < STOP_SPEED) {
       v = { x: 0, y: 0 };
@@ -67,11 +80,11 @@ export function simulateShot(course: GolfCourse, startPos: GolfPoint, velocity: 
     }
 
     let next: GolfPoint = { x: pos.x + v.x * GOLF_STEP_DT, y: pos.y + v.y * GOLF_STEP_DT };
+    let stoppedDead = false;
 
-    // At most one bounce resolved per step, against walls and round
-    // obstacles alike (an obstacle is just a wall with a circular instead
-    // of segment shape) — safe at this speed/dt ratio and simple enough
-    // not to need a proper continuous-collision sweep.
+    // At most one collision resolved per step, walls first then round
+    // obstacles — safe at this speed/dt ratio and simple enough not to
+    // need a proper continuous-collision sweep.
     let handled = false;
     for (const wall of walls) {
       const closest = closestPointOnSegment(next, { x: wall.x1, y: wall.y1 }, { x: wall.x2, y: wall.y2 });
@@ -97,9 +110,15 @@ export function simulateShot(course: GolfCourse, startPos: GolfPoint, velocity: 
         if (dist < minDist) {
           const nx = dist > 0 ? dx / dist : 1;
           const ny = dist > 0 ? dy / dist : 0;
-          const dot = v.x * nx + v.y * ny;
-          v = { x: (v.x - 2 * dot * nx) * BOUNCE_RESTITUTION, y: (v.y - 2 * dot * ny) * BOUNCE_RESTITUTION };
-          next = { x: obstacle.x + nx * minDist, y: obstacle.y + ny * minDist };
+          if (obstacle.kind === "tree") {
+            v = { x: 0, y: 0 };
+            next = { x: obstacle.x + nx * minDist, y: obstacle.y + ny * minDist };
+            stoppedDead = true;
+          } else {
+            const dot = v.x * nx + v.y * ny;
+            v = { x: (v.x - 2 * dot * nx) * BOUNCE_RESTITUTION, y: (v.y - 2 * dot * ny) * BOUNCE_RESTITUTION };
+            next = { x: obstacle.x + nx * minDist, y: obstacle.y + ny * minDist };
+          }
           break;
         }
       }
@@ -107,15 +126,31 @@ export function simulateShot(course: GolfCourse, startPos: GolfPoint, velocity: 
 
     pos = next;
     path.push({ x: round1(pos.x), y: round1(pos.y) });
+    if (stoppedDead) break;
 
     const distToHole = Math.hypot(pos.x - course.hole.x, pos.y - course.hole.y);
     if (distToHole < course.holeRadius && len(v) < SINK_SPEED_THRESHOLD) {
       sunk = true;
       break;
     }
+
+    const water = course.waterZones.find((z) => Math.hypot(pos.x - z.x, pos.y - z.y) < z.radius);
+    if (water) {
+      wentInWater = true;
+      break;
+    }
+
+    if (!teleported) {
+      const gate = course.teleporters.find((t) => Math.hypot(pos.x - t.x, pos.y - t.y) < t.radius);
+      if (gate) {
+        pos = { x: gate.targetX, y: gate.targetY };
+        path.push({ x: round1(pos.x), y: round1(pos.y) });
+        teleported = true;
+      }
+    }
   }
 
-  return { path, finalPos: { x: round1(pos.x), y: round1(pos.y) }, sunk };
+  return { path, finalPos: { x: round1(pos.x), y: round1(pos.y) }, sunk, wentInWater };
 }
 
 function round1(n: number): number {

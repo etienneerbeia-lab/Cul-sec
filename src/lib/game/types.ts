@@ -487,10 +487,13 @@ export interface GolfWall {
   y2: number;
 }
 
-// A solid round obstacle (tree or bush) — same bounce behavior as a wall,
-// just circular. `kind` only changes how it's drawn.
+// A solid round obstacle — circular, like a wall but round. `kind` picks
+// both the physics (see simulateShot) and how it's drawn:
+// - "tree": the ball stops dead on contact, no bounce.
+// - "bumper": bounces with partial energy kept, pinball-style.
+export type GolfObstacleKind = "tree" | "bumper";
 export interface GolfObstacle {
-  kind: "tree" | "bush";
+  kind: GolfObstacleKind;
   x: number;
   y: number;
   radius: number;
@@ -503,6 +506,41 @@ export interface GolfSandZone {
   x: number;
   y: number;
   radius: number;
+}
+
+// Not solid either, but instead of slowing the ball down, falling in
+// undoes the whole shot: physics.ts stops simulating the instant the
+// ball's center enters one, and lib/golf/engine.ts restores the
+// player's position to wherever it was BEFORE this shot — a real "back
+// to where you were" penalty, not just a teleport to the water's edge.
+export interface GolfWaterZone {
+  x: number;
+  y: number;
+  radius: number;
+}
+
+// Entering the circle at (x, y) relocates the ball to (targetX, targetY)
+// — velocity carries over unchanged, simulation continues from there. A
+// two-way pair is just two of these pointing at each other. At most one
+// teleport happens per shot (see physics.ts) so a pair facing each other
+// can't loop forever.
+export interface GolfTeleporter {
+  x: number;
+  y: number;
+  radius: number;
+  targetX: number;
+  targetY: number;
+}
+
+// A gentle, constant push (course units/s^2) applied to the ball's
+// velocity every step its center is inside the circle — a slope that
+// curves the trajectory rather than a hard collision.
+export interface GolfSlopeZone {
+  x: number;
+  y: number;
+  radius: number;
+  forceX: number;
+  forceY: number;
 }
 
 export interface GolfCourse {
@@ -520,6 +558,9 @@ export interface GolfCourse {
   walls: GolfWall[];
   obstacles: GolfObstacle[];
   sandZones: GolfSandZone[];
+  waterZones: GolfWaterZone[];
+  teleporters: GolfTeleporter[];
+  slopes: GolfSlopeZone[];
 }
 
 // One full shot, computed client-side (deterministic physics — see
@@ -532,6 +573,11 @@ export interface GolfShotRecord {
   path: GolfPoint[]; // sampled at physics.STEP_DT, first entry is the shot's start position
   finalPos: GolfPoint;
   sunk: boolean;
+  // True when the ball fell into water this shot — finalPos is still
+  // where it happened (for the path/animation), but the player's actual
+  // position reverts to wherever they were before this shot (see
+  // applyGolfShot).
+  wentInWater: boolean;
 }
 
 export interface GolfRoundState {

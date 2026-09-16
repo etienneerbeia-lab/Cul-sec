@@ -30,7 +30,7 @@ export default function GolfScreen({
   mySlug: string;
   isHost: boolean;
   busy: boolean;
-  onShoot: (path: GolfPoint[], finalPos: GolfPoint, sunk: boolean) => void;
+  onShoot: (path: GolfPoint[], finalPos: GolfPoint, sunk: boolean, wentInWater: boolean) => void;
   onNextRound: () => void;
   onEndNight: () => void;
 }) {
@@ -80,14 +80,16 @@ export default function GolfScreen({
         busy={busy}
         onRelease={(velocity) => {
           const result = simulateShot(course, gl.positions[mySlug] ?? course.start, velocity);
-          onShoot(result.path, result.finalPos, result.sunk);
+          onShoot(result.path, result.finalPos, result.sunk, result.wentInWater);
         }}
       />
 
       {!resolved && (
         <div className="hint golf-turn-hint">
           {pendingShot
-            ? `${pendingShot.name} joue son coup n°${pendingShot.strokeNumber}...`
+            ? pendingShot.wentInWater
+              ? `${pendingShot.name} tombe à l'eau — retour à la position précédente...`
+              : `${pendingShot.name} joue son coup n°${pendingShot.strokeNumber}...`
             : amFinished
               ? `Fini en ${gl.strokeCounts[mySlug]} coup(s) — en attente des autres...`
               : isMeActive
@@ -97,40 +99,39 @@ export default function GolfScreen({
       )}
 
       {resolved && (
-        <>
-          <div className="pass-screen" style={{ flex: "0 0 auto", padding: "8px 0 4px" }}>
+        <div className="modal-overlay">
+          <div className="modal-card golf-results-card">
             <div className="glyph">⛳</div>
-            <div className="subtitle" style={{ marginBottom: 0 }}>
-              Classement du trou
+            <div className="modal-title">Classement du trou</div>
+            <div className="players-list golf-results-list">
+              {r!.golfRanking!.map((entry) => (
+                <div className="player-chip" key={entry.slug}>
+                  <span className="pname">
+                    {ordinal(entry.rank)} — {entry.name}
+                  </span>
+                  <span className="pmeta">
+                    {entry.strokes} coup{entry.strokes > 1 ? "s" : ""}
+                    {entry.gulps > 0 && ` — Boit ${entry.gulps} 🥃`}
+                  </span>
+                </div>
+              ))}
             </div>
-          </div>
-          <div className="players-list">
-            {r!.golfRanking!.map((entry) => (
-              <div className="player-chip" key={entry.slug}>
-                <span className="pname">
-                  {ordinal(entry.rank)} — {entry.name}
-                </span>
-                <span className="pmeta">
-                  {entry.strokes} coup{entry.strokes > 1 ? "s" : ""}
-                  {entry.gulps > 0 && ` — Boit ${entry.gulps} 🥃`}
-                </span>
+            {isHost ? (
+              <div className="modal-actions">
+                <button className="btn-primary" disabled={busy} onClick={onNextRound}>
+                  Manche suivante
+                </button>
+                <button className="btn-ghost" disabled={busy} onClick={onEndNight}>
+                  Terminer la soirée
+                </button>
               </div>
-            ))}
+            ) : (
+              <div className="hint" style={{ marginTop: 16 }}>
+                En attente de l&apos;hôte pour continuer...
+              </div>
+            )}
           </div>
-          <div className="spacer" />
-          {isHost ? (
-            <>
-              <button className="btn-primary" disabled={busy} onClick={onNextRound}>
-                Manche suivante
-              </button>
-              <button className="btn-ghost" style={{ marginTop: 12 }} disabled={busy} onClick={onEndNight}>
-                Terminer la soirée
-              </button>
-            </>
-          ) : (
-            <div className="hint">En attente de l&apos;hôte pour continuer...</div>
-          )}
-        </>
+        </div>
       )}
     </>
   );
@@ -262,8 +263,17 @@ function GolfBoard({
       onPointerCancel={handlePointerUp}
     >
       <rect x={0} y={0} width={course.width} height={course.height} className="golf-turf" />
+      {course.slopes.map((z, i) => (
+        <circle key={i} cx={z.x} cy={z.y} r={z.radius} className="golf-slope" />
+      ))}
       {course.sandZones.map((z, i) => (
         <circle key={i} cx={z.x} cy={z.y} r={z.radius} className="golf-sand" />
+      ))}
+      {course.waterZones.map((z, i) => (
+        <circle key={i} cx={z.x} cy={z.y} r={z.radius} className="golf-water" />
+      ))}
+      {course.teleporters.map((t, i) => (
+        <circle key={i} cx={t.x} cy={t.y} r={t.radius} className="golf-teleporter" />
       ))}
       {course.walls.map((w, i) => (
         <line key={i} x1={w.x1} y1={w.y1} x2={w.x2} y2={w.y2} className="golf-wall" />
@@ -275,7 +285,7 @@ function GolfBoard({
           cx={o.x}
           cy={o.y}
           r={o.radius}
-          className={o.kind === "tree" ? "golf-obstacle golf-tree" : "golf-obstacle golf-bush"}
+          className={o.kind === "tree" ? "golf-obstacle golf-tree" : "golf-obstacle golf-bumper"}
         />
       ))}
 

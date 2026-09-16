@@ -1320,10 +1320,18 @@ label.field-label {
 /* Mini-golf */
 .golf-course {
   width: 100%;
+  height: auto;
+  /* Leaves room above (table-status) and below (turn hint) so the whole
+     screen fits one viewport without scrolling — dvh tracks the real
+     visible height on mobile (address bar included/excluded), unlike vh. */
+  max-height: min(58dvh, 520px);
   border-radius: 16px;
   margin-top: 10px;
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
   touch-action: none;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
 }
 .golf-turf {
   fill: #1f6b46;
@@ -1333,6 +1341,23 @@ label.field-label {
   stroke: #c2a05c;
   stroke-width: 1;
   stroke-dasharray: 3 4;
+}
+.golf-water {
+  fill: #2a6fb0;
+  stroke: #1c4d7d;
+  stroke-width: 1;
+}
+.golf-slope {
+  fill: rgba(224, 86, 140, 0.1);
+  stroke: rgba(224, 86, 140, 0.35);
+  stroke-width: 1;
+  stroke-dasharray: 2 5;
+}
+.golf-teleporter {
+  fill: #7a4fd1;
+  stroke: #c9a8ff;
+  stroke-width: 2;
+  stroke-dasharray: 3 3;
 }
 .golf-wall {
   stroke: var(--cream);
@@ -1346,9 +1371,9 @@ label.field-label {
   fill: #2f8f52;
   stroke: #1a5c33;
 }
-.golf-bush {
-  fill: #3ba566;
-  stroke: #1a5c33;
+.golf-bumper {
+  fill: #e0568c;
+  stroke: #f4c9dd;
 }
 .golf-hole {
   fill: #0b1a10;
@@ -1374,4 +1399,13 @@ label.field-label {
   paint-order: stroke;
   stroke: rgba(0, 0, 0, 0.55);
   stroke-width: 3px;
+}
+.golf-results-card {
+  max-width: 360px;
+  max-height: 80dvh;
+  overflow-y: auto;
+}
+.golf-results-list {
+  margin-top: 14px;
+  text-align: left;
 }

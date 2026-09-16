@@ -69,14 +69,26 @@ function advanceToNextActivePlayer(g: GameState): void {
 // plays their own hole out, and the final ranking (see resolveGolfRound)
 // is by stroke count, not by who finished first, so a sunk ball just
 // marks that player done and hands the turn to whoever's still playing.
-export function applyGolfShot(g: GameState, slug: string, path: GolfPoint[], finalPos: GolfPoint, sunk: boolean): void {
+// Falling in water still costs the stroke (strokeCounts already went up
+// for taking the shot) but the position itself reverts to wherever it
+// was before this shot — finalPos still records where it went in, purely
+// so the replay animation has somewhere to roll toward.
+export function applyGolfShot(
+  g: GameState,
+  slug: string,
+  path: GolfPoint[],
+  finalPos: GolfPoint,
+  sunk: boolean,
+  wentInWater: boolean
+): void {
   const gl = g.golf!;
   const player = g.playersPublic.find((p) => p.slug === slug)!;
+  const positionBeforeShot = gl.positions[slug];
   const strokeNumber = (gl.strokeCounts[slug] ?? 0) + 1;
   gl.strokeCounts[slug] = strokeNumber;
-  gl.positions[slug] = finalPos;
+  gl.positions[slug] = wentInWater ? positionBeforeShot : finalPos;
 
-  const shot: GolfShotRecord = { slug, name: player.name, strokeNumber, path, finalPos, sunk };
+  const shot: GolfShotRecord = { slug, name: player.name, strokeNumber, path, finalPos, sunk, wentInWater };
   gl.shots = [...gl.shots, shot];
 
   if (sunk) {
