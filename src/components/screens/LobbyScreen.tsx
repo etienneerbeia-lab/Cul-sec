@@ -16,6 +16,7 @@ export default function LobbyScreen({
   error,
   previousEnabledRoundTypeIds,
   onLaunch,
+  onRename,
 }: {
   roomCode: string;
   players: Player[];
@@ -29,6 +30,7 @@ export default function LobbyScreen({
   // "everything on" like before.
   previousEnabledRoundTypeIds?: RoundTypeId[];
   onLaunch: (totalRounds: number, culSecRule: CulSecRule, enabledRoundTypeIds: RoundTypeId[]) => void;
+  onRename: (name: string) => void;
 }) {
   const [totalRounds, setTotalRounds] = useState(10);
   const [culSecRule, setCulSecRule] = useState<CulSecRule>("last");
@@ -59,14 +61,15 @@ export default function LobbyScreen({
 
       <h3>Joueurs connectés</h3>
       <div className="players-list">
-        {players.map((p) => (
-          <div className="player-chip" key={p.slug}>
-            <span className="pname">
-              {p.name}
-              {p.slug === mySlug ? " (toi)" : ""}
-            </span>
-          </div>
-        ))}
+        {players.map((p) =>
+          p.slug === mySlug ? (
+            <OwnNameRow key={p.slug} name={p.name} busy={busy} onRename={onRename} />
+          ) : (
+            <div className="player-chip" key={p.slug}>
+              <span className="pname">{p.name}</span>
+            </div>
+          )
+        )}
       </div>
 
       {isHost && (
@@ -150,5 +153,73 @@ export default function LobbyScreen({
         <div className="hint">En attente que l&apos;hôte lance la partie...</div>
       )}
     </>
+  );
+}
+
+// Own entry in the lobby's player list, editable in place — click the
+// name (or the pencil) to turn it into a text field, same "click to
+// edit" pattern used nowhere else yet in this codebase but simple enough
+// not to need a shared component for it.
+function OwnNameRow({
+  name,
+  busy,
+  onRename,
+}: {
+  name: string;
+  busy: boolean;
+  onRename: (name: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(name);
+
+  function startEditing() {
+    setValue(name);
+    setEditing(true);
+  }
+
+  function submit() {
+    const trimmed = value.trim();
+    if (!trimmed || trimmed === name) {
+      setEditing(false);
+      return;
+    }
+    onRename(trimmed);
+    setEditing(false);
+  }
+
+  if (editing) {
+    return (
+      <div className="player-chip">
+        <input
+          type="text"
+          autoFocus
+          value={value}
+          maxLength={40}
+          disabled={busy}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") submit();
+            if (e.key === "Escape") setEditing(false);
+          }}
+          onBlur={submit}
+          style={{ flex: 1, marginRight: 8 }}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="player-chip">
+      <span className="pname">{name} (toi)</span>
+      <button
+        type="button"
+        className="btn-ghost"
+        style={{ padding: "4px 10px" }}
+        disabled={busy}
+        onClick={startEditing}
+      >
+        Modifier
+      </button>
+    </div>
   );
 }

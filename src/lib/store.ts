@@ -79,6 +79,18 @@ export async function getSession(code: string, token: string): Promise<SessionDa
   return redis.get<SessionData>(kSession(code, token));
 }
 
+// Updates the display name on an existing session without touching its
+// slug — the slug was fixed once at join time (see join/route.ts) and
+// stays the stable identifier for host tracking, turn order, etc. even
+// after a player renames themselves in the lobby.
+export async function updateSessionName(code: string, token: string, name: string): Promise<void> {
+  const existing = await getSession(code, token);
+  if (!existing) return;
+  await redis.set(kSession(code, token), { slug: existing.slug, name } satisfies SessionData, {
+    ex: ROOM_TTL_SECONDS,
+  });
+}
+
 export function handStoreFor(code: string) {
   return {
     getHand: (round: number, slug: string) => getHand(code, round, slug),

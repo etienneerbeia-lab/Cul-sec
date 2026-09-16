@@ -239,6 +239,7 @@ export default function GameApp() {
               apiPost(`/api/rooms/${roomCode}/launch`, { totalRounds, culSecRule, enabledRoundTypeIds })
             )
           }
+          onRename={(name: string) => runAction(() => apiPost(`/api/rooms/${roomCode}/rename`, { name }))}
         />
       ) : phase === "roundIntro" ? (
         <RoundIntroScreen

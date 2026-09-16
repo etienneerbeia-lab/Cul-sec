@@ -19,8 +19,10 @@ export function startMemeRound(g: GameState): void {
 // Called once per player as they submit their caption, or as their own
 // client auto-submits an empty caption once the 60s countdown hits zero
 // (same "timeout still closes out their turn" pattern as the quiz timer
-// and the vote round's answer). Moves to the voting phase once every
-// player has been accounted for.
+// and the vote round's answer — and just like those, a timeout is never
+// neutral: see resolveMemeRound, which always charges whoever has no
+// caption on file). Moves to the voting phase once every player has been
+// accounted for.
 export function submitMemeCaption(g: GameState, slug: string, caption: string): void {
   const m = g.meme!;
   const trimmed = caption.trim().slice(0, 200);
@@ -105,7 +107,8 @@ function resolveMemeRound(g: GameState): void {
   tallies.sort((a, b) => b.votes - a.votes);
 
   // Need at least 2 captions for "least funny" to mean anything — with a
-  // single caption (or none) there was no real contest, so nobody drinks.
+  // single caption (or none) there was no real contest, so nobody drinks
+  // *for their caption's content* (a timeout still costs 2, separately).
   let leastFunny: string[] = [];
   if (tallies.length > 1) {
     const minVotes = Math.min(...tallies.map((t) => t.votes));
@@ -116,16 +119,20 @@ function resolveMemeRound(g: GameState): void {
     leastFunny = losers.map((t) => t.name);
   }
 
-  const noCaptioners = g.playersPublic
-    .filter((p) => !(p.slug in m.captions))
-    .map((p) => p.name);
+  // Not writing a caption in time is never neutral, same rule as every
+  // other timed mini-game's timeout — always costs 2, independent of
+  // whether there was even a contest to judge.
+  const noCaptioners = g.playersPublic.filter((p) => !(p.slug in m.captions));
+  noCaptioners.forEach((p) => {
+    p.gulpsTotal += 2;
+  });
 
   g.lastResults = {
     type: "meme",
     memeUrl: m.template.url,
     memeTallies: tallies,
     memeLeastFunny: leastFunny,
-    memeNoCaptioners: noCaptioners,
+    memeNoCaptioners: noCaptioners.map((p) => p.name),
   };
   g.phase = "showdown";
 }

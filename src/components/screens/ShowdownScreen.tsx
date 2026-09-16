@@ -44,7 +44,7 @@ export default function ShowdownScreen({
           </div>
           <div className="subtitle">
             {r.voteTie
-              ? `Égalité parfaite (${r.countA}-${r.countB}) : personne ne boit.`
+              ? `Égalité parfaite (${r.countA}-${r.countB}) : personne parmi les votants ne boit.`
               : `${r.countA} contre ${r.countB} — le camp minoritaire boit 2 🥃.`}
           </div>
           <div className="players-list">
@@ -63,7 +63,7 @@ export default function ShowdownScreen({
             {r.voteNonVoters!.map((name) => (
               <div className="player-chip folded" key={name}>
                 <span className="pname">{name}</span>
-                <span className="pmeta">N&apos;a pas voté à temps</span>
+                <span className="pmeta">N&apos;a pas voté à temps — Boit 2 🥃</span>
               </div>
             ))}
           </div>
@@ -91,7 +91,7 @@ export default function ShowdownScreen({
             {r.memeNoCaptioners!.map((name) => (
               <div className="player-chip folded" key={name}>
                 <span className="pname">{name}</span>
-                <span className="pmeta">N&apos;a pas écrit de légende</span>
+                <span className="pmeta">N&apos;a pas écrit de légende à temps — Boit 2 🥃</span>
               </div>
             ))}
           </div>
