@@ -19,7 +19,8 @@ export type RoundTypeId =
   | "meme"
   | "dice"
   | "undercover"
-  | "blackjack";
+  | "blackjack"
+  | "golf";
 
 export interface RoundType {
   id: RoundTypeId;
@@ -59,6 +60,7 @@ export type GamePhase =
   | "undercoverVote"
   | "undercoverGuess"
   | "blackjack"
+  | "golf"
   | "final";
 
 export type Street = "single" | "preflop" | "flop" | "turn" | "river";
@@ -125,6 +127,9 @@ export interface LastResults {
   blackjackDealerCards?: Card[];
   blackjackDealerTotal?: number;
   blackjackDealerBust?: boolean;
+  // "golf" (Mini-golf) — winner/losers already cover who drinks, this is
+  // just the extra flavor detail ("en N coups") the result screen shows.
+  golfStrokes?: number;
 }
 
 export type QuizQuestionType = "capital" | "flag" | "date";
@@ -461,6 +466,69 @@ export interface BlackjackRoundState {
   results?: BlackjackResultEntry[];
 }
 
+// Mini-golf — turn-based like Culture G/dice (one player acts per turn,
+// in table order), but each player's ball keeps whatever position it
+// stopped at between their own turns instead of a shared value, and turns
+// keep cycling around the table (turnPointer only ever increases, wraps
+// via modulo) until someone sinks their ball — there's no "everyone gets
+// one shot and we're done" like the other turn-based mini-games.
+export interface GolfPoint {
+  x: number;
+  y: number;
+}
+
+// A straight-line obstacle or boundary segment the ball bounces off.
+export interface GolfWall {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
+
+export interface GolfCourse {
+  id: string;
+  label: string;
+  width: number;
+  height: number;
+  start: GolfPoint;
+  hole: GolfPoint;
+  holeRadius: number;
+  ballRadius: number;
+  // Interior obstacles only — the four boundary edges are implicit from
+  // width/height (see simulateShot in lib/golf/physics.ts) so a course
+  // definition never has to spell those out.
+  walls: GolfWall[];
+}
+
+// One full shot, computed client-side (deterministic physics — see
+// simulateShot) then published as-is so every other client can replay the
+// exact same animation instead of just snapping to the final position.
+export interface GolfShotRecord {
+  slug: string;
+  name: string;
+  strokeNumber: number; // this player's Nth stroke, 1-based
+  path: GolfPoint[]; // sampled at physics.STEP_DT, first entry is the shot's start position
+  finalPos: GolfPoint;
+  sunk: boolean;
+}
+
+export interface GolfRoundState {
+  courseId: string;
+  turnOrder: number[]; // playersPublic indices, table order — cycled via modulo, never mutated
+  turnPointer: number; // ever-increasing; whose turn is turnOrder[turnPointer % turnOrder.length]
+  playerIdx: number;
+  // Current resting position for every player's ball, seeded at
+  // course.start for everyone when the round begins and updated to each
+  // shot's finalPos as it lands — this is what makes a shot start from
+  // wherever that player's ball stopped last time instead of the tee.
+  positions: Record<string, GolfPoint>;
+  strokeCounts: Record<string, number>;
+  // Full shot history in the order they happened — same "replay one at a
+  // time" mechanism as dice's rolls, driven by the client's own shownCount.
+  shots: GolfShotRecord[];
+  winnerSlug?: string;
+}
+
 export type CulSecRule = "last" | "first";
 
 export interface GameState {
@@ -505,6 +573,7 @@ export interface GameState {
   dice?: DiceRoundState;
   undercover?: UndercoverRoundState;
   blackjack?: BlackjackRoundState;
+  golf?: GolfRoundState;
 }
 
 export interface Player {

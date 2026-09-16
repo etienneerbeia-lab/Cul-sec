@@ -1316,3 +1316,37 @@ label.field-label {
   color: var(--gold);
   opacity: 0.6;
 }
+
+/* Mini-golf */
+.golf-course {
+  width: 100%;
+  border-radius: 16px;
+  margin-top: 10px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+  touch-action: none;
+}
+.golf-turf {
+  fill: #1f6b46;
+}
+.golf-wall {
+  stroke: var(--cream);
+  stroke-width: 6;
+  stroke-linecap: round;
+}
+.golf-hole {
+  fill: #0b1a10;
+  stroke: var(--offwhite);
+  stroke-width: 1.5;
+}
+.golf-ball {
+  stroke: rgba(0, 0, 0, 0.35);
+  stroke-width: 1.5;
+}
+.golf-ball-moving {
+  stroke: var(--offwhite);
+  stroke-width: 2;
+}
+.golf-turn-hint {
+  text-align: center;
+  margin-top: 10px;
+}

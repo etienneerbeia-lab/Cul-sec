@@ -64,6 +64,13 @@ export const ROUND_TYPES: RoundType[] = [
     icon: "🎰",
     cards: 0,
   },
+  {
+    id: "golf",
+    label: "Mini-golf",
+    tagline: "Vise, tire, rentre la balle avant les autres. Le premier trou gagne, les autres boivent.",
+    icon: "⛳",
+    cards: 0,
+  },
 ];
 
 export function roundTypeById(id: string): RoundType {

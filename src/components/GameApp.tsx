@@ -29,6 +29,8 @@ import UndercoverClueScreen from "./screens/UndercoverClueScreen";
 import UndercoverVoteScreen from "./screens/UndercoverVoteScreen";
 import UndercoverGuessScreen from "./screens/UndercoverGuessScreen";
 import BlackjackScreen from "./screens/BlackjackScreen";
+import GolfScreen from "./screens/GolfScreen";
+import type { GolfPoint } from "@/lib/game/types";
 
 const POLL_MS = 1500;
 
@@ -275,6 +277,18 @@ export default function GameApp() {
           isHost={isHost}
           busy={busy}
           onRoll={() => runAction(() => apiPost(`/api/rooms/${roomCode}/dice-roll`))}
+          onNextRound={() => runAction(() => apiPost(`/api/rooms/${roomCode}/next-round`))}
+          onEndNight={() => runAction(() => apiPost(`/api/rooms/${roomCode}/end-night`))}
+        />
+      ) : phase === "golf" || (phase === "showdown" && game.lastResults?.type === "golf") ? (
+        <GolfScreen
+          game={game}
+          mySlug={mySlug}
+          isHost={isHost}
+          busy={busy}
+          onShoot={(path: GolfPoint[], finalPos: GolfPoint, sunk: boolean) =>
+            runAction(() => apiPost(`/api/rooms/${roomCode}/golf-shot`, { path, finalPos, sunk }))
+          }
           onNextRound={() => runAction(() => apiPost(`/api/rooms/${roomCode}/next-round`))}
           onEndNight={() => runAction(() => apiPost(`/api/rooms/${roomCode}/end-night`))}
         />
