@@ -51,7 +51,7 @@ export default function GolfScreen({
           </div>
         </div>
         <div>
-          <div className="label">Mini-golf</div>
+          <div className="label">{course.label}</div>
           <div className="value">{gl.strokeCounts[mySlug] ?? 0} coup(s)</div>
         </div>
       </div>
@@ -231,10 +231,22 @@ function GolfBoard({
       onPointerCancel={handlePointerUp}
     >
       <rect x={0} y={0} width={course.width} height={course.height} className="golf-turf" />
+      {course.sandZones.map((z, i) => (
+        <circle key={i} cx={z.x} cy={z.y} r={z.radius} className="golf-sand" />
+      ))}
       {course.walls.map((w, i) => (
         <line key={i} x1={w.x1} y1={w.y1} x2={w.x2} y2={w.y2} className="golf-wall" />
       ))}
       <circle cx={course.hole.x} cy={course.hole.y} r={course.holeRadius} className="golf-hole" />
+      {course.obstacles.map((o, i) => (
+        <circle
+          key={i}
+          cx={o.x}
+          cy={o.y}
+          r={o.radius}
+          className={o.kind === "tree" ? "golf-obstacle golf-tree" : "golf-obstacle golf-bush"}
+        />
+      ))}
 
       {players.map((p, i) => {
         const isMoving = pendingShot?.slug === p.slug;

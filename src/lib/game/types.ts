@@ -485,6 +485,24 @@ export interface GolfWall {
   y2: number;
 }
 
+// A solid round obstacle (tree or bush) — same bounce behavior as a wall,
+// just circular. `kind` only changes how it's drawn.
+export interface GolfObstacle {
+  kind: "tree" | "bush";
+  x: number;
+  y: number;
+  radius: number;
+}
+
+// Not solid — the ball rolls straight through, but physics.ts applies
+// much stronger friction while its center is inside, so it loses speed
+// fast (a real bunker) instead of bouncing off anything.
+export interface GolfSandZone {
+  x: number;
+  y: number;
+  radius: number;
+}
+
 export interface GolfCourse {
   id: string;
   label: string;
@@ -498,6 +516,8 @@ export interface GolfCourse {
   // width/height (see simulateShot in lib/golf/physics.ts) so a course
   // definition never has to spell those out.
   walls: GolfWall[];
+  obstacles: GolfObstacle[];
+  sandZones: GolfSandZone[];
 }
 
 // One full shot, computed client-side (deterministic physics — see

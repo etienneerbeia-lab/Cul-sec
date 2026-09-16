@@ -10,8 +10,17 @@ function orderAllPlayers(g: GameState): number[] {
   return order;
 }
 
+// Avoids replaying the same course twice in a row when there's more than
+// one to pick from — same "don't repeat the last one" idea as the
+// mini-game selector itself (setupRoundType), just scoped to golf courses.
+function pickCourse(g: GameState) {
+  const lastId = g.golf?.courseId;
+  const pool = GOLF_COURSES.length > 1 ? GOLF_COURSES.filter((c) => c.id !== lastId) : GOLF_COURSES;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
 export function startGolfRound(g: GameState): void {
-  const course = GOLF_COURSES[0];
+  const course = pickCourse(g);
   const order = orderAllPlayers(g);
   const positions: Record<string, GolfPoint> = {};
   const strokeCounts: Record<string, number> = {};

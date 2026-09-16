@@ -1328,10 +1328,27 @@ label.field-label {
 .golf-turf {
   fill: #1f6b46;
 }
+.golf-sand {
+  fill: #d9b871;
+  stroke: #c2a05c;
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
 .golf-wall {
   stroke: var(--cream);
   stroke-width: 6;
   stroke-linecap: round;
+}
+.golf-obstacle {
+  stroke-width: 2;
+}
+.golf-tree {
+  fill: #2f8f52;
+  stroke: #1a5c33;
+}
+.golf-bush {
+  fill: #3ba566;
+  stroke: #1a5c33;
 }
 .golf-hole {
   fill: #0b1a10;
