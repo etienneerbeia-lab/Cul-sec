@@ -7,6 +7,16 @@ import { GOLF_MAX_PULL, GOLF_STEP_DT, simulateShot, velocityFromPull } from "@/l
 
 const BALL_COLORS = ["#e0568c", "#3ecf8e", "#f4c95d", "#6fb1f0", "#e0568c", "#3ecf8e"];
 
+// Below this fraction of full pull, releasing cancels the shot instead of
+// firing it — low enough that a deliberately soft putt (small but real
+// pull) still goes through, high enough to reach on purpose when you just
+// want to bail out of an aim you started.
+const GOLF_CANCEL_POWER = 0.08;
+
+function ordinal(rank: number): string {
+  return rank === 1 ? "1er" : `${rank}e`;
+}
+
 export default function GolfScreen({
   game,
   mySlug,
@@ -28,6 +38,7 @@ export default function GolfScreen({
   const course = golfCourseById(gl.courseId);
   const activePlayer = game.playersPublic[gl.playerIdx];
   const isMeActive = activePlayer.slug === mySlug && game.phase === "golf";
+  const amFinished = gl.finishedSlugs.includes(mySlug);
 
   // Same "replay one shot at a time" mechanism as the dice mini-game's
   // rolls: starts at however many shots already happened (a fresh page
@@ -61,6 +72,7 @@ export default function GolfScreen({
         course={course}
         positions={gl.positions}
         players={game.playersPublic}
+        finishedSlugs={gl.finishedSlugs}
         pendingShot={pendingShot}
         onShotAnimDone={() => setShownCount((n) => n + 1)}
         interactive={isMeActive && !pendingShot}
@@ -76,9 +88,11 @@ export default function GolfScreen({
         <div className="hint golf-turn-hint">
           {pendingShot
             ? `${pendingShot.name} joue son coup n°${pendingShot.strokeNumber}...`
-            : isMeActive
-              ? "À toi de jouer — glisse ton doigt en arrière pour viser, relâche pour tirer."
-              : `En attente de ${activePlayer.name}...`}
+            : amFinished
+              ? `Fini en ${gl.strokeCounts[mySlug]} coup(s) — en attente des autres...`
+              : isMeActive
+                ? "À toi de jouer — glisse ton doigt en arrière pour viser, relâche pour tirer."
+                : `En attente de ${activePlayer.name}...`}
         </div>
       )}
 
@@ -87,9 +101,21 @@ export default function GolfScreen({
           <div className="pass-screen" style={{ flex: "0 0 auto", padding: "8px 0 4px" }}>
             <div className="glyph">⛳</div>
             <div className="subtitle" style={{ marginBottom: 0 }}>
-              {r!.winner} rentre la balle en {r!.golfStrokes} coup{r!.golfStrokes! > 1 ? "s" : ""} !
+              Classement du trou
             </div>
-            <div className="hint">Les autres boivent 2 🥃.</div>
+          </div>
+          <div className="players-list">
+            {r!.golfRanking!.map((entry) => (
+              <div className="player-chip" key={entry.slug}>
+                <span className="pname">
+                  {ordinal(entry.rank)} — {entry.name}
+                </span>
+                <span className="pmeta">
+                  {entry.strokes} coup{entry.strokes > 1 ? "s" : ""}
+                  {entry.gulps > 0 && ` — Boit ${entry.gulps} 🥃`}
+                </span>
+              </div>
+            ))}
           </div>
           <div className="spacer" />
           {isHost ? (
@@ -127,6 +153,7 @@ function GolfBoard({
   course,
   positions,
   players,
+  finishedSlugs,
   pendingShot,
   onShotAnimDone,
   interactive,
@@ -137,6 +164,7 @@ function GolfBoard({
   course: ReturnType<typeof golfCourseById>;
   positions: Record<string, GolfPoint>;
   players: GameState["playersPublic"];
+  finishedSlugs: string[];
   pendingShot: GolfShotRecord | null;
   onShotAnimDone: () => void;
   interactive: boolean;
@@ -203,13 +231,16 @@ function GolfBoard({
   }
   function handlePointerUp() {
     if (!interactive || drag === null) return;
-    const velocity = velocityFromPull(drag);
+    const releasedPullLen = Math.min(Math.hypot(drag.x, drag.y), GOLF_MAX_PULL);
+    const releasedPower = releasedPullLen / GOLF_MAX_PULL;
     setDrag(null);
-    if (velocity.x !== 0 || velocity.y !== 0) onRelease(velocity);
+    if (releasedPower < GOLF_CANCEL_POWER) return; // released in the cancel zone — no shot, no stroke
+    onRelease(velocityFromPull(drag));
   }
 
   const pullLen = drag ? Math.min(Math.hypot(drag.x, drag.y), GOLF_MAX_PULL) : 0;
   const power = pullLen / GOLF_MAX_PULL;
+  const wouldCancel = drag !== null && pullLen > 0 && power < GOLF_CANCEL_POWER;
   const arrowEnd: GolfPoint | null =
     drag && pullLen > 2
       ? {
@@ -217,7 +248,7 @@ function GolfBoard({
           y: myBallPos.y + (-drag.y / Math.hypot(drag.x, drag.y)) * pullLen,
         }
       : null;
-  const arrowColor = `hsl(${340 - power * 40}, 80%, ${60 + power * 15}%)`;
+  const arrowColor = wouldCancel ? "#8a8a96" : `hsl(${340 - power * 40}, 80%, ${60 + power * 15}%)`;
 
   return (
     <svg
@@ -250,6 +281,11 @@ function GolfBoard({
 
       {players.map((p, i) => {
         const isMoving = pendingShot?.slug === p.slug;
+        // A finished player's ball has sunk and stays out of the picture
+        // from then on — except mid-replay of the very shot that sank it,
+        // which everyone (including latecomers polling in) still gets to
+        // watch play out before it disappears.
+        if (!isMoving && finishedSlugs.includes(p.slug)) return null;
         const pos = isMoving ? (animPos ?? positions[p.slug]) : positions[p.slug];
         if (!pos) return null;
         return (
@@ -275,6 +311,11 @@ function GolfBoard({
           strokeLinecap="round"
           markerEnd="url(#golf-arrowhead)"
         />
+      )}
+      {wouldCancel && (
+        <text x={myBallPos.x} y={myBallPos.y - course.ballRadius - 10} textAnchor="middle" className="golf-cancel-label">
+          Relâcher pour annuler
+        </text>
       )}
       <defs>
         <marker id="golf-arrowhead" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">

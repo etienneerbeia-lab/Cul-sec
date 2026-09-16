@@ -1,7 +1,5 @@
-import type { GameState, GolfPoint, GolfShotRecord } from "../game/types";
+import type { GameState, GolfPoint, GolfRankingEntry, GolfShotRecord } from "../game/types";
 import { GOLF_COURSES } from "./courses";
-
-const GOLF_LOSER_GULPS = 2;
 
 function orderAllPlayers(g: GameState): number[] {
   const n = g.playersPublic.length;
@@ -36,6 +34,7 @@ export function startGolfRound(g: GameState): void {
     positions,
     strokeCounts,
     shots: [],
+    finishedSlugs: [],
   };
   g.phase = "golf";
 }
@@ -45,13 +44,31 @@ export function golfActiveSlug(g: GameState): string {
   return g.playersPublic[gl.playerIdx].slug;
 }
 
+// Moves the turn to the next player around the table who hasn't sunk
+// their ball yet — a finished player keeps their final position/stroke
+// count on the board but is skipped forever after, same idea as folded
+// players in the card rounds. Only called once the caller has already
+// confirmed at least one player is still in play, so this always finds
+// someone and terminates within one lap.
+function advanceToNextActivePlayer(g: GameState): void {
+  const gl = g.golf!;
+  const n = gl.turnOrder.length;
+  for (let i = 1; i <= n; i++) {
+    const idx = gl.turnOrder[(gl.turnPointer + i) % n];
+    if (!gl.finishedSlugs.includes(g.playersPublic[idx].slug)) {
+      gl.turnPointer = (gl.turnPointer + i) % n;
+      gl.playerIdx = idx;
+      return;
+    }
+  }
+}
+
 // Records a shot the active player's own client already simulated (see
 // lib/golf/physics.ts — deterministic, so there's nothing to redo
-// server-side) and either resolves the round if it sank, or hands the
-// turn to the next player around the table. turnPointer only ever
-// increases and wraps via modulo, since — unlike every other turn-based
-// mini-game here — this one keeps cycling through players (each shooting
-// from wherever their own ball stopped last time) until someone wins.
+// server-side). Sinking it doesn't end the round by itself — everyone
+// plays their own hole out, and the final ranking (see resolveGolfRound)
+// is by stroke count, not by who finished first, so a sunk ball just
+// marks that player done and hands the turn to whoever's still playing.
 export function applyGolfShot(g: GameState, slug: string, path: GolfPoint[], finalPos: GolfPoint, sunk: boolean): void {
   const gl = g.golf!;
   const player = g.playersPublic.find((p) => p.slug === slug)!;
@@ -63,27 +80,44 @@ export function applyGolfShot(g: GameState, slug: string, path: GolfPoint[], fin
   gl.shots = [...gl.shots, shot];
 
   if (sunk) {
-    gl.winnerSlug = slug;
-    resolveGolfRound(g, slug, strokeNumber);
+    gl.finishedSlugs = [...gl.finishedSlugs, slug];
+  }
+
+  if (gl.finishedSlugs.length >= g.playersPublic.length) {
+    resolveGolfRound(g);
     return;
   }
 
-  gl.turnPointer += 1;
-  gl.playerIdx = gl.turnOrder[gl.turnPointer % gl.turnOrder.length];
+  advanceToNextActivePlayer(g);
 }
 
-function resolveGolfRound(g: GameState, winnerSlug: string, strokes: number): void {
-  const winner = g.playersPublic.find((p) => p.slug === winnerSlug)!;
-  const losers = g.playersPublic.filter((p) => p.slug !== winnerSlug);
-  losers.forEach((p) => {
-    p.gulpsTotal += GOLF_LOSER_GULPS;
+// Ranked by strokes ascending, dense (tied stroke counts share a rank,
+// the next distinct value takes the very next rank — no gaps). Gulps are
+// rank - 1, so a clean 1st place drinks nothing and, in the extreme case
+// where everyone ties, everyone is 1st and nobody drinks.
+function resolveGolfRound(g: GameState): void {
+  const gl = g.golf!;
+  const sorted = g.playersPublic
+    .map((p) => ({ slug: p.slug, name: p.name, strokes: gl.strokeCounts[p.slug] ?? 0 }))
+    .sort((a, b) => a.strokes - b.strokes);
+
+  const ranking: GolfRankingEntry[] = [];
+  let rank = 0;
+  let lastStrokes: number | null = null;
+  sorted.forEach((entry) => {
+    if (lastStrokes === null || entry.strokes !== lastStrokes) {
+      rank += 1;
+      lastStrokes = entry.strokes;
+    }
+    ranking.push({ slug: entry.slug, name: entry.name, strokes: entry.strokes, rank, gulps: rank - 1 });
   });
 
-  g.lastResults = {
-    type: "golf",
-    winner: winner.name,
-    losers: losers.map((p) => p.name),
-    golfStrokes: strokes,
-  };
+  ranking.forEach((entry) => {
+    if (entry.gulps > 0) {
+      g.playersPublic.find((p) => p.slug === entry.slug)!.gulpsTotal += entry.gulps;
+    }
+  });
+
+  g.lastResults = { type: "golf", golfRanking: ranking };
   g.phase = "showdown";
 }

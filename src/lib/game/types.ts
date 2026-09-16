@@ -127,9 +127,11 @@ export interface LastResults {
   blackjackDealerCards?: Card[];
   blackjackDealerTotal?: number;
   blackjackDealerBust?: boolean;
-  // "golf" (Mini-golf) — winner/losers already cover who drinks, this is
-  // just the extra flavor detail ("en N coups") the result screen shows.
-  golfStrokes?: number;
+  // "golf" (Mini-golf) — everyone plays out their own hole, so the result
+  // is a full ranked leaderboard by strokes (ties share a rank) rather
+  // than the generic single winner/losers shape every other mini-game
+  // uses.
+  golfRanking?: GolfRankingEntry[];
 }
 
 export type QuizQuestionType = "capital" | "flag" | "date";
@@ -546,7 +548,23 @@ export interface GolfRoundState {
   // Full shot history in the order they happened — same "replay one at a
   // time" mechanism as dice's rolls, driven by the client's own shownCount.
   shots: GolfShotRecord[];
-  winnerSlug?: string;
+  // Slugs that have sunk their ball, in the order they finished — skipped
+  // when the turn cycles round (see nextTurnIdx in lib/golf/engine.ts).
+  // The round only resolves once every player is in here; finishing first
+  // doesn't end it, only strokeCounts at that point does (see
+  // GolfRankingEntry) — order of finishing has no bearing on the result.
+  finishedSlugs: string[];
+}
+
+export interface GolfRankingEntry {
+  slug: string;
+  name: string;
+  strokes: number;
+  // Dense rank (1 = best); tied stroke counts share a rank and the next
+  // rank isn't skipped, e.g. two players tied for 2nd are both rank 2 and
+  // whoever's next is rank 3, not 4.
+  rank: number;
+  gulps: number; // rank - 1, so a sole 1st place drinks nothing
 }
 
 export type CulSecRule = "last" | "first";

@@ -67,7 +67,7 @@ export const ROUND_TYPES: RoundType[] = [
   {
     id: "golf",
     label: "Mini-golf",
-    tagline: "Vise, tire, rentre la balle avant les autres. Le premier trou gagne, les autres boivent.",
+    tagline: "Vise, tire, rentre ta balle. Classement au nombre de coups : le mieux classé ne boit pas.",
     icon: "⛳",
     cards: 0,
   },

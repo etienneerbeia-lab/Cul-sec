@@ -1367,3 +1367,11 @@ label.field-label {
   text-align: center;
   margin-top: 10px;
 }
+.golf-cancel-label {
+  fill: #d8d8e0;
+  font-size: 15px;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.55);
+  stroke-width: 3px;
+}
