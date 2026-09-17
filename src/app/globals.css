@@ -1343,9 +1343,27 @@ label.field-label {
   stroke-dasharray: 3 4;
 }
 .golf-water {
-  fill: #2a6fb0;
+  fill: url(#golf-water-gradient);
   stroke: #1c4d7d;
-  stroke-width: 1;
+  stroke-width: 1.5;
+}
+.golf-water-ripple {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.4);
+  stroke-width: 1.5;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: golf-water-ripple 2.6s ease-out infinite;
+}
+@keyframes golf-water-ripple {
+  0% {
+    transform: scale(0.3);
+    opacity: 0.65;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
 }
 .golf-wind {
   fill: rgba(111, 177, 240, 0.1);
@@ -1376,6 +1394,26 @@ label.field-label {
     opacity: 1;
   }
 }
+.golf-wind-particle {
+  fill: rgba(236, 230, 245, 0.6);
+  animation: golf-wind-particle-drift 1.8s linear infinite;
+}
+@keyframes golf-wind-particle-drift {
+  0% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.85;
+  }
+  85% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy));
+    opacity: 0;
+  }
+}
 .golf-teleporter {
   fill: #7a4fd1;
   stroke: #c9a8ff;
@@ -1390,13 +1428,44 @@ label.field-label {
 .golf-obstacle {
   stroke-width: 2;
 }
-.golf-tree {
-  fill: #2f8f52;
+.golf-tree-shadow {
+  fill: rgba(0, 0, 0, 0.28);
+}
+.golf-tree-trunk {
+  fill: #5c3d22;
+  stroke: #3c2714;
+  stroke-width: 1;
+}
+.golf-tree-canopy {
+  fill: url(#golf-tree-gradient);
   stroke: #1a5c33;
+  stroke-width: 1.5;
+}
+.golf-bumper-shadow {
+  fill: rgba(0, 0, 0, 0.22);
 }
 .golf-bumper {
-  fill: #e0568c;
-  stroke: #f4c9dd;
+  fill: url(#golf-bumper-gradient);
+  stroke: #a83864;
+  stroke-width: 1.5;
+}
+.golf-bumper-flash {
+  fill: none;
+  stroke: #ffe3ef;
+  stroke-width: 3;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: golf-bumper-flash 220ms ease-out forwards;
+}
+@keyframes golf-bumper-flash {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.7);
+    opacity: 0;
+  }
 }
 .golf-hole {
   fill: #0b1a10;
@@ -1485,6 +1554,123 @@ label.field-label {
   overflow-y: auto;
 }
 .golf-results-list {
+  margin-top: 14px;
+  text-align: left;
+}
+
+/* Tir à l'arc */
+.archery-wind-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+  padding: 8px 12px;
+  background: rgba(236, 230, 245, 0.06);
+  border: 1px solid rgba(236, 230, 245, 0.15);
+  border-radius: 12px;
+}
+.archery-wind-icon {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  color: var(--gold);
+  transition: transform 0.2s ease;
+}
+.archery-wind-text {
+  flex: 1;
+  min-width: 0;
+}
+.archery-wind-label {
+  font-size: 0.88rem;
+  color: var(--cream);
+  font-weight: 600;
+}
+.archery-wind-gauge {
+  margin-top: 4px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(236, 230, 245, 0.15);
+  overflow: hidden;
+}
+.archery-wind-gauge-fill {
+  height: 100%;
+  background: var(--gold);
+  border-radius: 3px;
+}
+.archery-board-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 8px;
+}
+.archery-board {
+  width: 100%;
+  height: auto;
+  /* Leaves room above (table-status + wind banner) and below (Tirer
+     button, turn hint) so the whole screen fits one viewport without
+     scrolling — same dvh-based budget as .golf-course. */
+  max-height: min(46dvh, 380px);
+  border-radius: 16px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+  touch-action: none;
+  display: block;
+}
+.archery-backdrop {
+  fill: var(--felt);
+}
+.archery-ring {
+  stroke: rgba(0, 0, 0, 0.25);
+  stroke-width: 1;
+}
+.archery-ring-outer {
+  fill: var(--cream);
+}
+.archery-ring-second {
+  fill: var(--felt-dark);
+}
+.archery-ring-third {
+  fill: var(--wine);
+}
+.archery-ring-fourth {
+  fill: var(--wine-bright);
+}
+.archery-ring-bullseye {
+  fill: var(--gold);
+}
+.archery-archer {
+  fill: var(--muted);
+  opacity: 0.5;
+}
+.archery-arrow {
+  opacity: 0.95;
+}
+.archery-arrow-moving {
+  filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.5));
+}
+.archery-reticle-ring {
+  fill: none;
+  stroke: var(--offwhite);
+  stroke-width: 2;
+  stroke-dasharray: 4 3;
+}
+.archery-reticle-cross {
+  stroke: var(--offwhite);
+  stroke-width: 1.5;
+}
+.archery-fire-btn {
+  margin-top: 10px;
+  width: 100%;
+}
+.archery-turn-hint {
+  text-align: center;
+  margin-top: 10px;
+}
+.archery-results-card {
+  max-width: 360px;
+  max-height: 80dvh;
+  overflow-y: auto;
+}
+.archery-results-list {
   margin-top: 14px;
   text-align: left;
 }
