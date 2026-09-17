@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { GameState, GolfPoint, GolfShotRecord } from "@/lib/game/types";
+import type { GameState, GolfPoint, GolfShotRecord, GolfWindZone } from "@/lib/game/types";
 import { golfCourseById } from "@/lib/golf/courses";
 import { GOLF_MAX_PULL, GOLF_STEP_DT, simulateShot, velocityFromPull } from "@/lib/golf/physics";
 
@@ -181,6 +181,12 @@ function GolfBoard({
   // starts its replay at the right spot without needing a synchronous
   // setState in an effect body.
   const [animPos, setAnimPos] = useState<GolfPoint | null>(() => pendingShot?.path[0] ?? null);
+  // Drives the sink flourish (shrink/pop, particle burst, board shake —
+  // see the .golf-ball-sinking/.golf-sink-particle/.golf-course-shaking
+  // CSS) once the rolled-in ball reaches the end of its path. Purely
+  // cosmetic and CSS-driven (cheap on mobile) — this just flips the class
+  // on for the ~420ms the animation runs.
+  const [sinking, setSinking] = useState(false);
 
   // Plays pendingShot.path back in real time (the path was sampled at
   // physics.GOLF_STEP_DT, i.e. 60/s — stepping through it by elapsed wall
@@ -201,7 +207,12 @@ function GolfBoard({
       const idx = Math.floor(((now - start) / 1000) / GOLF_STEP_DT);
       if (idx >= path.length - 1) {
         setAnimPos(path[path.length - 1]);
-        holdTimer = setTimeout(onShotAnimDone, 500);
+        if (pendingShot!.sunk) {
+          setSinking(true);
+          holdTimer = setTimeout(onShotAnimDone, 420);
+        } else {
+          holdTimer = setTimeout(onShotAnimDone, 500);
+        }
         return;
       }
       setAnimPos(path[idx]);
@@ -254,7 +265,7 @@ function GolfBoard({
   return (
     <svg
       ref={svgRef}
-      className="golf-course"
+      className={sinking ? "golf-course golf-course-shaking" : "golf-course"}
       viewBox={`0 0 ${course.width} ${course.height}`}
       style={{ touchAction: "none" }}
       onPointerDown={handlePointerDown}
@@ -263,8 +274,8 @@ function GolfBoard({
       onPointerCancel={handlePointerUp}
     >
       <rect x={0} y={0} width={course.width} height={course.height} className="golf-turf" />
-      {course.slopes.map((z, i) => (
-        <circle key={i} cx={z.x} cy={z.y} r={z.radius} className="golf-slope" />
+      {course.windZones.map((z, i) => (
+        <WindZoneMarker key={i} zone={z} />
       ))}
       {course.sandZones.map((z, i) => (
         <circle key={i} cx={z.x} cy={z.y} r={z.radius} className="golf-sand" />
@@ -298,15 +309,24 @@ function GolfBoard({
         if (!isMoving && finishedSlugs.includes(p.slug)) return null;
         const pos = isMoving ? (animPos ?? positions[p.slug]) : positions[p.slug];
         if (!pos) return null;
+        const isSinkingThisBall = isMoving && sinking;
         return (
-          <circle
-            key={p.slug}
-            cx={pos.x}
-            cy={pos.y}
-            r={course.ballRadius}
-            fill={BALL_COLORS[i % BALL_COLORS.length]}
-            className={isMoving ? "golf-ball golf-ball-moving" : "golf-ball"}
-          />
+          <g key={p.slug}>
+            <circle
+              cx={pos.x}
+              cy={pos.y}
+              r={course.ballRadius}
+              fill={BALL_COLORS[i % BALL_COLORS.length]}
+              className={
+                isSinkingThisBall
+                  ? "golf-ball golf-ball-sinking"
+                  : isMoving
+                    ? "golf-ball golf-ball-moving"
+                    : "golf-ball"
+              }
+            />
+            {isSinkingThisBall && <SinkParticles center={course.hole} />}
+          </g>
         );
       })}
 
@@ -333,5 +353,68 @@ function GolfBoard({
         </marker>
       </defs>
     </svg>
+  );
+}
+
+// A short burst of specks around the hole the instant a ball sinks —
+// pure CSS (transform + opacity via .golf-sink-particle's keyframes), so
+// it's cheap even on a phone, and never re-triggers itself since the
+// parent only renders this while golf-ball-sinking's short window is
+// active.
+function SinkParticles({ center }: { center: GolfPoint }) {
+  const specks = [
+    { dx: 14, dy: -10 },
+    { dx: -13, dy: -11 },
+    { dx: 15, dy: 8 },
+    { dx: -15, dy: 7 },
+    { dx: 3, dy: -16 },
+    { dx: -4, dy: 15 },
+  ];
+  return (
+    <>
+      {specks.map((s, i) => (
+        <circle
+          key={i}
+          cx={center.x}
+          cy={center.y}
+          r={2.4}
+          className="golf-sink-particle"
+          style={{ "--px": `${s.dx}px`, "--py": `${s.dy}px`, animationDelay: `${i * 15}ms` } as React.CSSProperties}
+        />
+      ))}
+    </>
+  );
+}
+
+// Renders a wind zone as a tinted band with a small grid of chevrons
+// pointing the way it pushes — .golf-wind-arrow's CSS animation nudges
+// each one forward and back along that same direction to read as motion
+// without any JS-driven per-frame work.
+function WindZoneMarker({ zone }: { zone: GolfWindZone }) {
+  const angle = (Math.atan2(zone.dirY, zone.dirX) * 180) / Math.PI;
+  const cols = Math.max(1, Math.round(zone.width / 90));
+  const rows = Math.max(1, Math.round(zone.height / 90));
+  const points: GolfPoint[] = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      points.push({
+        x: zone.x + ((c + 0.5) * zone.width) / cols,
+        y: zone.y + ((r + 0.5) * zone.height) / rows,
+      });
+    }
+  }
+  return (
+    <>
+      <rect x={zone.x} y={zone.y} width={zone.width} height={zone.height} className="golf-wind" />
+      {points.map((p, i) => (
+        <path
+          key={i}
+          d="M-7,-6 L5,0 L-7,6"
+          className="golf-wind-arrow"
+          transform={`translate(${p.x} ${p.y}) rotate(${angle})`}
+          style={{ animationDelay: `${i * 120}ms` }}
+        />
+      ))}
+    </>
   );
 }

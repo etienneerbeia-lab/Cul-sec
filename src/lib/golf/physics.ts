@@ -11,6 +11,7 @@ const SAND_DRAG_PER_SEC = 7; // much stronger decay while the ball's center is o
 const STOP_SPEED = 8; // units/s — below this the ball is considered at rest
 const BOUNCE_RESTITUTION = 0.82; // energy kept (as speed) after bouncing off a wall/bumper
 const SINK_SPEED_THRESHOLD = 150; // units/s — too fast over the hole just lips out
+const WIND_STRENGTH = 0.6; // acceleration (units/s^2) per unit of entry speed while inside a wind zone
 
 export const GOLF_MAX_PULL = 110; // course units — how far back the slingshot drag maxes out
 export const GOLF_MAX_SPEED = 340; // units/s at full pull
@@ -57,20 +58,27 @@ export function simulateShot(course: GolfCourse, startPos: GolfPoint, velocity: 
   let sunk = false;
   let wentInWater = false;
   let teleported = false;
+  // One entry-speed-derived push magnitude per wind zone, captured the
+  // first time the ball enters it this shot and reused for as long as it
+  // stays inside (see GolfWindZone's own comment) — undefined until then.
+  const windMagnitudes: (number | undefined)[] = course.windZones.map(() => undefined);
 
   for (let step = 0; step < MAX_STEPS; step++) {
     const inSand = course.sandZones.some((z) => Math.hypot(pos.x - z.x, pos.y - z.y) < z.radius);
     const drag = inSand ? SAND_DRAG_PER_SEC : DRAG_PER_SEC;
     v = { x: v.x * (1 - drag * GOLF_STEP_DT), y: v.y * (1 - drag * GOLF_STEP_DT) };
 
-    // A slope is a constant push on velocity, applied while the ball
-    // sits over it — gentle enough to curve a trajectory, not redirect
-    // it outright.
-    for (const slope of course.slopes) {
-      if (Math.hypot(pos.x - slope.x, pos.y - slope.y) < slope.radius) {
-        v = { x: v.x + slope.forceX * GOLF_STEP_DT, y: v.y + slope.forceY * GOLF_STEP_DT };
-      }
-    }
+    course.windZones.forEach((zone, i) => {
+      const inside = pos.x >= zone.x && pos.x <= zone.x + zone.width && pos.y >= zone.y && pos.y <= zone.y + zone.height;
+      if (!inside) return;
+      if (windMagnitudes[i] === undefined) windMagnitudes[i] = len(v) * WIND_STRENGTH;
+      const mag = windMagnitudes[i]!;
+      const dirLen = Math.hypot(zone.dirX, zone.dirY) || 1;
+      v = {
+        x: v.x + (zone.dirX / dirLen) * mag * GOLF_STEP_DT,
+        y: v.y + (zone.dirY / dirLen) * mag * GOLF_STEP_DT,
+      };
+    });
 
     const speed = len(v);
     if (speed < STOP_SPEED) {

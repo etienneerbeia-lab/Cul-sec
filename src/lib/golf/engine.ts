@@ -95,12 +95,36 @@ export function applyGolfShot(
     gl.finishedSlugs = [...gl.finishedSlugs, slug];
   }
 
+  eliminateHopelessLoneSurvivor(g);
+
   if (gl.finishedSlugs.length >= g.playersPublic.length) {
     resolveGolfRound(g);
     return;
   }
 
   advanceToNextActivePlayer(g);
+}
+
+// Once exactly one player is still playing, there's no point making them
+// finish the hole if they've already taken as many strokes as the best
+// score on the board — one more stroke can only match or worsen that,
+// never actually win, since strokes only ever add up. Their final score
+// is just whatever they've taken so far, unfinished hole or not. A player
+// who's still one stroke behind the leader (they act later in turn order,
+// so they haven't had their tying attempt yet) keeps playing — they still
+// have a real shot at tying or beating it. Checked after every shot, not
+// just sinks, since a miss can be the one that pushes them past hope too.
+function eliminateHopelessLoneSurvivor(g: GameState): void {
+  const gl = g.golf!;
+  if (gl.finishedSlugs.length === 0) return;
+  const remaining = g.playersPublic.filter((p) => !gl.finishedSlugs.includes(p.slug));
+  if (remaining.length !== 1) return;
+
+  const lastPlayer = remaining[0];
+  const bestScore = Math.min(...gl.finishedSlugs.map((s) => gl.strokeCounts[s] ?? Infinity));
+  if ((gl.strokeCounts[lastPlayer.slug] ?? 0) >= bestScore) {
+    gl.finishedSlugs = [...gl.finishedSlugs, lastPlayer.slug];
+  }
 }
 
 // Ranked by strokes ascending, dense (tied stroke counts share a rank,

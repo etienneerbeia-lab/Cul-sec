@@ -532,15 +532,19 @@ export interface GolfTeleporter {
   targetY: number;
 }
 
-// A gentle, constant push (course units/s^2) applied to the ball's
-// velocity every step its center is inside the circle — a slope that
-// curves the trajectory rather than a hard collision.
-export interface GolfSlopeZone {
+// A rectangular gust — while the ball's center is inside, physics.ts adds
+// a push in (dirX, dirY)'s direction on top of whatever the ball was
+// already doing (never replaces its trajectory). The push's strength is
+// captured once, from the ball's speed at the moment it first enters this
+// zone this shot, and reused for as long as it stays inside — a ball
+// already flying fast gets shoved hard, a slow one barely nudged.
+export interface GolfWindZone {
   x: number;
   y: number;
-  radius: number;
-  forceX: number;
-  forceY: number;
+  width: number;
+  height: number;
+  dirX: number;
+  dirY: number;
 }
 
 export interface GolfCourse {
@@ -560,7 +564,7 @@ export interface GolfCourse {
   sandZones: GolfSandZone[];
   waterZones: GolfWaterZone[];
   teleporters: GolfTeleporter[];
-  slopes: GolfSlopeZone[];
+  windZones: GolfWindZone[];
 }
 
 // One full shot, computed client-side (deterministic physics — see

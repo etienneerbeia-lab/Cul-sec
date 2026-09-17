@@ -1347,11 +1347,34 @@ label.field-label {
   stroke: #1c4d7d;
   stroke-width: 1;
 }
-.golf-slope {
-  fill: rgba(224, 86, 140, 0.1);
-  stroke: rgba(224, 86, 140, 0.35);
+.golf-wind {
+  fill: rgba(111, 177, 240, 0.1);
+  stroke: rgba(111, 177, 240, 0.3);
   stroke-width: 1;
   stroke-dasharray: 2 5;
+}
+.golf-wind-arrow {
+  fill: none;
+  stroke: rgba(236, 230, 245, 0.8);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: golf-wind-flow 1.1s ease-in-out infinite;
+}
+/* Staggered per-arrow via animationDelay (set inline) so the pulses read
+   as a wave traveling across the zone rather than all arrows blinking in
+   sync — cheaper and simpler than animating position, same "there's
+   movement here" read. */
+@keyframes golf-wind-flow {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 .golf-teleporter {
   fill: #7a4fd1;
@@ -1387,6 +1410,62 @@ label.field-label {
 .golf-ball-moving {
   stroke: var(--offwhite);
   stroke-width: 2;
+}
+.golf-ball-sinking {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: golf-ball-sink 420ms ease-in forwards;
+}
+@keyframes golf-ball-sink {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  35% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0);
+    opacity: 0;
+  }
+}
+.golf-sink-particle {
+  fill: var(--gold);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: golf-sink-particle 420ms ease-out forwards;
+}
+@keyframes golf-sink-particle {
+  0% {
+    transform: scale(0.5) translate(0, 0);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1) translate(var(--px), var(--py));
+    opacity: 0;
+  }
+}
+.golf-course-shaking {
+  animation: golf-course-shake 300ms ease-in-out;
+}
+@keyframes golf-course-shake {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  20% {
+    transform: translate(2px, -1.5px);
+  }
+  40% {
+    transform: translate(-2px, 1.5px);
+  }
+  60% {
+    transform: translate(1.5px, -2px);
+  }
+  80% {
+    transform: translate(-1.5px, 1px);
+  }
 }
 .golf-turn-hint {
   text-align: center;

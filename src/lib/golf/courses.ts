@@ -5,63 +5,47 @@ import type { GolfCourse } from "../game/types";
 // need to be internally consistent with the physics constants in
 // physics.ts (BALL_RADIUS, MAX_PULL, etc., all in the same units).
 //
-// Roughly ordered easy -> hard below, though pickCourse in engine.ts
-// draws at random (just avoiding an immediate repeat) — there's no
-// enforced progression, same as every other mini-game's round selection.
+// Every course carries at least one obstacle type — there's no "empty"
+// course anymore — and "Le Chaos" is the one that combines every
+// mechanic in the game at once. Roughly ordered easy -> hard below,
+// though pickCourse in engine.ts draws at random (just avoiding an
+// immediate repeat) — there's no enforced progression, same as every
+// other mini-game's round selection.
 export const GOLF_COURSES: GolfCourse[] = [
-  {
-    id: "chicane-1",
-    label: "Le Chicane",
-    width: 340,
-    height: 620,
-    start: { x: 170, y: 580 },
-    hole: { x: 170, y: 60 },
-    holeRadius: 14,
-    ballRadius: 8,
-    // Two walls jutting from opposite sides, offset in height, forcing a
-    // slight S-curve between the tee and the hole.
-    walls: [
-      { x1: 0, y1: 380, x2: 220, y2: 380 },
-      { x1: 120, y1: 220, x2: 340, y2: 220 },
-    ],
-    obstacles: [],
-    sandZones: [],
-    waterZones: [],
-    teleporters: [],
-    slopes: [],
-  },
   {
     id: "foret-1",
     label: "La Forêt",
     width: 340,
-    height: 620,
-    start: { x: 170, y: 580 },
+    height: 760,
+    start: { x: 170, y: 720 },
     hole: { x: 170, y: 60 },
     holeRadius: 14,
     ballRadius: 8,
     walls: [],
-    // A loose slalom of trees between tee and hole — no walls needed,
+    // A long slalom of trees between tee and hole — no walls needed,
     // weaving around obstacles that stop the ball dead on contact is the
     // whole challenge.
     obstacles: [
-      { kind: "tree", x: 100, y: 470, radius: 22 },
-      { kind: "tree", x: 250, y: 430, radius: 18 },
-      { kind: "tree", x: 190, y: 340, radius: 24 },
-      { kind: "tree", x: 80, y: 260, radius: 18 },
-      { kind: "tree", x: 260, y: 200, radius: 22 },
-      { kind: "tree", x: 150, y: 140, radius: 16 },
+      { kind: "tree", x: 100, y: 620, radius: 22 },
+      { kind: "tree", x: 250, y: 560, radius: 18 },
+      { kind: "tree", x: 190, y: 480, radius: 24 },
+      { kind: "tree", x: 80, y: 400, radius: 18 },
+      { kind: "tree", x: 260, y: 320, radius: 22 },
+      { kind: "tree", x: 120, y: 240, radius: 18 },
+      { kind: "tree", x: 230, y: 160, radius: 20 },
+      { kind: "tree", x: 150, y: 100, radius: 16 },
     ],
     sandZones: [],
     waterZones: [],
     teleporters: [],
-    slopes: [],
+    windZones: [],
   },
   {
     id: "bunker-1",
     label: "Le Bunker",
     width: 340,
-    height: 620,
-    start: { x: 170, y: 580 },
+    height: 760,
+    start: { x: 170, y: 720 },
     hole: { x: 170, y: 60 },
     holeRadius: 14,
     ballRadius: 8,
@@ -70,66 +54,93 @@ export const GOLF_COURSES: GolfCourse[] = [
     // guards the green itself right before the hole.
     walls: [],
     obstacles: [
-      { kind: "bumper", x: 55, y: 470, radius: 20 },
-      { kind: "bumper", x: 285, y: 470, radius: 20 },
+      { kind: "bumper", x: 55, y: 610, radius: 20 },
+      { kind: "bumper", x: 285, y: 610, radius: 20 },
+      { kind: "bumper", x: 170, y: 260, radius: 18 },
     ],
     sandZones: [
-      { x: 170, y: 350, radius: 95 },
-      { x: 170, y: 140, radius: 55 },
+      { x: 170, y: 480, radius: 100 },
+      { x: 170, y: 170, radius: 60 },
     ],
     waterZones: [],
     teleporters: [],
-    slopes: [],
+    windZones: [],
   },
   {
     id: "etang-1",
     label: "L'Étang",
     width: 340,
-    height: 620,
-    start: { x: 170, y: 580 },
+    height: 780,
+    start: { x: 170, y: 740 },
     hole: { x: 170, y: 60 },
     holeRadius: 14,
     ballRadius: 8,
-    // A pond dead center the ball must be routed around — falling in
-    // sends it back to where it was before the shot — flanked by
-    // pinball bumpers that make a too-direct line risky.
+    // A pond the ball must be routed around — falling in sends it back
+    // to where it was before the shot — flanked by pinball bumpers that
+    // make a too-direct line risky.
     walls: [],
     obstacles: [
-      { kind: "bumper", x: 90, y: 420, radius: 18 },
-      { kind: "bumper", x: 250, y: 420, radius: 18 },
-      { kind: "bumper", x: 170, y: 190, radius: 20 },
+      { kind: "bumper", x: 90, y: 560, radius: 18 },
+      { kind: "bumper", x: 250, y: 560, radius: 18 },
+      { kind: "bumper", x: 170, y: 230, radius: 20 },
     ],
     sandZones: [],
-    waterZones: [{ x: 170, y: 320, radius: 85 }],
+    waterZones: [{ x: 170, y: 430, radius: 95 }],
     teleporters: [],
-    slopes: [],
+    windZones: [],
   },
   {
-    id: "labyrinthe-1",
-    label: "Le Labyrinthe",
+    id: "venteux-1",
+    label: "Le Venteux",
     width: 340,
-    height: 620,
-    start: { x: 170, y: 580 },
+    height: 820,
+    start: { x: 170, y: 780 },
     hole: { x: 170, y: 60 },
     holeRadius: 14,
     ballRadius: 8,
-    // A triple chicane — the "long way" — with a one-shot teleporter
-    // pair shortcutting the middle leg for whoever finds it, and a slope
-    // curving the final approach to the hole. The hardest course: every
-    // mechanic except sand/water shows up at once.
+    // Two walls make a loose chicane; two crosswinds (opposite
+    // directions) shove the ball sideways as it crosses each corridor,
+    // so the "safe" line through the wall gaps keeps moving depending on
+    // how hard you hit it.
     walls: [
-      { x1: 0, y1: 480, x2: 220, y2: 480 },
-      { x1: 120, y1: 340, x2: 340, y2: 340 },
-      { x1: 0, y1: 200, x2: 220, y2: 200 },
+      { x1: 0, y1: 560, x2: 210, y2: 560 },
+      { x1: 130, y1: 380, x2: 340, y2: 380 },
     ],
     obstacles: [],
     sandZones: [],
     waterZones: [],
-    teleporters: [
-      { x: 280, y: 460, radius: 18, targetX: 280, targetY: 220 },
-      { x: 280, y: 220, radius: 18, targetX: 280, targetY: 460 },
+    teleporters: [],
+    windZones: [
+      { x: 0, y: 640, width: 340, height: 100, dirX: 1, dirY: 0 },
+      { x: 0, y: 200, width: 340, height: 100, dirX: -1, dirY: 0 },
     ],
-    slopes: [{ x: 170, y: 130, radius: 70, forceX: 55, forceY: 0 }],
+  },
+  {
+    id: "chaos-1",
+    label: "Le Chaos",
+    width: 340,
+    height: 940,
+    start: { x: 170, y: 900 },
+    hole: { x: 170, y: 60 },
+    holeRadius: 14,
+    ballRadius: 8,
+    // The gauntlet — every mechanic in the game, one after another: a
+    // gate of trees, a bumper, a sand trap, a pond, a crosswind, then a
+    // one-shot teleporter shortcut right before the green. The longest
+    // and hardest course by a wide margin.
+    walls: [],
+    obstacles: [
+      { kind: "tree", x: 100, y: 800, radius: 20 },
+      { kind: "tree", x: 250, y: 800, radius: 20 },
+      { kind: "bumper", x: 170, y: 680, radius: 20 },
+    ],
+    sandZones: [{ x: 170, y: 560, radius: 80 }],
+    waterZones: [{ x: 170, y: 420, radius: 75 }],
+    teleporters: [
+      { x: 60, y: 220, radius: 16, targetX: 280, targetY: 150 },
+      { x: 280, y: 150, radius: 16, targetX: 60, targetY: 220 },
+    ],
+    windZones: [{ x: 0, y: 300, width: 340, height: 90, dirX: 1, dirY: 0 }],
   },
 ];
 
