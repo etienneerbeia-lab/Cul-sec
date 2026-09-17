@@ -20,7 +20,8 @@ export type RoundTypeId =
   | "dice"
   | "undercover"
   | "blackjack"
-  | "golf";
+  | "golf"
+  | "archery";
 
 export interface RoundType {
   id: RoundTypeId;
@@ -61,6 +62,7 @@ export type GamePhase =
   | "undercoverGuess"
   | "blackjack"
   | "golf"
+  | "archery"
   | "final";
 
 export type Street = "single" | "preflop" | "flop" | "turn" | "river";
@@ -132,6 +134,10 @@ export interface LastResults {
   // than the generic single winner/losers shape every other mini-game
   // uses.
   golfRanking?: GolfRankingEntry[];
+  // "archery" (Tir à l'arc) — same shape as golf's leaderboard (everyone
+  // ranked, ties share a rank), just keyed on distance-to-center instead
+  // of strokes.
+  archeryRanking?: ArcheryRankingEntry[];
 }
 
 export type QuizQuestionType = "capital" | "flag" | "date";
@@ -617,6 +623,53 @@ export interface GolfRankingEntry {
   gulps: number; // rank - 1, so a sole 1st place drinks nothing
 }
 
+// Tir à l'arc — turn-based like dice (one action per player, single pass
+// around the table, nobody gets a second shot), but each shot also carries
+// the wind that was blowing when it was taken, and scoring is by distance
+// to the target's center rather than a win/lose roll.
+export interface ArcheryPoint {
+  x: number;
+  y: number;
+}
+
+export type ArcheryWindDirection = "N" | "S" | "E" | "W" | "NE" | "NW" | "SE" | "SW";
+
+export interface ArcheryWind {
+  direction: ArcheryWindDirection;
+  intensity: number; // 0..1, always > 0 — see randomWind in lib/archery/physics.ts
+}
+
+// Computed entirely server-side from (aim, wind) — see applyArcheryShot's
+// own comment for why this one isn't trusted from the client the way
+// golf's shot physics are.
+export interface ArcheryShotRecord {
+  slug: string;
+  name: string;
+  wind: ArcheryWind; // whatever was blowing for this specific shot
+  aim: ArcheryPoint; // where the player placed their reticle
+  impact: ArcheryPoint; // where the arrow actually landed, after wind deviation
+  path: ArcheryPoint[]; // sampled flight path, for the replay animation
+  distance: number; // impact's distance to the target's center, rounded
+}
+
+export interface ArcheryRoundState {
+  turnOrder: number[]; // playersPublic indices, table order
+  turnPointer: number; // index into turnOrder — ever-increasing, never wraps (one pass only)
+  playerIdx: number;
+  wind: ArcheryWind; // current wind, for whoever's turn it is right now
+  shots: ArcheryShotRecord[]; // in the order they happened — drives the "replay one at a time" UI, same as dice/golf
+}
+
+export interface ArcheryRankingEntry {
+  slug: string;
+  name: string;
+  distance: number;
+  // Dense rank (1 = best); shots within ARCHERY_TIE_TOLERANCE of each
+  // other share a rank.
+  rank: number;
+  gulps: number; // rank - 1, so a sole 1st place drinks nothing
+}
+
 export type CulSecRule = "last" | "first";
 
 export interface GameState {
@@ -662,6 +715,7 @@ export interface GameState {
   undercover?: UndercoverRoundState;
   blackjack?: BlackjackRoundState;
   golf?: GolfRoundState;
+  archery?: ArcheryRoundState;
 }
 
 export interface Player {

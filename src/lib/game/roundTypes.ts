@@ -71,6 +71,13 @@ export const ROUND_TYPES: RoundType[] = [
     icon: "⛳",
     cards: 0,
   },
+  {
+    id: "archery",
+    label: "Tir à l'arc",
+    tagline: "Une flèche chacun, le vent s'en mêle. Le plus loin du centre boit le plus.",
+    icon: "🏹",
+    cards: 0,
+  },
 ];
 
 export function roundTypeById(id: string): RoundType {

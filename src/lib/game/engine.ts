@@ -8,6 +8,7 @@ import { startDiceRound } from "../dice/engine";
 import { startUndercoverRound } from "../undercover/engine";
 import { startBlackjackRound } from "../blackjack/engine";
 import { startGolfRound } from "../golf/engine";
+import { startArcheryRound } from "../archery/engine";
 import type {
   BettingOpts,
   Card,
@@ -127,6 +128,11 @@ export async function confirmRoundIntro(g: GameState, hands: HandStore): Promise
 
   if (rt.id === "golf") {
     startGolfRound(g);
+    return;
+  }
+
+  if (rt.id === "archery") {
+    startArcheryRound(g);
     return;
   }
 
