@@ -135,8 +135,8 @@ export interface LastResults {
   // uses.
   golfRanking?: GolfRankingEntry[];
   // "archery" (Tir à l'arc) — same shape as golf's leaderboard (everyone
-  // ranked, ties share a rank), just keyed on distance-to-center instead
-  // of strokes.
+  // ranked, ties share a rank), keyed on total points across 3 arrows —
+  // sorted descending (higher score wins), unlike golf's ascending strokes.
   archeryRanking?: ArcheryRankingEntry[];
 }
 
@@ -682,10 +682,14 @@ export interface GolfRankingEntry {
   gulps: number; // rank - 1, so a sole 1st place drinks nothing
 }
 
-// Tir à l'arc — turn-based like dice (one action per player, single pass
-// around the table, nobody gets a second shot), but each shot also carries
-// the wind that was blowing when it was taken, and scoring is by distance
-// to the target's center rather than a win/lose roll.
+// Tir à l'arc — turn-based, single pass around the table (nobody gets a
+// second turn), but each turn is 3 arrows shot back to back rather than
+// one action: the active player fires, watches it land, then immediately
+// fires again (fresh wind each time) until their 3rd arrow, at which point
+// the turn moves to the next player. Scoring is by points (10 center down
+// to 0 off the target), summed across a player's 3 arrows.
+export const ARCHERY_ARROWS_PER_TURN = 3;
+
 export interface ArcheryPoint {
   x: number;
   y: number;
@@ -698,34 +702,36 @@ export interface ArcheryWind {
   intensity: number; // 0..1, always > 0 — see randomWind in lib/archery/physics.ts
 }
 
-// Computed entirely server-side from (aim, wind) — see applyArcheryShot's
-// own comment for why this one isn't trusted from the client the way
-// golf's shot physics are.
+// Computed entirely server-side from (aim, wind, power) — see
+// applyArcheryShot's own comment for why this one isn't trusted from the
+// client the way golf's shot physics are.
 export interface ArcheryShotRecord {
   slug: string;
   name: string;
-  wind: ArcheryWind; // whatever was blowing for this specific shot
-  aim: ArcheryPoint; // where the player placed their reticle
-  power: number; // 0..1, how far the bowstring was drawn back
+  arrowNumber: number; // 1..ARCHERY_ARROWS_PER_TURN, this player's Nth arrow this turn
+  wind: ArcheryWind; // whatever was blowing for this specific arrow
+  aim: ArcheryPoint; // where the player placed their reticle at release
+  power: number; // 0..1, how long the draw was held
   impact: ArcheryPoint; // where the arrow actually landed, after the draw and wind deviation
   path: ArcheryPoint[]; // sampled flight path, for the replay animation
-  distance: number; // impact's distance to the target's center, rounded
+  points: number; // 0-10, this arrow's score
 }
 
 export interface ArcheryRoundState {
   turnOrder: number[]; // playersPublic indices, table order
   turnPointer: number; // index into turnOrder — ever-increasing, never wraps (one pass only)
   playerIdx: number;
-  wind: ArcheryWind; // current wind, for whoever's turn it is right now
+  arrowNumber: number; // 1..ARCHERY_ARROWS_PER_TURN — which arrow the active player is about to shoot
+  wind: ArcheryWind; // current wind, regenerated before every single arrow
   shots: ArcheryShotRecord[]; // in the order they happened — drives the "replay one at a time" UI, same as dice/golf
 }
 
 export interface ArcheryRankingEntry {
   slug: string;
   name: string;
-  distance: number;
-  // Dense rank (1 = best); shots within ARCHERY_TIE_TOLERANCE of each
-  // other share a rank.
+  totalScore: number; // sum of this player's ARCHERY_ARROWS_PER_TURN arrows' points
+  // Dense rank (1 = best/highest score); exact totalScore ties share a
+  // rank, the next distinct value takes the very next rank — no gaps.
   rank: number;
   gulps: number; // rank - 1, so a sole 1st place drinks nothing
 }

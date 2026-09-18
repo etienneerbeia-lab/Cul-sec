@@ -12,8 +12,10 @@ export const ARCHERY_RUNWAY_HEIGHT = 80;
 export const ARCHERY_BOARD_HEIGHT = ARCHERY_TARGET_SIZE + ARCHERY_RUNWAY_HEIGHT;
 export const ARCHERY_LAUNCH_POINT: ArcheryPoint = { x: ARCHERY_CENTER.x, y: ARCHERY_BOARD_HEIGHT - 15 };
 
-// Outer -> inner, purely decorative (scoring is continuous distance to
-// center, not which band an arrow lands in).
+// Outer -> inner, purely decorative — scoring (see archeryScoreForDistance
+// below) is a continuous falloff from ARCHERY_OUTER_RADIUS, not which band
+// an arrow visually lands in, but these still line up with 2-point steps
+// (10/8/6/4/2) at each ring's radius for a sane-looking target.
 export const ARCHERY_RINGS: { r: number; cls: string }[] = [
   { r: 150, cls: "outer" },
   { r: 120, cls: "second" },
@@ -27,13 +29,6 @@ export const ARCHERY_RINGS: { r: number; cls: string }[] = [
 // the outer ring, so ignoring the wind is never safe.
 export const ARCHERY_MAX_DEVIATION = 130;
 export const ARCHERY_PATH_SAMPLES = 24;
-
-// Shots within this many units of each other count as tied for ranking —
-// just above float/rounding noise, not a real gameplay margin, so it only
-// ever catches genuine near-exact coincidences (see resolveArcheryRound's
-// own comment in lib/archery/engine.ts for why chaining this is safe at
-// such a small value).
-export const ARCHERY_TIE_TOLERANCE = 0.5;
 
 const WIND_VECTORS: Record<ArcheryWindDirection, ArcheryPoint> = {
   N: { x: 0, y: -1 },
@@ -111,14 +106,15 @@ export interface ArcheryShotResult {
 // on record for this shot, then published as-is so every client just
 // replays the same flight instead of resimulating it.
 //
-// `power` (0..1, from how far the player drew the bowstring back) scales
-// how far toward `aim` the arrow actually travels before it's spent — at
-// power 1 it reaches `aim` exactly (before wind); a weaker draw falls
-// short, landing short of the target along the aim line. Wind deviation
-// scales with power too: a shot that barely leaves the bow spends less
-// time in flight, so it barely drifts either — it just plops down
-// short and close to true, still a bad score, but for a different
-// reason than a full-power shot the wind carried wide.
+// `power` (0..1, from however long the player held the shot charging —
+// see ArcheryScreen's own comment) scales how far toward `aim` the arrow
+// actually travels before it's spent — at power 1 it reaches `aim`
+// exactly (before wind); a weaker charge falls short, landing short of
+// the target along the aim line. Wind deviation scales with power too: a
+// shot that barely leaves the bow spends less time in flight, so it
+// barely drifts either — it just plops down short and close to true,
+// still a bad score, but for a different reason than a full-power shot
+// the wind carried wide.
 export function simulateArcheryShot(aim: ArcheryPoint, wind: ArcheryWind, power: number): ArcheryShotResult {
   const p = Math.max(0, Math.min(1, power));
   const drawnAim = {
@@ -148,4 +144,14 @@ export function simulateArcheryShot(aim: ArcheryPoint, wind: ArcheryWind, power:
 
   const distance = round1(Math.hypot(impact.x - ARCHERY_CENTER.x, impact.y - ARCHERY_CENTER.y));
   return { impact, path, distance };
+}
+
+// Continuous falloff from 10 (dead center) to 0 (at or beyond the outer
+// ring) — smoother than scoring by which discrete ring the impact falls
+// in, but still lines up with ARCHERY_RINGS' radii at each whole-point
+// boundary. Never negative, never above 10.
+export function archeryScoreForDistance(distance: number): number {
+  if (distance >= ARCHERY_OUTER_RADIUS) return 0;
+  const raw = 10 * (1 - distance / ARCHERY_OUTER_RADIUS);
+  return Math.max(0, Math.min(10, Math.round(raw)));
 }

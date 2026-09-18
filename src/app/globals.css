@@ -1922,6 +1922,7 @@ label.field-label {
   border-radius: 3px;
 }
 .archery-board-wrap {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1930,14 +1931,61 @@ label.field-label {
 .archery-board {
   width: 100%;
   height: auto;
-  /* Leaves room above (table-status + wind banner) and below (Tirer
-     button, turn hint) so the whole screen fits one viewport without
-     scrolling — same dvh-based budget as .golf-course. */
-  max-height: min(46dvh, 380px);
+  /* Leaves room above (table-status + progress + wind banner) and below
+     (turn hint) so the whole screen fits one viewport without scrolling —
+     same dvh-based budget as .golf-course. */
+  max-height: min(48dvh, 400px);
   border-radius: 16px;
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
   touch-action: none;
   display: block;
+}
+.archery-progress {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 6px;
+  padding: 0 4px;
+}
+.archery-progress-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--cream);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.archery-progress-dots {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.archery-progress-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid rgba(236, 230, 245, 0.35);
+  background: transparent;
+}
+.archery-progress-dot-done {
+  background: var(--gold);
+  border-color: var(--gold);
+}
+.archery-cancel-btn {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(236, 230, 245, 0.3);
+  background: rgba(20, 16, 24, 0.7);
+  color: var(--offwhite);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }
 .archery-backdrop {
   fill: var(--felt);
@@ -1971,29 +2019,36 @@ label.field-label {
 .archery-arrow-moving {
   filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.5));
 }
-.archery-reticle-ring {
+/* Reticle: a static track ring plus a ring drawn via stroke-dashoffset
+   that fills clockwise as the hold-to-charge power climbs (see
+   ArcheryScreen's chargeTick) — rotated -90deg so it starts filling from
+   straight up rather than from the 3-o'clock default. */
+.archery-reticle-track {
   fill: none;
-  stroke: var(--offwhite);
-  stroke-width: 2;
-  stroke-dasharray: 4 3;
+  stroke: rgba(236, 230, 245, 0.25);
+  stroke-width: 2.5;
+}
+.archery-reticle-charge {
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 3;
+  stroke-linecap: round;
+  transform: rotate(-90deg);
+  transform-box: fill-box;
+  transform-origin: center;
 }
 .archery-reticle-cross {
   stroke: var(--offwhite);
   stroke-width: 1.5;
 }
-.archery-bow-limb {
-  fill: none;
-  stroke: var(--muted);
-  stroke-width: 4;
-  stroke-linecap: round;
-}
-.archery-cancel-label {
-  fill: #d8d8e0;
-  font-size: 15px;
-  font-weight: 600;
+.archery-score-pop {
+  font-size: 42px;
+  font-weight: 800;
+  fill: var(--gold);
   paint-order: stroke;
-  stroke: rgba(0, 0, 0, 0.55);
-  stroke-width: 3px;
+  stroke: rgba(0, 0, 0, 0.65);
+  stroke-width: 5px;
+  stroke-linejoin: round;
 }
 .archery-turn-hint {
   text-align: center;

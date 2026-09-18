@@ -74,7 +74,7 @@ export const ROUND_TYPES: RoundType[] = [
   {
     id: "archery",
     label: "Tir à l'arc",
-    tagline: "Une flèche chacun, le vent s'en mêle. Le plus loin du centre boit le plus.",
+    tagline: "Trois flèches chacun, le vent change à chaque tir. Le plus petit score boit le plus.",
     icon: "🏹",
     cards: 0,
   },
