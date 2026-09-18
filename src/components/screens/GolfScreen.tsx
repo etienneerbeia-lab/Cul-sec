@@ -512,7 +512,7 @@ function GolfBoard({
       {course.waterZones.map((z, i) => (
         <g key={i}>
           {course.theme === "labyrinthe" ? (
-            <circle cx={z.x} cy={z.y} r={z.radius} className="golf-water golf-water-ice-fill" fill="url(#golf-water-ice)" />
+            <circle cx={z.x} cy={z.y} r={z.radius} className="golf-water-ice-fill" fill="url(#golf-water-ice)" />
           ) : (
             <>
               <circle cx={z.x} cy={z.y} r={z.radius} className="golf-water" />
