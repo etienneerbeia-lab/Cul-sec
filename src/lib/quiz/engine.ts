@@ -11,13 +11,15 @@ import { QUIZ_QUESTIONS } from "./questions";
 
 const TYPES = ["capital", "flag", "date"] as const;
 
-// 67% facile / 28% moyen / 5% difficile — keeps the quiz genuinely
-// approachable for a relaxed group instead of drawing uniformly across
-// difficulty. Difficulty 3 is a rare bonus, not the norm.
+// 72% facile / 24% moyen / 4% difficile — nudged down again from an
+// earlier 67/28/5 pass after feedback that hard questions still came up
+// too often; keeps the quiz genuinely approachable for a relaxed group
+// instead of drawing uniformly across difficulty. Difficulty 3 is a rare
+// bonus, not the norm.
 const DIFFICULTY_WEIGHTS: [Difficulty, number][] = [
-  [1, 0.67],
-  [2, 0.28],
-  [3, 0.05],
+  [1, 0.72],
+  [2, 0.24],
+  [3, 0.04],
 ];
 
 function pickWeightedDifficulty(): Difficulty {

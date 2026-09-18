@@ -3,7 +3,7 @@ export type AnswerKind = "year" | "text";
 
 // 1 = facile (connu de la plupart des gens), 2 = moyen (demande un peu de
 // culture générale), 3 = difficile (pointu, à garder rare). Target draw
-// weights are 67/28/5 — see DIFFICULTY_WEIGHTS in src/lib/quiz/engine.ts.
+// weights are 72/24/4 — see DIFFICULTY_WEIGHTS in src/lib/quiz/engine.ts.
 export type Difficulty = 1 | 2 | 3;
 
 export interface QuizQuestion {
