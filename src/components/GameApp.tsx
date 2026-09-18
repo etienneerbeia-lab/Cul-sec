@@ -31,7 +31,7 @@ import UndercoverGuessScreen from "./screens/UndercoverGuessScreen";
 import BlackjackScreen from "./screens/BlackjackScreen";
 import GolfScreen from "./screens/GolfScreen";
 import ArcheryScreen from "./screens/ArcheryScreen";
-import type { ArcheryPoint, GolfPoint } from "@/lib/game/types";
+import type { ArcheryPoint, GolfPoint, GolfStruckBallResult } from "@/lib/game/types";
 
 const POLL_MS = 1500;
 
@@ -287,8 +287,24 @@ export default function GameApp() {
           mySlug={mySlug}
           isHost={isHost}
           busy={busy}
-          onShoot={(path: GolfPoint[], finalPos: GolfPoint, sunk: boolean, wentInWater: boolean) =>
-            runAction(() => apiPost(`/api/rooms/${roomCode}/golf-shot`, { path, finalPos, sunk, wentInWater }))
+          onShoot={(
+            path: GolfPoint[],
+            finalPos: GolfPoint,
+            sunk: boolean,
+            wentInWater: boolean,
+            destroyedObstacle?: number,
+            struckBalls?: GolfStruckBallResult[]
+          ) =>
+            runAction(() =>
+              apiPost(`/api/rooms/${roomCode}/golf-shot`, {
+                path,
+                finalPos,
+                sunk,
+                wentInWater,
+                destroyedObstacle,
+                struckBalls,
+              })
+            )
           }
           onNextRound={() => runAction(() => apiPost(`/api/rooms/${roomCode}/next-round`))}
           onEndNight={() => runAction(() => apiPost(`/api/rooms/${roomCode}/end-night`))}

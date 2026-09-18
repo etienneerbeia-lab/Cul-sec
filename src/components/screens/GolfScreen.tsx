@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { GameState, GolfCourse, GolfPoint, GolfShotRecord, GolfWindZone } from "@/lib/game/types";
+import type {
+  GameState,
+  GolfCourse,
+  GolfObstacle,
+  GolfPoint,
+  GolfShotRecord,
+  GolfStruckBallResult,
+  GolfWindZone,
+} from "@/lib/game/types";
 import { golfCourseById } from "@/lib/golf/courses";
 import { GOLF_MAX_PULL, GOLF_STEP_DT, simulateShot, velocityFromPull } from "@/lib/golf/physics";
 
@@ -13,26 +21,14 @@ const BALL_COLORS = ["#e0568c", "#3ecf8e", "#f4c95d", "#6fb1f0", "#e0568c", "#3e
 // want to bail out of an aim you started.
 const GOLF_CANCEL_POWER = 0.08;
 
-// The camera only ever shows this many course units of height at once
-// (full width, always) instead of the whole hole end to end — courses run
-// 760-940 units tall now, so this is roughly a 2x zoom-in on top of
-// whatever the CSS display size already does. See cameraTargetY for how
-// it tracks the ball.
-const CAMERA_HEIGHT = 420;
+// Drawn bigger than course.ballRadius (which stays the true physics/
+// collision size) purely so balls stay easy to spot now that the whole
+// course is visible at once instead of a zoomed-in camera window — a
+// cosmetic-only embellishment, never fed back into simulateShot.
+const BALL_VISUAL_SCALE = 1.35;
 
 function ordinal(rank: number): string {
   return rank === 1 ? "1er" : `${rank}e`;
-}
-
-// Where the camera window should be centered for a given focus point (the
-// ball currently in play) — clamped so it never shows past either end of
-// the course, and nudged toward the hole (lower y) so a player sees a bit
-// more of what's ahead than what's behind by default.
-function cameraTargetY(focusY: number, course: GolfCourse): number {
-  const half = CAMERA_HEIGHT / 2;
-  const biased = focusY - CAMERA_HEIGHT * 0.12;
-  const maxCenter = Math.max(half, course.height - half);
-  return Math.min(Math.max(biased, half), maxCenter);
 }
 
 export default function GolfScreen({
@@ -48,7 +44,14 @@ export default function GolfScreen({
   mySlug: string;
   isHost: boolean;
   busy: boolean;
-  onShoot: (path: GolfPoint[], finalPos: GolfPoint, sunk: boolean, wentInWater: boolean) => void;
+  onShoot: (
+    path: GolfPoint[],
+    finalPos: GolfPoint,
+    sunk: boolean,
+    wentInWater: boolean,
+    destroyedObstacle?: number,
+    struckBalls?: GolfStruckBallResult[]
+  ) => void;
   onNextRound: () => void;
   onEndNight: () => void;
 }) {
@@ -57,10 +60,6 @@ export default function GolfScreen({
   const activePlayer = game.playersPublic[gl.playerIdx];
   const isMeActive = activePlayer.slug === mySlug && game.phase === "golf";
   const amFinished = gl.finishedSlugs.includes(mySlug);
-  // Whoever's ball is relevant right now — the camera frames itself on
-  // this at rest; a live shot in progress overrides it with the moving
-  // ball's own position instead (see GolfBoard).
-  const focusPos = gl.positions[activePlayer.slug] ?? course.start;
 
   // Same "replay one shot at a time" mechanism as the dice mini-game's
   // rolls: starts at however many shots already happened (a fresh page
@@ -99,11 +98,20 @@ export default function GolfScreen({
         onShotAnimDone={() => setShownCount((n) => n + 1)}
         interactive={isMeActive && !pendingShot}
         myBallPos={gl.positions[mySlug] ?? course.start}
-        focusPos={focusPos}
+        destroyedObstacles={gl.destroyedObstacles}
         busy={busy}
         onRelease={(velocity) => {
-          const result = simulateShot(course, gl.positions[mySlug] ?? course.start, velocity);
-          onShoot(result.path, result.finalPos, result.sunk, result.wentInWater);
+          const otherBalls = game.playersPublic
+            .filter((p) => p.slug !== mySlug && !gl.finishedSlugs.includes(p.slug))
+            .map((p) => ({ slug: p.slug, pos: gl.positions[p.slug] ?? course.start }));
+          const result = simulateShot(
+            course,
+            gl.positions[mySlug] ?? course.start,
+            velocity,
+            gl.destroyedObstacles,
+            otherBalls
+          );
+          onShoot(result.path, result.finalPos, result.sunk, result.wentInWater, result.destroyedObstacle, result.struckBalls);
         }}
       />
 
@@ -160,20 +168,14 @@ export default function GolfScreen({
   );
 }
 
-// clientX/clientY -> course-space, accounting for the camera's current
-// window (viewMinY/viewHeight) instead of assuming the full course is on
-// screen — the camera only ever shows a CAMERA_HEIGHT-tall slice.
-function toCourseSpace(
-  clientX: number,
-  clientY: number,
-  svg: SVGSVGElement,
-  width: number,
-  viewMinY: number,
-  viewHeight: number
-): GolfPoint {
+// clientX/clientY -> course-space. The board always shows the whole
+// course at once (viewBox = 0 0 width height, no camera/pan), so this is
+// a plain linear remap from the SVG's on-screen box to its full width/
+// height in course units.
+function toCourseSpace(clientX: number, clientY: number, svg: SVGSVGElement, course: GolfCourse): GolfPoint {
   const rect = svg.getBoundingClientRect();
-  const x = ((clientX - rect.left) / rect.width) * width;
-  const y = viewMinY + ((clientY - rect.top) / rect.height) * viewHeight;
+  const x = ((clientX - rect.left) / rect.width) * course.width;
+  const y = ((clientY - rect.top) / rect.height) * course.height;
   return { x, y };
 }
 
@@ -186,7 +188,7 @@ function GolfBoard({
   onShotAnimDone,
   interactive,
   myBallPos,
-  focusPos,
+  destroyedObstacles,
   busy,
   onRelease,
 }: {
@@ -198,7 +200,7 @@ function GolfBoard({
   onShotAnimDone: () => void;
   interactive: boolean;
   myBallPos: GolfPoint;
-  focusPos: GolfPoint;
+  destroyedObstacles: number[];
   busy: boolean;
   onRelease: (velocity: GolfPoint) => void;
 }) {
@@ -210,23 +212,26 @@ function GolfBoard({
   // starts its replay at the right spot without needing a synchronous
   // setState in an effect body.
   const [animPos, setAnimPos] = useState<GolfPoint | null>(() => pendingShot?.path[0] ?? null);
-  // Camera center (course-space y) — same lazy-seed-on-mount idea, then
-  // eased toward the live ball's position each replay frame (see the tick
-  // loop below) so it visibly pans to follow the shot instead of jump-
-  // cutting between positions.
-  const [cameraY, setCameraY] = useState<number>(() =>
-    cameraTargetY(pendingShot ? pendingShot.path[0].y : focusPos.y, course)
-  );
+  // Live replay position for every OTHER ball this shot's collisions
+  // knocked into motion (slug -> current point), updated in lockstep with
+  // animPos each replay frame — see the tick loop below.
+  const [struckAnimPos, setStruckAnimPos] = useState<Record<string, GolfPoint>>({});
   // Drives the sink flourish (shrink/pop, particle burst, board shake —
   // see the .golf-ball-sinking/.golf-sink-particle/.golf-course-shaking
-  // CSS) once the rolled-in ball reaches the end of its path. Purely
-  // cosmetic and CSS-driven (cheap on mobile) — this just flips the class
-  // on for the ~420ms the animation runs.
-  const [sinking, setSinking] = useState(false);
+  // CSS) for whichever ball(s) reach the hole once the replay catches up
+  // to that frame — almost always just the shooter's own, but a struck
+  // ball can occasionally get knocked in too.
+  const [sinkingSlugs, setSinkingSlugs] = useState<Set<string>>(new Set());
   // Which bumper (by index in course.obstacles) just got hit, for the
   // brief impact-ring flash — see bumperHitAtPathIndex below for how the
   // trigger frame is found.
   const [flashObstacle, setFlashObstacle] = useState<number | null>(null);
+  // Flips true the instant the replaying ball reaches the end of its path
+  // for a shot that destroyed a tree (pendingShot.destroyedObstacle) —
+  // until then that tree still renders standing, exactly like animPos
+  // keeps the ball itself at its pre-shot spot until the replay catches
+  // up. Once true, the shatter animation plays instead (see TreeShatter).
+  const [treeShattering, setTreeShattering] = useState(false);
 
   // Precomputes, once per shot, which path index each bumper collision
   // happens at (comparing consecutive samples' distance to each bumper —
@@ -253,27 +258,45 @@ function GolfBoard({
   // Plays pendingShot.path back in real time (the path was sampled at
   // physics.GOLF_STEP_DT, i.e. 60/s — stepping through it by elapsed wall
   // time rather than one sample per animation frame keeps the replay
-  // speed correct regardless of the viewer's display refresh rate). A
-  // small hold at the end lets everyone actually see the ball settle (or
-  // drop) before handing off to the next turn or the result screen. Runs
-  // once per mount — the key-based remount above is what makes a new
-  // shot get its own fresh run of this instead of needing a dependency
-  // that resets it.
+  // speed correct regardless of the viewer's display refresh rate). Any
+  // struck balls' own paths were sampled on the exact same step timeline
+  // (see simulateShot), so the same idx indexes straight into them too —
+  // just clamped to each one's own (possibly shorter) length once it's
+  // come to rest. A small hold at the end lets everyone actually see the
+  // ball(s) settle (or drop) before handing off to the next turn or the
+  // result screen. Runs once per mount — the key-based remount above is
+  // what makes a new shot get its own fresh run of this instead of
+  // needing a dependency that resets it.
   useEffect(() => {
     if (!pendingShot) return;
     const path = pendingShot.path;
+    const struck = pendingShot.struckBalls ?? [];
     const start = performance.now();
     let raf = 0;
     let holdTimer: ReturnType<typeof setTimeout> | null = null;
     let flashTimer: ReturnType<typeof setTimeout> | null = null;
+    function frameFor(idx: number) {
+      if (struck.length === 0) return;
+      const frame: Record<string, GolfPoint> = {};
+      struck.forEach((sb) => {
+        frame[sb.slug] = sb.path[Math.min(idx, sb.path.length - 1)];
+      });
+      setStruckAnimPos(frame);
+    }
     function tick(now: number) {
       const idx = Math.floor(((now - start) / 1000) / GOLF_STEP_DT);
       if (idx >= path.length - 1) {
         const last = path[path.length - 1];
         setAnimPos(last);
-        setCameraY((prev) => prev + (cameraTargetY(last.y, course) - prev) * 0.18);
-        if (pendingShot!.sunk) {
-          setSinking(true);
+        frameFor(path.length - 1);
+        if (pendingShot!.destroyedObstacle !== undefined) setTreeShattering(true);
+        const sunkSlugs = new Set<string>();
+        if (pendingShot!.sunk) sunkSlugs.add(pendingShot!.slug);
+        struck.forEach((sb) => {
+          if (sb.sunk) sunkSlugs.add(sb.slug);
+        });
+        if (sunkSlugs.size > 0) {
+          setSinkingSlugs(sunkSlugs);
           holdTimer = setTimeout(onShotAnimDone, 420);
         } else {
           holdTimer = setTimeout(onShotAnimDone, 500);
@@ -281,7 +304,7 @@ function GolfBoard({
         return;
       }
       setAnimPos(path[idx]);
-      setCameraY((prev) => prev + (cameraTargetY(path[idx].y, course) - prev) * 0.18);
+      frameFor(idx);
       const hitObstacle = bumperHitAtPathIndex.get(idx);
       if (hitObstacle !== undefined) {
         setFlashObstacle(hitObstacle);
@@ -298,11 +321,9 @@ function GolfBoard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const camMinY = cameraY - CAMERA_HEIGHT / 2;
-
   function pointerToPull(clientX: number, clientY: number): GolfPoint {
     const svg = svgRef.current!;
-    const p = toCourseSpace(clientX, clientY, svg, course.width, camMinY, CAMERA_HEIGHT);
+    const p = toCourseSpace(clientX, clientY, svg, course);
     return { x: p.x - myBallPos.x, y: p.y - myBallPos.y };
   }
 
@@ -339,8 +360,8 @@ function GolfBoard({
   return (
     <svg
       ref={svgRef}
-      className={sinking ? "golf-course golf-course-shaking" : "golf-course"}
-      viewBox={`0 ${camMinY} ${course.width} ${CAMERA_HEIGHT}`}
+      className={sinkingSlugs.size > 0 ? "golf-course golf-course-shaking" : "golf-course"}
+      viewBox={`0 0 ${course.width} ${course.height}`}
       style={{ touchAction: "none" }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
@@ -389,8 +410,15 @@ function GolfBoard({
         <line key={i} x1={w.x1} y1={w.y1} x2={w.x2} y2={w.y2} className="golf-wall" />
       ))}
       <circle cx={course.hole.x} cy={course.hole.y} r={course.holeRadius} className="golf-hole" />
-      {course.obstacles.map((o, i) =>
-        o.kind === "tree" ? (
+      {course.obstacles.map((o, i) => {
+        const isPendingDestroy = pendingShot?.destroyedObstacle === i;
+        // Gone from a past shot this hole — stays gone, no animation to
+        // replay for someone watching after the fact.
+        if (o.kind === "tree" && destroyedObstacles.includes(i) && !isPendingDestroy) return null;
+        if (o.kind === "tree" && isPendingDestroy && treeShattering) {
+          return <TreeShatter key={i} obstacle={o} />;
+        }
+        return o.kind === "tree" ? (
           <g key={i}>
             <ellipse cx={o.x + o.radius * 0.25} cy={o.y + o.radius * 0.55} rx={o.radius * 0.85} ry={o.radius * 0.3} className="golf-tree-shadow" />
             <rect x={o.x - o.radius * 0.1} y={o.y + o.radius * 0.15} width={o.radius * 0.2} height={o.radius * 0.5} className="golf-tree-trunk" />
@@ -402,25 +430,31 @@ function GolfBoard({
             <circle cx={o.x} cy={o.y} r={o.radius} className="golf-bumper" />
             {flashObstacle === i && <circle cx={o.x} cy={o.y} r={o.radius} className="golf-bumper-flash" />}
           </g>
-        )
-      )}
+        );
+      })}
 
       {players.map((p, i) => {
-        const isMoving = pendingShot?.slug === p.slug;
+        const isShooter = pendingShot?.slug === p.slug;
+        const isStruck = !isShooter && pendingShot?.struckBalls?.some((sb) => sb.slug === p.slug);
+        const isMoving = isShooter || isStruck;
         // A finished player's ball has sunk and stays out of the picture
         // from then on — except mid-replay of the very shot that sank it,
         // which everyone (including latecomers polling in) still gets to
         // watch play out before it disappears.
         if (!isMoving && finishedSlugs.includes(p.slug)) return null;
-        const pos = isMoving ? (animPos ?? positions[p.slug]) : positions[p.slug];
+        const pos = isShooter
+          ? (animPos ?? positions[p.slug])
+          : isStruck
+            ? (struckAnimPos[p.slug] ?? positions[p.slug])
+            : positions[p.slug];
         if (!pos) return null;
-        const isSinkingThisBall = isMoving && sinking;
+        const isSinkingThisBall = isMoving && sinkingSlugs.has(p.slug);
         return (
           <g key={p.slug}>
             <circle
               cx={pos.x}
               cy={pos.y}
-              r={course.ballRadius}
+              r={course.ballRadius * BALL_VISUAL_SCALE}
               fill={BALL_COLORS[i % BALL_COLORS.length]}
               className={
                 isSinkingThisBall
@@ -480,6 +514,44 @@ function SinkParticles({ center }: { center: GolfPoint }) {
           r={2.4}
           className="golf-sink-particle"
           style={{ "--px": `${s.dx}px`, "--py": `${s.dy}px`, animationDelay: `${i * 15}ms` } as React.CSSProperties}
+        />
+      ))}
+    </>
+  );
+}
+
+// A short burst of canopy/trunk shards the instant a tree gets smashed —
+// same cheap CSS-transform-only technique as SinkParticles, just with a
+// rotation added so the pieces tumble instead of just drifting. Renders in
+// place of the tree for the rest of this shot's replay; the obstacle is
+// simply gone (destroyedObstacles) once the next shot mounts.
+function TreeShatter({ obstacle }: { obstacle: GolfObstacle }) {
+  const shards = [
+    { dx: 16, dy: -12, rot: 50 },
+    { dx: -15, dy: -16, rot: -40 },
+    { dx: 18, dy: 7, rot: 80 },
+    { dx: -17, dy: 10, rot: -70 },
+    { dx: 3, dy: -20, rot: 20 },
+    { dx: -4, dy: 16, rot: -25 },
+  ];
+  return (
+    <>
+      {shards.map((s, i) => (
+        <rect
+          key={i}
+          x={obstacle.x - obstacle.radius * 0.16}
+          y={obstacle.y - obstacle.radius * 0.16}
+          width={obstacle.radius * 0.32}
+          height={obstacle.radius * 0.32}
+          className="golf-tree-shard"
+          style={
+            {
+              "--sdx": `${s.dx}px`,
+              "--sdy": `${s.dy}px`,
+              "--srot": `${s.rot}deg`,
+              animationDelay: `${i * 12}ms`,
+            } as React.CSSProperties
+          }
         />
       ))}
     </>

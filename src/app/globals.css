@@ -1319,12 +1319,16 @@ label.field-label {
 
 /* Mini-golf */
 .golf-course {
-  width: 100%;
-  height: auto;
-  /* Leaves room above (table-status) and below (turn hint) so the whole
-     screen fits one viewport without scrolling — dvh tracks the real
-     visible height on mobile (address bar included/excluded), unlike vh. */
-  max-height: min(58dvh, 520px);
+  width: auto;
+  height: min(70dvh, 620px);
+  max-width: 100%;
+  /* No camera/pan anymore — the whole course sits in view at once, so the
+     board claims as much vertical space as the viewport allows (leaving
+     room above for table-status and below for the turn hint) and the SVG's
+     own viewBox aspect ratio drives the width from that height, instead of
+     stretching to a fixed width the way a panning camera view did. dvh
+     tracks the real visible height on mobile (address bar included/
+     excluded), unlike vh. */
   border-radius: 16px;
   margin-top: 10px;
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
@@ -1440,6 +1444,24 @@ label.field-label {
   fill: url(#golf-tree-gradient);
   stroke: #1a5c33;
   stroke-width: 1.5;
+}
+.golf-tree-shard {
+  fill: #2f8f52;
+  stroke: #1a5c33;
+  stroke-width: 1;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: golf-tree-shatter 460ms ease-out forwards;
+}
+@keyframes golf-tree-shatter {
+  0% {
+    transform: translate(0, 0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--sdx), var(--sdy)) rotate(var(--srot)) scale(0.35);
+    opacity: 0;
+  }
 }
 .golf-bumper-shadow {
   fill: rgba(0, 0, 0, 0.22);

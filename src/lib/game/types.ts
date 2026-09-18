@@ -573,6 +573,18 @@ export interface GolfCourse {
   windZones: GolfWindZone[];
 }
 
+// Another player's ball, knocked into motion by a ball-to-ball collision
+// during someone else's shot (see simulateShot's own comment) — carries
+// its own full sampled path so the replay can animate it alongside the
+// shooter's ball instead of just snapping it to wherever it ended up.
+export interface GolfStruckBallResult {
+  slug: string;
+  path: GolfPoint[];
+  finalPos: GolfPoint;
+  sunk: boolean;
+  wentInWater: boolean;
+}
+
 // One full shot, computed client-side (deterministic physics — see
 // simulateShot) then published as-is so every other client can replay the
 // exact same animation instead of just snapping to the final position.
@@ -588,6 +600,16 @@ export interface GolfShotRecord {
   // position reverts to wherever they were before this shot (see
   // applyGolfShot).
   wentInWater: boolean;
+  // Index into course.obstacles of the tree this shot smashed into, if
+  // any — undefined for every shot that didn't destroy a tree. The ball
+  // still hard-stops on contact same as always; this only marks the tree
+  // itself as gone (see GolfRoundState.destroyedObstacles).
+  destroyedObstacle?: number;
+  // Every OTHER player's ball this shot's chain of collisions knocked into
+  // motion — absent/empty on the (common) case where nothing got hit.
+  // Their strokeCounts never change from this, only their position (and
+  // possibly finishedSlugs, if the knock sinks them) — see applyGolfShot.
+  struckBalls?: GolfStruckBallResult[];
 }
 
 export interface GolfRoundState {
@@ -610,6 +632,12 @@ export interface GolfRoundState {
   // doesn't end it, only strokeCounts at that point does (see
   // GolfRankingEntry) — order of finishing has no bearing on the result.
   finishedSlugs: string[];
+  // Indices into course.obstacles of every tree destroyed so far this
+  // hole — shared across the whole room (one course instance per round,
+  // not per player), so once a tree is gone it's gone for everyone for
+  // the rest of the hole. Bumpers never appear here, only "tree" kind
+  // obstacles can be destroyed.
+  destroyedObstacles: number[];
 }
 
 export interface GolfRankingEntry {
@@ -647,7 +675,8 @@ export interface ArcheryShotRecord {
   name: string;
   wind: ArcheryWind; // whatever was blowing for this specific shot
   aim: ArcheryPoint; // where the player placed their reticle
-  impact: ArcheryPoint; // where the arrow actually landed, after wind deviation
+  power: number; // 0..1, how far the bowstring was drawn back
+  impact: ArcheryPoint; // where the arrow actually landed, after the draw and wind deviation
   path: ArcheryPoint[]; // sampled flight path, for the replay animation
   distance: number; // impact's distance to the target's center, rounded
 }

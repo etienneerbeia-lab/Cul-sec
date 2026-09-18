@@ -1,4 +1,4 @@
-import type { GameState, GolfPoint, GolfRankingEntry, GolfShotRecord } from "../game/types";
+import type { GameState, GolfPoint, GolfRankingEntry, GolfShotRecord, GolfStruckBallResult } from "../game/types";
 import { GOLF_COURSES } from "./courses";
 
 function orderAllPlayers(g: GameState): number[] {
@@ -35,6 +35,7 @@ export function startGolfRound(g: GameState): void {
     strokeCounts,
     shots: [],
     finishedSlugs: [],
+    destroyedObstacles: [],
   };
   g.phase = "golf";
 }
@@ -79,7 +80,9 @@ export function applyGolfShot(
   path: GolfPoint[],
   finalPos: GolfPoint,
   sunk: boolean,
-  wentInWater: boolean
+  wentInWater: boolean,
+  destroyedObstacle?: number,
+  struckBalls: GolfStruckBallResult[] = []
 ): void {
   const gl = g.golf!;
   const player = g.playersPublic.find((p) => p.slug === slug)!;
@@ -88,11 +91,38 @@ export function applyGolfShot(
   gl.strokeCounts[slug] = strokeNumber;
   gl.positions[slug] = wentInWater ? positionBeforeShot : finalPos;
 
-  const shot: GolfShotRecord = { slug, name: player.name, strokeNumber, path, finalPos, sunk, wentInWater };
+  const shot: GolfShotRecord = {
+    slug,
+    name: player.name,
+    strokeNumber,
+    path,
+    finalPos,
+    sunk,
+    wentInWater,
+    destroyedObstacle,
+    struckBalls: struckBalls.length > 0 ? struckBalls : undefined,
+  };
   gl.shots = [...gl.shots, shot];
+
+  if (destroyedObstacle !== undefined && !gl.destroyedObstacles.includes(destroyedObstacle)) {
+    gl.destroyedObstacles = [...gl.destroyedObstacles, destroyedObstacle];
+  }
 
   if (sunk) {
     gl.finishedSlugs = [...gl.finishedSlugs, slug];
+  }
+
+  // A ball knocked into motion by this shot's collisions never costs its
+  // owner a stroke and can't un-finish someone — only its resting position
+  // (and, if the knock sinks it, finishedSlugs) changes. Water reverts to
+  // THAT player's own pre-shot spot, same rule as a normal shot, just keyed
+  // on the struck player instead of the shooter.
+  for (const sb of struckBalls) {
+    const before = gl.positions[sb.slug];
+    gl.positions[sb.slug] = sb.wentInWater ? before : sb.finalPos;
+    if (sb.sunk && !gl.finishedSlugs.includes(sb.slug)) {
+      gl.finishedSlugs = [...gl.finishedSlugs, sb.slug];
+    }
   }
 
   eliminateHopelessLoneSurvivor(g);
