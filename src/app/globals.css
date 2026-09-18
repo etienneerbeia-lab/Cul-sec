@@ -1784,6 +1784,10 @@ label.field-label {
   display: flex;
   gap: 8px;
   overflow-x: auto;
+  /* overflow-x: auto computes overflow-y to auto too, which would clip the
+     active card's badge (it pokes above the card via a negative top) —
+     padding-top gives it room to sit inside the scroll box instead. */
+  padding-top: 16px;
   padding-bottom: 2px;
 }
 .golf-player-card {

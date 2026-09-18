@@ -568,8 +568,12 @@ function GolfBoard({
         if (o.kind === "tree") {
           return (
             <g key={i}>
-              <ellipse cx={o.x + o.radius * 0.25} cy={o.y + o.radius * 0.55} rx={o.radius * 0.85} ry={o.radius * 0.3} className="golf-tree-shadow" />
-              <rect x={o.x - o.radius * 0.1} y={o.y + o.radius * 0.15} width={o.radius * 0.2} height={o.radius * 0.5} className="golf-tree-trunk" />
+              <ellipse cx={o.x + o.radius * 0.25} cy={o.y + o.radius * 1.25} rx={o.radius * 0.55} ry={o.radius * 0.22} className="golf-tree-shadow" />
+              {/* Starts under the canopy (hidden) but runs past its bottom
+                  edge (o.y + radius) so a visible stub pokes out below the
+                  foliage — otherwise the canopy fully covers it and a tree
+                  just reads as a plain green ball. */}
+              <rect x={o.x - o.radius * 0.14} y={o.y + o.radius * 0.75} width={o.radius * 0.28} height={o.radius * 0.65} rx={o.radius * 0.05} className="golf-tree-trunk" />
               <circle cx={o.x - o.radius * 0.28} cy={o.y + o.radius * 0.05} r={o.radius * 0.62} className="golf-tree-canopy-back" />
               <circle cx={o.x} cy={o.y} r={o.radius} className="golf-tree-canopy" />
             </g>
