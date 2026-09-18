@@ -32,6 +32,13 @@ const PLAYER_COLORS = ["#e0483f", "#9b5de5", "#3ecf8e", "#f4c95d", "#6fb1f0", "#
 // want to bail out of an aim you started.
 const GOLF_CANCEL_POWER = 0.08;
 
+// Water-revert sequence timing (splash-and-disappear, brief gap, pop back
+// in at the pre-shot spot) — kept short so falling in water never stalls
+// the game's pace, well under the ~1s the spec asked for in total.
+const GOLF_SPLASH_MS = 380;
+const GOLF_SPLASH_GAP_MS = 120;
+const GOLF_REAPPEAR_MS = 380;
+
 function ordinal(rank: number): string {
   return rank === 1 ? "1er" : `${rank}e`;
 }
@@ -300,6 +307,15 @@ function GolfBoard({
   // to that frame — almost always just the shooter's own, but a struck
   // ball can occasionally get knocked in too.
   const [sinkingSlugs, setSinkingSlugs] = useState<Set<string>>(new Set());
+  // Water-revert flourish, in two phases driven by the same timeout chain
+  // (see the tick loop below): splashingSlugs is true for GOLF_SPLASH_MS —
+  // the ball shrinks/fades right where it entered the water — then, after
+  // a short gap, reappearingSlugs takes over and it pops back in at
+  // wherever `positions` already says it reverted to (the server applies
+  // that revert immediately, same as everything else here — this is
+  // purely delaying the VISUAL reveal of a position that's already true).
+  const [splashingSlugs, setSplashingSlugs] = useState<Set<string>>(new Set());
+  const [reappearingSlugs, setReappearingSlugs] = useState<Set<string>>(new Set());
   // Which bumper/roulette (by index in course.obstacles) just got hit, for
   // the brief impact-ring flash — see hitAtPathIndex below for how the
   // trigger frame is found.
@@ -353,6 +369,8 @@ function GolfBoard({
     let raf = 0;
     let holdTimer: ReturnType<typeof setTimeout> | null = null;
     let flashTimer: ReturnType<typeof setTimeout> | null = null;
+    let splashTimer: ReturnType<typeof setTimeout> | null = null;
+    let reappearTimer: ReturnType<typeof setTimeout> | null = null;
     function frame(idx: number) {
       const shooterPos = path[Math.min(idx, path.length - 1)];
       setAnimPos(shooterPos);
@@ -379,8 +397,22 @@ function GolfBoard({
         struck.forEach((sb) => {
           if (sb.sunk) sunkSlugs.add(sb.slug);
         });
-        if (sunkSlugs.size > 0) {
-          setSinkingSlugs(sunkSlugs);
+        if (sunkSlugs.size > 0) setSinkingSlugs(sunkSlugs);
+
+        const wateredSlugs = new Set<string>();
+        if (pendingShot!.wentInWater) wateredSlugs.add(pendingShot!.slug);
+        struck.forEach((sb) => {
+          if (sb.wentInWater) wateredSlugs.add(sb.slug);
+        });
+
+        if (wateredSlugs.size > 0) {
+          setSplashingSlugs(wateredSlugs);
+          splashTimer = setTimeout(() => {
+            setSplashingSlugs(new Set());
+            setReappearingSlugs(wateredSlugs);
+            reappearTimer = setTimeout(onShotAnimDone, GOLF_REAPPEAR_MS);
+          }, GOLF_SPLASH_MS + GOLF_SPLASH_GAP_MS);
+        } else if (sunkSlugs.size > 0) {
           holdTimer = setTimeout(onShotAnimDone, 420);
         } else {
           holdTimer = setTimeout(onShotAnimDone, 500);
@@ -400,6 +432,8 @@ function GolfBoard({
       cancelAnimationFrame(raf);
       if (holdTimer) clearTimeout(holdTimer);
       if (flashTimer) clearTimeout(flashTimer);
+      if (splashTimer) clearTimeout(splashTimer);
+      if (reappearTimer) clearTimeout(reappearTimer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -584,13 +618,17 @@ function GolfBoard({
         // which everyone (including latecomers polling in) still gets to
         // watch play out before it disappears.
         if (!isMoving && finishedSlugs.includes(p.slug)) return null;
-        const pos = isShooter
-          ? (animPos ?? positions[p.slug])
-          : isStruck
-            ? (struckAnimPos[p.slug] ?? positions[p.slug])
-            : positions[p.slug];
+        const isReappearing = isMoving && reappearingSlugs.has(p.slug);
+        const pos = isReappearing
+          ? positions[p.slug]
+          : isShooter
+            ? (animPos ?? positions[p.slug])
+            : isStruck
+              ? (struckAnimPos[p.slug] ?? positions[p.slug])
+              : positions[p.slug];
         if (!pos) return null;
         const isSinkingThisBall = isMoving && sinkingSlugs.has(p.slug);
+        const isSplashingThisBall = isMoving && splashingSlugs.has(p.slug);
         const isWindy = isMoving && windySlugs.has(p.slug);
         const ballRadius = course.ballRadius * GOLF_BALL_VISUAL_SCALE;
         return (
@@ -603,14 +641,19 @@ function GolfBoard({
               r={ballRadius}
               fill={`url(#golf-ball-gradient-${i % PLAYER_COLORS.length})`}
               className={
-                isSinkingThisBall
-                  ? "golf-ball golf-ball-sinking"
-                  : isMoving
-                    ? "golf-ball golf-ball-moving"
-                    : "golf-ball"
+                isSplashingThisBall
+                  ? "golf-ball golf-ball-splashing"
+                  : isReappearing
+                    ? "golf-ball golf-ball-reappear"
+                    : isSinkingThisBall
+                      ? "golf-ball golf-ball-sinking"
+                      : isMoving
+                        ? "golf-ball golf-ball-moving"
+                        : "golf-ball"
               }
             />
             {isSinkingThisBall && <SinkParticles center={course.hole} />}
+            {isSplashingThisBall && <WaterSplash center={pos} />}
           </g>
         );
       })}
@@ -784,6 +827,36 @@ function SinkParticles({ center }: { center: GolfPoint }) {
           r={2.4}
           className="golf-sink-particle"
           style={{ "--px": `${s.dx}px`, "--py": `${s.dy}px`, animationDelay: `${i * 15}ms` } as React.CSSProperties}
+        />
+      ))}
+    </>
+  );
+}
+
+// A quick "plouf" at the exact spot a ball fell in — a couple of
+// expanding rings plus a handful of droplet specks, all cheap CSS
+// transforms timed to GOLF_SPLASH_MS so they finish right as the ball
+// itself fades out (see .golf-ball-splashing). Same droplet-burst
+// technique as SinkParticles, just water-tinted and quicker.
+function WaterSplash({ center }: { center: GolfPoint }) {
+  const droplets = [
+    { dx: 10, dy: -12 },
+    { dx: -11, dy: -9 },
+    { dx: 12, dy: 6 },
+    { dx: -12, dy: 7 },
+  ];
+  return (
+    <>
+      <circle cx={center.x} cy={center.y} r={4} className="golf-splash-ring" />
+      <circle cx={center.x} cy={center.y} r={4} className="golf-splash-ring" style={{ animationDelay: "90ms" }} />
+      {droplets.map((d, i) => (
+        <circle
+          key={i}
+          cx={center.x}
+          cy={center.y}
+          r={2}
+          className="golf-splash-droplet"
+          style={{ "--px": `${d.dx}px`, "--py": `${d.dy}px`, animationDelay: `${i * 20}ms` } as React.CSSProperties}
         />
       ))}
     </>

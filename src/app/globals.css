@@ -1644,6 +1644,78 @@ label.field-label {
     opacity: 0;
   }
 }
+.golf-ball-splashing {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: golf-ball-splash 380ms ease-in forwards;
+}
+@keyframes golf-ball-splash {
+  0% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+  60% {
+    transform: scale(0.55) translateY(2px);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(0.15) translateY(4px);
+    opacity: 0;
+  }
+}
+.golf-ball-reappear {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: golf-ball-reappear 380ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+@keyframes golf-ball-reappear {
+  0% {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.18);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.golf-splash-ring {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.55);
+  stroke-width: 2;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: golf-splash-ring 380ms ease-out forwards;
+}
+@keyframes golf-splash-ring {
+  0% {
+    transform: scale(0.2);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+.golf-splash-droplet {
+  fill: #bfe3f5;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: golf-splash-droplet 380ms ease-out forwards;
+}
+@keyframes golf-splash-droplet {
+  0% {
+    transform: scale(1) translate(0, 0);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(0.4) translate(var(--px), var(--py));
+    opacity: 0;
+  }
+}
 .golf-course-shaking {
   animation: golf-course-shake 300ms ease-in-out;
 }
