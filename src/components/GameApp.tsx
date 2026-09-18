@@ -48,6 +48,7 @@ export default function GameApp() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [showQuitConfirm, setShowQuitConfirm] = useState(false);
+  const [showBackToLobbyConfirm, setShowBackToLobbyConfirm] = useState(false);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const roomCodeRef = useRef("");
@@ -196,6 +197,15 @@ export default function GameApp() {
   return (
     <div id="app">
       <div className="quit-bar">
+        {isHost && phase !== "lobby" && phase !== "final" && (
+          <button
+            className="icon-btn"
+            aria-label="Revenir au lobby"
+            onClick={() => setShowBackToLobbyConfirm(true)}
+          >
+            ↺
+          </button>
+        )}
         <button
           className="icon-btn"
           aria-label="Quitter la partie"
@@ -221,6 +231,33 @@ export default function GameApp() {
                 Quitter
               </button>
               <button className="btn-ghost" onClick={() => setShowQuitConfirm(false)}>
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showBackToLobbyConfirm && (
+        <div className="modal-overlay" onClick={() => setShowBackToLobbyConfirm(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-title">Revenir au lobby ?</div>
+            <div className="hint">
+              La partie en cours sera interrompue pour tout le monde. Vous reviendrez au lobby de
+              cette room, avec le même code, pour relancer un mini-jeu.
+            </div>
+            <div className="modal-actions">
+              <button
+                className="btn-wine"
+                disabled={busy}
+                onClick={() => {
+                  setShowBackToLobbyConfirm(false);
+                  runAction(() => apiPost(`/api/rooms/${roomCode}/restart`));
+                }}
+              >
+                Revenir au lobby
+              </button>
+              <button className="btn-ghost" onClick={() => setShowBackToLobbyConfirm(false)}>
                 Annuler
               </button>
             </div>
