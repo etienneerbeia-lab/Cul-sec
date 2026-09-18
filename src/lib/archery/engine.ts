@@ -25,21 +25,22 @@ export function archeryActiveSlug(g: GameState): string {
   return g.playersPublic[ar.playerIdx].slug;
 }
 
-// The client only ever sends where it aimed — the wind that bends the
-// shot and the resulting impact are both computed here, from the wind
-// already on record for this turn, rather than trusted from the client
-// the way golf's full collision physics are (see simulateShot's own
-// comment). Archery's physics are cheap enough to redo, and a
-// self-reported distance would be a direct incentive to cheat in a game
-// about who ends up drinking the most.
-export function applyArcheryShot(g: GameState, slug: string, rawAim: ArcheryPoint): void {
+// The client only ever sends where it aimed and how far it drew the
+// bowstring back — the wind that bends the shot and the resulting impact
+// are both computed here, from the wind already on record for this turn,
+// rather than trusted from the client the way golf's full collision
+// physics are (see simulateShot's own comment). Archery's physics are
+// cheap enough to redo, and a self-reported distance would be a direct
+// incentive to cheat in a game about who ends up drinking the most.
+export function applyArcheryShot(g: GameState, slug: string, rawAim: ArcheryPoint, rawPower: number): void {
   const ar = g.archery!;
   const player = g.playersPublic.find((p) => p.slug === slug)!;
   const aim = clampToTarget(rawAim);
+  const power = Math.max(0, Math.min(1, rawPower));
   const wind = ar.wind;
-  const { impact, path, distance } = simulateArcheryShot(aim, wind);
+  const { impact, path, distance } = simulateArcheryShot(aim, wind, power);
 
-  const shot: ArcheryShotRecord = { slug, name: player.name, wind, aim, impact, path, distance };
+  const shot: ArcheryShotRecord = { slug, name: player.name, wind, aim, power, impact, path, distance };
   ar.shots = [...ar.shots, shot];
 
   if (ar.turnPointer + 1 >= ar.turnOrder.length) {

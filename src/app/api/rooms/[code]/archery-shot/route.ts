@@ -32,11 +32,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cod
 
   const body = await req.json().catch(() => null);
   const aim = body?.aim;
-  if (!isPoint(aim)) {
-    return NextResponse.json({ error: "Visée invalide." }, { status: 400 });
+  const power = body?.power;
+  if (!isPoint(aim) || typeof power !== "number" || !Number.isFinite(power)) {
+    return NextResponse.json({ error: "Tir invalide." }, { status: 400 });
   }
 
-  applyArcheryShot(game, session.slug, aim);
+  applyArcheryShot(game, session.slug, aim, power);
   await setGame(code, game);
   return NextResponse.json({ ok: true });
 }

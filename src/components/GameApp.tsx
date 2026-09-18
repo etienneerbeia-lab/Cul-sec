@@ -315,8 +315,8 @@ export default function GameApp() {
           mySlug={mySlug}
           isHost={isHost}
           busy={busy}
-          onShoot={(aim: ArcheryPoint) =>
-            runAction(() => apiPost(`/api/rooms/${roomCode}/archery-shot`, { aim }))
+          onShoot={(aim: ArcheryPoint, power: number) =>
+            runAction(() => apiPost(`/api/rooms/${roomCode}/archery-shot`, { aim, power }))
           }
           onNextRound={() => runAction(() => apiPost(`/api/rooms/${roomCode}/next-round`))}
           onEndNight={() => runAction(() => apiPost(`/api/rooms/${roomCode}/end-night`))}

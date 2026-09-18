@@ -16,6 +16,24 @@ import {
 
 const ARROW_COLORS = ["#e0568c", "#3ecf8e", "#f4c95d", "#6fb1f0", "#e0568c", "#3ecf8e"];
 
+// How far (in board units) the finger has to travel straight down from
+// wherever the gesture started before it stops adjusting the aim reticle
+// and starts drawing the bowstring instead — small enough to feel
+// immediate, big enough that a slightly wobbly tap-to-aim never
+// accidentally triggers a draw.
+const ARCHERY_AIM_DEADZONE = 10;
+// Extra downward distance beyond the deadzone for full draw power.
+const ARCHERY_MAX_PULL = 220;
+// Below this fraction of full draw, releasing cancels the shot instead of
+// firing it — same idea (and threshold) as golf's own release-to-cancel
+// zone: low enough that a deliberately soft draw still goes through, high
+// enough to bail out of a draw you didn't mean to start.
+const ARCHERY_CANCEL_POWER = 0.08;
+// Fixed screen anchor for the bowstring gauge — stays put no matter where
+// on the board the draw gesture actually started, so the player always
+// knows where to look to read their own power.
+const ARCHERY_BOW_ANCHOR: ArcheryPoint = { x: ARCHERY_CENTER.x, y: ARCHERY_TARGET_SIZE + 25 };
+
 function ordinal(rank: number): string {
   return rank === 1 ? "1er" : `${rank}e`;
 }
@@ -33,7 +51,7 @@ export default function ArcheryScreen({
   mySlug: string;
   isHost: boolean;
   busy: boolean;
-  onShoot: (aim: ArcheryPoint) => void;
+  onShoot: (aim: ArcheryPoint, power: number) => void;
   onNextRound: () => void;
   onEndNight: () => void;
 }) {
@@ -90,7 +108,7 @@ export default function ArcheryScreen({
         onShotAnimDone={() => setShownCount((n) => n + 1)}
         interactive={isMeActive && !pendingShot && !haveIShot}
         busy={busy}
-        onFire={(aim) => onShoot(aim)}
+        onFire={onShoot}
       />
 
       {!resolved && (
@@ -100,7 +118,7 @@ export default function ArcheryScreen({
             : haveIShot
               ? "Flèche tirée — en attente des autres..."
               : isMeActive
-                ? "À toi de viser — glisse ton doigt sur la cible, puis tire."
+                ? "Touche pour viser, glisse vers le bas pour bander l'arc, relâche pour tirer."
                 : `En attente de ${activePlayer.name}...`}
         </div>
       )}
@@ -171,11 +189,12 @@ function WindBanner({ wind }: { wind: ArcheryWind }) {
   );
 }
 
-function toTargetSpace(clientX: number, clientY: number, svg: SVGSVGElement): ArcheryPoint {
+function toBoardSpace(clientX: number, clientY: number, svg: SVGSVGElement): ArcheryPoint {
   const rect = svg.getBoundingClientRect();
-  const x = ((clientX - rect.left) / rect.width) * ARCHERY_TARGET_SIZE;
-  const y = ((clientY - rect.top) / rect.height) * ARCHERY_BOARD_HEIGHT;
-  return clampToTarget({ x, y });
+  return {
+    x: ((clientX - rect.left) / rect.width) * ARCHERY_TARGET_SIZE,
+    y: ((clientY - rect.top) / rect.height) * ARCHERY_BOARD_HEIGHT,
+  };
 }
 
 function ArcheryBoard({
@@ -193,17 +212,26 @@ function ArcheryBoard({
   onShotAnimDone: () => void;
   interactive: boolean;
   busy: boolean;
-  onFire: (aim: ArcheryPoint) => void;
+  onFire: (aim: ArcheryPoint, power: number) => void;
 }) {
   const svgRef = useRef<SVGSVGElement | null>(null);
-  // Aiming here is "place a reticle, then confirm" rather than golf's
-  // pull-and-release: there's no natural "power" reading to derive a
-  // cancel threshold from (the reticle is an absolute point, not a pull
-  // vector). Nothing is ever sent to the server until the Tirer button is
-  // pressed, so freely repositioning the reticle (or just never pressing
-  // the button) already covers the "cancel before it counts" need golf
-  // solves with a release-zone.
+  // One continuous gesture serves both roles: dragging around (in any
+  // direction, from anywhere — same "start wherever you land" freedom as
+  // golf's pull) repositions the aim reticle live, same as before. The
+  // instant that drag has gone ARCHERY_AIM_DEADZONE units *straight down*
+  // from where it started, the reticle freezes right there and every
+  // further bit of downward travel instead charges the bowstring's draw
+  // power, shown by the bow gauge anchored below the target. Releasing
+  // fires at whatever the frozen aim was, at the power reached — unless
+  // that power never cleared ARCHERY_CANCEL_POWER, in which case nothing
+  // is sent and the player can just try again, mirroring golf's own
+  // release-zone cancel.
   const [aim, setAim] = useState<ArcheryPoint>(ARCHERY_CENTER);
+  const [drawing, setDrawing] = useState(false);
+  const [power, setPower] = useState(0);
+  const startRef = useRef<ArcheryPoint | null>(null);
+  const drawingRef = useRef(false);
+
   const [animPos, setAnimPos] = useState<ArcheryPoint | null>(() => pendingShot?.path[0] ?? null);
 
   useEffect(() => {
@@ -235,12 +263,42 @@ function ArcheryBoard({
   function handlePointerDown(e: React.PointerEvent<SVGSVGElement>) {
     if (!interactive || busy) return;
     (e.target as Element).setPointerCapture(e.pointerId);
-    setAim(toTargetSpace(e.clientX, e.clientY, svgRef.current!));
+    const p = toBoardSpace(e.clientX, e.clientY, svgRef.current!);
+    startRef.current = p;
+    drawingRef.current = false;
+    setDrawing(false);
+    setPower(0);
+    setAim(clampToTarget(p));
   }
+
   function handlePointerMove(e: React.PointerEvent<SVGSVGElement>) {
-    if (!interactive || busy || e.buttons === 0) return;
-    setAim(toTargetSpace(e.clientX, e.clientY, svgRef.current!));
+    if (!interactive || busy || !startRef.current) return;
+    const p = toBoardSpace(e.clientX, e.clientY, svgRef.current!);
+    const dy = p.y - startRef.current.y;
+    if (!drawingRef.current && dy > ARCHERY_AIM_DEADZONE) {
+      drawingRef.current = true;
+      setDrawing(true);
+    }
+    if (drawingRef.current) {
+      const pull = Math.max(0, Math.min(ARCHERY_MAX_PULL, dy - ARCHERY_AIM_DEADZONE));
+      setPower(pull / ARCHERY_MAX_PULL);
+    } else {
+      setAim(clampToTarget(p));
+    }
   }
+
+  function handlePointerUp() {
+    if (!interactive || busy || !startRef.current) return;
+    if (drawingRef.current && power >= ARCHERY_CANCEL_POWER) {
+      onFire(aim, power);
+    }
+    startRef.current = null;
+    drawingRef.current = false;
+    setDrawing(false);
+    setPower(0);
+  }
+
+  const wouldCancel = drawing && power > 0 && power < ARCHERY_CANCEL_POWER;
 
   return (
     <div className="archery-board-wrap">
@@ -251,6 +309,8 @@ function ArcheryBoard({
         style={{ touchAction: "none" }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
       >
         <rect x={0} y={0} width={ARCHERY_TARGET_SIZE} height={ARCHERY_BOARD_HEIGHT} className="archery-backdrop" />
         {ARCHERY_RINGS.map((ring) => (
@@ -286,14 +346,50 @@ function ArcheryBoard({
             <line x1={0} y1={-22} x2={0} y2={22} className="archery-reticle-cross" />
           </g>
         )}
-      </svg>
 
-      {interactive && (
-        <button className="btn-primary archery-fire-btn" disabled={busy} onClick={() => onFire(aim)}>
-          Tirer 🏹
-        </button>
-      )}
+        {interactive && <BowGauge power={power} wouldCancel={wouldCancel} />}
+      </svg>
     </div>
+  );
+}
+
+// A bow, fixed at ARCHERY_BOW_ANCHOR regardless of where the draw gesture
+// started, whose string sags further down as `power` climbs — the visual
+// stand-in for a power gauge the spec asked for, themed to match. Rests
+// flat (string flush with the limb tips) at power 0 so an interactive
+// turn always shows the player where to look, even before they've
+// touched the screen.
+function BowGauge({ power, wouldCancel }: { power: number; wouldCancel: boolean }) {
+  const anchor = ARCHERY_BOW_ANCHOR;
+  const leftTip = { x: anchor.x - 45, y: anchor.y };
+  const rightTip = { x: anchor.x + 45, y: anchor.y };
+  const belly = { x: anchor.x, y: anchor.y - 18 };
+  const nock = { x: anchor.x, y: anchor.y + power * 45 };
+  const color = wouldCancel ? "#8a8a96" : `hsl(${340 - power * 40}, 80%, ${60 + power * 15}%)`;
+
+  return (
+    <g className="archery-bow">
+      <path
+        d={`M ${leftTip.x} ${leftTip.y} Q ${belly.x} ${belly.y} ${rightTip.x} ${rightTip.y}`}
+        className="archery-bow-limb"
+      />
+      <path
+        d={`M ${leftTip.x} ${leftTip.y} L ${nock.x} ${nock.y} L ${rightTip.x} ${rightTip.y}`}
+        stroke={color}
+        strokeWidth={2.5}
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {power > 0 && (
+        <line x1={nock.x} y1={nock.y} x2={nock.x} y2={nock.y - 16} stroke={color} strokeWidth={3} strokeLinecap="round" />
+      )}
+      {wouldCancel && (
+        <text x={anchor.x} y={anchor.y - 30} textAnchor="middle" className="archery-cancel-label">
+          Relâcher pour annuler
+        </text>
+      )}
+    </g>
   );
 }
 

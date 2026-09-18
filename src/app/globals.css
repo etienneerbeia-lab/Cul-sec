@@ -1679,9 +1679,19 @@ label.field-label {
   stroke: var(--offwhite);
   stroke-width: 1.5;
 }
-.archery-fire-btn {
-  margin-top: 10px;
-  width: 100%;
+.archery-bow-limb {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+.archery-cancel-label {
+  fill: #d8d8e0;
+  font-size: 15px;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.55);
+  stroke-width: 3px;
 }
 .archery-turn-hint {
   text-align: center;

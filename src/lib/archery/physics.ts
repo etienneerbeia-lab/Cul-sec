@@ -106,16 +106,33 @@ export interface ArcheryShotResult {
   distance: number;
 }
 
-// Deterministic given (aim, wind) — computed server-side (see
-// applyArcheryShot) from the aim the client submitted and the wind
-// already on record for this shot, then published as-is so every client
-// just replays the same flight instead of resimulating it.
-export function simulateArcheryShot(aim: ArcheryPoint, wind: ArcheryWind): ArcheryShotResult {
+// Deterministic given (aim, wind, power) — computed server-side (see
+// applyArcheryShot) from what the client submitted and the wind already
+// on record for this shot, then published as-is so every client just
+// replays the same flight instead of resimulating it.
+//
+// `power` (0..1, from how far the player drew the bowstring back) scales
+// how far toward `aim` the arrow actually travels before it's spent — at
+// power 1 it reaches `aim` exactly (before wind); a weaker draw falls
+// short, landing short of the target along the aim line. Wind deviation
+// scales with power too: a shot that barely leaves the bow spends less
+// time in flight, so it barely drifts either — it just plops down
+// short and close to true, still a bad score, but for a different
+// reason than a full-power shot the wind carried wide.
+export function simulateArcheryShot(aim: ArcheryPoint, wind: ArcheryWind, power: number): ArcheryShotResult {
+  const p = Math.max(0, Math.min(1, power));
+  const drawnAim = {
+    x: ARCHERY_LAUNCH_POINT.x + (aim.x - ARCHERY_LAUNCH_POINT.x) * p,
+    y: ARCHERY_LAUNCH_POINT.y + (aim.y - ARCHERY_LAUNCH_POINT.y) * p,
+  };
   const dir = WIND_VECTORS[wind.direction];
-  const deviation = { x: dir.x * wind.intensity * ARCHERY_MAX_DEVIATION, y: dir.y * wind.intensity * ARCHERY_MAX_DEVIATION };
-  const impact = clampToTarget({ x: aim.x + deviation.x, y: aim.y + deviation.y });
+  const deviation = {
+    x: dir.x * wind.intensity * ARCHERY_MAX_DEVIATION * p,
+    y: dir.y * wind.intensity * ARCHERY_MAX_DEVIATION * p,
+  };
+  const impact = clampToTarget({ x: drawnAim.x + deviation.x, y: drawnAim.y + deviation.y });
 
-  // The flight drifts progressively off the aimed line as the wind pushes
+  // The flight drifts progressively off the drawn line as the wind pushes
   // it — starts true from the launch point, ends at the actual impact —
   // rather than jumping straight there, so the deviation reads as wind
   // acting on the arrow instead of the aim just having been wrong.
@@ -123,8 +140,8 @@ export function simulateArcheryShot(aim: ArcheryPoint, wind: ArcheryWind): Arche
   for (let i = 0; i <= ARCHERY_PATH_SAMPLES; i++) {
     const t = i / ARCHERY_PATH_SAMPLES;
     const eased = t * t;
-    const x = ARCHERY_LAUNCH_POINT.x + (aim.x - ARCHERY_LAUNCH_POINT.x) * t + deviation.x * eased;
-    const y = ARCHERY_LAUNCH_POINT.y + (aim.y - ARCHERY_LAUNCH_POINT.y) * t + deviation.y * eased;
+    const x = ARCHERY_LAUNCH_POINT.x + (drawnAim.x - ARCHERY_LAUNCH_POINT.x) * t + deviation.x * eased;
+    const y = ARCHERY_LAUNCH_POINT.y + (drawnAim.y - ARCHERY_LAUNCH_POINT.y) * t + deviation.y * eased;
     path.push({ x: round1(x), y: round1(y) });
   }
   path[path.length - 1] = { x: round1(impact.x), y: round1(impact.y) };
