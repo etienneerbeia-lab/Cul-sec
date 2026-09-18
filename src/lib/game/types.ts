@@ -497,7 +497,10 @@ export interface GolfWall {
 // both the physics (see simulateShot) and how it's drawn:
 // - "tree": the ball stops dead on contact, no bounce.
 // - "bumper": bounces with partial energy kept, pinball-style.
-export type GolfObstacleKind = "tree" | "bumper";
+// - "roulette": a visually distinct bumper (spinning multicolour wheel) —
+//   physics-wise it's identical to "bumper" (simulateShot only special-
+//   cases "tree"), purely a skin for course variety.
+export type GolfObstacleKind = "tree" | "bumper" | "roulette";
 export interface GolfObstacle {
   kind: GolfObstacleKind;
   x: number;
@@ -551,7 +554,33 @@ export interface GolfWindZone {
   height: number;
   dirX: number;
   dirY: number;
+  // Purely cosmetic arrow layout — physics only ever reads (x, y, width,
+  // height, dirX, dirY) above, so this never changes how the push behaves,
+  // only how GolfScreen draws it: "corridor" (the default) tiles arrows in
+  // a plain grid across the zone's full footprint, "diamond" arranges them
+  // in a rotated-square cluster meant to sit centered on a point (e.g. the
+  // hole) so the target stays visible in the middle.
+  shape?: "corridor" | "diamond";
 }
+
+// Purely cosmetic scenery scattered on a course — never read by physics,
+// only by GolfScreen's renderer. Free-floating on the grass, so overlap
+// with real obstacles is fine as long as it doesn't visually confuse the
+// play area (kept sparse and off the direct tee-to-hole line in practice).
+export type GolfDecorKind = "cow" | "truck" | "tent" | "house" | "bush" | "sparkle";
+export interface GolfDecor {
+  kind: GolfDecorKind;
+  x: number;
+  y: number;
+  // 0-360, only meaningful for kinds that aren't rotationally symmetric
+  // (truck, house) — omitted/0 elsewhere.
+  rotation?: number;
+}
+
+// Picks which grass/water/border skin GolfScreen renders — a course's
+// gameplay (walls, obstacles, zones) is defined the same way regardless
+// of theme; this only ever changes appearance.
+export type GolfCourseTheme = "prairie" | "labyrinthe";
 
 export interface GolfCourse {
   id: string;
@@ -562,6 +591,8 @@ export interface GolfCourse {
   hole: GolfPoint;
   holeRadius: number;
   ballRadius: number;
+  theme: GolfCourseTheme;
+  decor: GolfDecor[];
   // Interior obstacles only — the four boundary edges are implicit from
   // width/height (see simulateShot in lib/golf/physics.ts) so a course
   // definition never has to spell those out.

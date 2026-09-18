@@ -1320,25 +1320,31 @@ label.field-label {
 /* Mini-golf */
 .golf-course {
   width: auto;
-  height: min(70dvh, 620px);
+  height: min(64dvh, 580px);
   max-width: 100%;
-  /* No camera/pan anymore — the whole course sits in view at once, so the
-     board claims as much vertical space as the viewport allows (leaving
-     room above for table-status and below for the turn hint) and the SVG's
-     own viewBox aspect ratio drives the width from that height, instead of
+  /* No camera/pan — the whole course sits in view at once, so the board
+     claims as much vertical space as the viewport allows (leaving room
+     above for the header and below for the turn hint) and the SVG's own
+     viewBox aspect ratio drives the width from that height, instead of
      stretching to a fixed width the way a panning camera view did. dvh
      tracks the real visible height on mobile (address bar included/
-     excluded), unlike vh. */
-  border-radius: 16px;
-  margin-top: 10px;
+     excluded), unlike vh. The wood-plank border frames it, matching the
+     reference's look. */
+  border: 12px solid #8f5527;
+  border-image: repeating-linear-gradient(90deg, #a9683a 0 16px, #8f5527 16px 18px) 12;
+  border-radius: 10px;
+  margin-top: 8px;
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
   touch-action: none;
   display: block;
   margin-left: auto;
   margin-right: auto;
 }
-.golf-turf {
-  fill: #1f6b46;
+.golf-grass-base {
+  fill: #2f8b4e;
+}
+.golf-grass-stripe {
+  fill: #34955590;
 }
 .golf-sand {
   fill: #d9b871;
@@ -1350,6 +1356,16 @@ label.field-label {
   fill: url(#golf-water-gradient);
   stroke: #1c4d7d;
   stroke-width: 1.5;
+}
+.golf-water-ice-fill {
+  stroke: #6fb6da;
+  stroke-width: 2;
+}
+.golf-water-ice-bg {
+  fill: #bfe3f5;
+}
+.golf-water-ice-tile {
+  fill: #8fcbe8;
 }
 .golf-water-ripple {
   fill: none;
@@ -1369,11 +1385,30 @@ label.field-label {
     opacity: 0;
   }
 }
+.golf-water-shine {
+  fill: rgba(255, 255, 255, 0.55);
+  animation: golf-water-shine 3.4s ease-in-out infinite;
+}
+@keyframes golf-water-shine {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: translateX(0);
+  }
+  50% {
+    opacity: 0.6;
+    transform: translateX(4px);
+  }
+}
 .golf-wind {
   fill: rgba(111, 177, 240, 0.1);
   stroke: rgba(111, 177, 240, 0.3);
   stroke-width: 1;
   stroke-dasharray: 2 5;
+}
+.golf-wind-diamond {
+  fill: rgba(244, 201, 93, 0.12);
+  stroke: rgba(244, 201, 93, 0.35);
 }
 .golf-wind-arrow {
   fill: none;
@@ -1418,6 +1453,28 @@ label.field-label {
     opacity: 0;
   }
 }
+/* Pulsing halo around a ball while it's inside a wind zone — cheap
+   feedback that "the wind is acting on me right now", cleared the instant
+   the ball's replay position leaves the zone (see GolfBoard's tick loop). */
+.golf-wind-halo {
+  fill: none;
+  stroke: #ff9d3d;
+  stroke-width: 2.5;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: golf-wind-halo-pulse 700ms ease-in-out infinite;
+}
+@keyframes golf-wind-halo-pulse {
+  0%,
+  100% {
+    transform: scale(0.85);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.35;
+  }
+}
 .golf-teleporter {
   fill: #7a4fd1;
   stroke: #c9a8ff;
@@ -1428,6 +1485,12 @@ label.field-label {
   stroke: var(--cream);
   stroke-width: 6;
   stroke-linecap: round;
+}
+.golf-wall-fence {
+  stroke: #a9683a;
+  stroke-width: 8;
+  stroke-linecap: butt;
+  stroke-dasharray: 26 4;
 }
 .golf-obstacle {
   stroke-width: 2;
@@ -1444,6 +1507,9 @@ label.field-label {
   fill: url(#golf-tree-gradient);
   stroke: #1a5c33;
   stroke-width: 1.5;
+}
+.golf-tree-canopy-back {
+  fill: url(#golf-tree-gradient-back);
 }
 .golf-tree-shard {
   fill: #2f8f52;
@@ -1489,14 +1555,49 @@ label.field-label {
     opacity: 0;
   }
 }
+.golf-roulette-spin {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: golf-roulette-spin 5s linear infinite;
+}
+@keyframes golf-roulette-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+.golf-roulette-hub {
+  fill: #f4f0ea;
+  stroke: #8a8a96;
+  stroke-width: 1;
+}
+.golf-roulette-rim {
+  fill: none;
+  stroke: #2a2a30;
+  stroke-width: 2;
+}
 .golf-hole {
-  fill: #0b1a10;
   stroke: var(--offwhite);
   stroke-width: 1.5;
+}
+.golf-flag-pole {
+  stroke: #d8d8e0;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.golf-flag-cloth {
+  fill: #e0483f;
+  stroke: #a4322b;
+  stroke-width: 1;
 }
 .golf-ball {
   stroke: rgba(0, 0, 0, 0.35);
   stroke-width: 1.5;
+}
+.golf-ball-shadow {
+  fill: rgba(0, 0, 0, 0.3);
 }
 .golf-ball-moving {
   stroke: var(--offwhite);
@@ -1578,6 +1679,191 @@ label.field-label {
 .golf-results-list {
   margin-top: 14px;
   text-align: left;
+}
+.golf-rank-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
+/* Decor — purely cosmetic scenery, see GolfDecor in types.ts. */
+.golf-decor-shadow {
+  fill: rgba(0, 0, 0, 0.22);
+}
+.golf-cow-body,
+.golf-cow-head {
+  fill: #f4f0ea;
+  stroke: #cac4b8;
+  stroke-width: 1;
+}
+.golf-cow-spot {
+  fill: #2a2a30;
+}
+.golf-cow-leg {
+  fill: #cac4b8;
+}
+.golf-truck-bed {
+  fill: #e0483f;
+  stroke: #a4322b;
+  stroke-width: 1;
+}
+.golf-truck-cab {
+  fill: #ea6b62;
+  stroke: #a4322b;
+  stroke-width: 1;
+}
+.golf-truck-window {
+  fill: #bfe3f5;
+}
+.golf-truck-wheel {
+  fill: #2a2a30;
+  stroke: #55555f;
+  stroke-width: 1;
+}
+.golf-tent-body {
+  fill: #f4c95d;
+  stroke: #c79b3a;
+  stroke-width: 1;
+}
+.golf-tent-door {
+  fill: #c79b3a;
+}
+.golf-house-wall {
+  fill: #f4f0ea;
+  stroke: #cac4b8;
+  stroke-width: 1;
+}
+.golf-house-roof {
+  fill: #e0483f;
+  stroke: #a4322b;
+  stroke-width: 1;
+}
+.golf-house-door {
+  fill: #8f5527;
+}
+.golf-bush-leaf {
+  fill: #3a9c5c;
+  stroke: #1a5c33;
+  stroke-width: 1;
+}
+.golf-sparkle-shape {
+  fill: #fff6d8;
+  animation: golf-sparkle-shimmer 2.2s ease-in-out infinite;
+}
+@keyframes golf-sparkle-shimmer {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.1);
+  }
+}
+
+/* Header — per-player avatar/score/turn row above the board. */
+.golf-header {
+  margin-top: 4px;
+}
+.golf-header-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 0 4px 6px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.golf-header-course {
+  font-weight: 700;
+  color: var(--offwhite);
+}
+.golf-header-players {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+.golf-player-card {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 10px 6px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1.5px solid transparent;
+  min-width: 74px;
+}
+.golf-player-card-active {
+  border-color: var(--pcolor);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pcolor) 25%, transparent);
+}
+.golf-turn-badge {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--pcolor);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+.golf-player-avatar-wrap {
+  position: relative;
+}
+.golf-player-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--pcolor);
+  color: #fff;
+  font-weight: 700;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+}
+.golf-player-pill {
+  position: absolute;
+  bottom: -4px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--pcolor);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--bg, #1a1a1f);
+}
+.golf-player-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--offwhite);
+  max-width: 84px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.golf-player-shots {
+  font-size: 10px;
+  color: var(--muted);
 }
 
 /* Tir à l'arc */
