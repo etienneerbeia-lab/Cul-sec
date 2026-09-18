@@ -12,7 +12,13 @@ import type {
   GolfWindZone,
 } from "@/lib/game/types";
 import { golfCourseById } from "@/lib/golf/courses";
-import { GOLF_MAX_PULL, GOLF_STEP_DT, simulateShot, velocityFromPull } from "@/lib/golf/physics";
+import {
+  GOLF_BALL_VISUAL_SCALE,
+  GOLF_MAX_PULL,
+  GOLF_STEP_DT,
+  simulateShot,
+  velocityFromPull,
+} from "@/lib/golf/physics";
 
 // One color per player, reused for their ball on the course AND their
 // score pill/avatar ring in the header — that pairing is what lets
@@ -25,12 +31,6 @@ const PLAYER_COLORS = ["#e0483f", "#9b5de5", "#3ecf8e", "#f4c95d", "#6fb1f0", "#
 // pull) still goes through, high enough to reach on purpose when you just
 // want to bail out of an aim you started.
 const GOLF_CANCEL_POWER = 0.08;
-
-// Drawn bigger than course.ballRadius (which stays the true physics/
-// collision size) purely so balls stay easy to spot now that the whole
-// course is visible at once instead of a zoomed-in camera window — a
-// cosmetic-only embellishment, never fed back into simulateShot.
-const BALL_VISUAL_SCALE = 1.35;
 
 function ordinal(rank: number): string {
   return rank === 1 ? "1er" : `${rank}e`;
@@ -461,19 +461,19 @@ function GolfBoard({
           <rect width={9} height={9} className="golf-water-ice-tile" />
           <rect x={9} y={9} width={9} height={9} className="golf-water-ice-tile" />
         </pattern>
-        <radialGradient id="golf-tree-gradient" cx="35%" cy="30%" r="75%">
-          <stop offset="0%" stopColor="#55b378" />
-          <stop offset="60%" stopColor="#2f8f52" />
-          <stop offset="100%" stopColor="#1a5c33" />
+        <radialGradient id="golf-tree-gradient" cx="32%" cy="26%" r="78%">
+          <stop offset="0%" stopColor="#8bdba3" />
+          <stop offset="45%" stopColor="#48a869" />
+          <stop offset="100%" stopColor="#164a29" />
         </radialGradient>
-        <radialGradient id="golf-tree-gradient-back" cx="35%" cy="30%" r="75%">
-          <stop offset="0%" stopColor="#3a9a5d" />
-          <stop offset="100%" stopColor="#1a5c33" />
+        <radialGradient id="golf-tree-gradient-back" cx="32%" cy="26%" r="78%">
+          <stop offset="0%" stopColor="#5cb87e" />
+          <stop offset="100%" stopColor="#164a29" />
         </radialGradient>
-        <radialGradient id="golf-bumper-gradient" cx="35%" cy="28%" r="75%">
-          <stop offset="0%" stopColor="#ffb0d3" />
-          <stop offset="55%" stopColor="#e0568c" />
-          <stop offset="100%" stopColor="#a83864" />
+        <radialGradient id="golf-bumper-gradient" cx="32%" cy="25%" r="78%">
+          <stop offset="0%" stopColor="#ffcde3" />
+          <stop offset="50%" stopColor="#e0568c" />
+          <stop offset="100%" stopColor="#8f2a4e" />
         </radialGradient>
         <radialGradient id="golf-water-gradient" cx="40%" cy="35%" r="75%">
           <stop offset="0%" stopColor="#5da3dd" />
@@ -486,10 +486,10 @@ function GolfBoard({
           <stop offset="100%" stopColor="#000000" />
         </radialGradient>
         {PLAYER_COLORS.map((c, i) => (
-          <radialGradient key={i} id={`golf-ball-gradient-${i}`} cx="35%" cy="30%" r="75%">
-            <stop offset="0%" stopColor={shade(c, 0.55)} />
-            <stop offset="55%" stopColor={c} />
-            <stop offset="100%" stopColor={shade(c, -0.3)} />
+          <radialGradient key={i} id={`golf-ball-gradient-${i}`} cx="32%" cy="26%" r="78%">
+            <stop offset="0%" stopColor={shade(c, 0.7)} />
+            <stop offset="45%" stopColor={c} />
+            <stop offset="100%" stopColor={shade(c, -0.35)} />
           </radialGradient>
         ))}
         <marker id="golf-arrowhead" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
@@ -518,24 +518,8 @@ function GolfBoard({
               <circle cx={z.x} cy={z.y} r={z.radius} className="golf-water" />
               <circle cx={z.x} cy={z.y} r={z.radius * 0.55} className="golf-water-ripple" style={{ animationDelay: "0s" }} />
               <circle cx={z.x} cy={z.y} r={z.radius * 0.55} className="golf-water-ripple" style={{ animationDelay: "1.3s" }} />
-              <rect
-                x={z.x - z.radius * 0.55}
-                y={z.y - z.radius * 0.1}
-                width={z.radius * 0.7}
-                height={4}
-                rx={2}
-                className="golf-water-shine"
-                style={{ animationDelay: "0s" }}
-              />
-              <rect
-                x={z.x - z.radius * 0.15}
-                y={z.y + z.radius * 0.3}
-                width={z.radius * 0.5}
-                height={3}
-                rx={1.5}
-                className="golf-water-shine"
-                style={{ animationDelay: "0.9s" }}
-              />
+              <WaveShine cx={z.x - z.radius * 0.05} cy={z.y - z.radius * 0.18} width={z.radius * 0.85} delay="0s" />
+              <WaveShine cx={z.x - z.radius * 0.2} cy={z.y + z.radius * 0.28} width={z.radius * 0.6} delay="1.1s" />
             </>
           )}
         </g>
@@ -608,7 +592,7 @@ function GolfBoard({
         if (!pos) return null;
         const isSinkingThisBall = isMoving && sinkingSlugs.has(p.slug);
         const isWindy = isMoving && windySlugs.has(p.slug);
-        const ballRadius = course.ballRadius * BALL_VISUAL_SCALE;
+        const ballRadius = course.ballRadius * GOLF_BALL_VISUAL_SCALE;
         return (
           <g key={p.slug}>
             <ellipse cx={pos.x + ballRadius * 0.25} cy={pos.y + ballRadius * 0.5} rx={ballRadius * 0.85} ry={ballRadius * 0.32} className="golf-ball-shadow" />
@@ -764,6 +748,16 @@ function HoleFlag({ hole, holeRadius }: { hole: GolfPoint; holeRadius: number })
       />
     </g>
   );
+}
+
+// A cartoon "wave" streak across prairie-theme water — a wide double-bump
+// S-curve instead of a plain straight highlight, closer to the reference's
+// wavy white reflections. Pure stroked path + CSS opacity pulse.
+function WaveShine({ cx, cy, width, delay }: { cx: number; cy: number; width: number; delay: string }) {
+  const w = width / 2;
+  const h = width * 0.14;
+  const d = `M ${cx - w},${cy} Q ${cx - w / 2},${cy - h} ${cx},${cy} Q ${cx + w / 2},${cy + h} ${cx + w},${cy}`;
+  return <path d={d} className="golf-water-shine" style={{ animationDelay: delay }} />;
 }
 
 // A short burst of specks around the hole the instant a ball sinks —

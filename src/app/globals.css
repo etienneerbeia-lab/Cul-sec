@@ -1386,18 +1386,21 @@ label.field-label {
   }
 }
 .golf-water-shine {
-  fill: rgba(255, 255, 255, 0.55);
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.75);
+  stroke-width: 3.5;
+  stroke-linecap: round;
   animation: golf-water-shine 3.4s ease-in-out infinite;
 }
 @keyframes golf-water-shine {
   0%,
   100% {
-    opacity: 0.25;
+    opacity: 0.35;
     transform: translateX(0);
   }
   50% {
-    opacity: 0.6;
-    transform: translateX(4px);
+    opacity: 0.85;
+    transform: translateX(5px);
   }
 }
 .golf-wind {
@@ -1407,8 +1410,11 @@ label.field-label {
   stroke-dasharray: 2 5;
 }
 .golf-wind-diamond {
-  fill: rgba(244, 201, 93, 0.12);
-  stroke: rgba(244, 201, 93, 0.35);
+  /* A muted dark-olive overlay instead of gold — closer to the reference
+     video's diamond wind patch, and reads as "grass darkened by wind"
+     rather than a glowing highlight. */
+  fill: rgba(20, 40, 20, 0.22);
+  stroke: rgba(230, 235, 210, 0.4);
 }
 .golf-wind-arrow {
   fill: none;
@@ -1499,14 +1505,14 @@ label.field-label {
   fill: rgba(0, 0, 0, 0.28);
 }
 .golf-tree-trunk {
-  fill: #5c3d22;
+  fill: #6b4726;
   stroke: #3c2714;
-  stroke-width: 1;
+  stroke-width: 1.4;
 }
 .golf-tree-canopy {
   fill: url(#golf-tree-gradient);
-  stroke: #1a5c33;
-  stroke-width: 1.5;
+  stroke: #123f22;
+  stroke-width: 1.6;
 }
 .golf-tree-canopy-back {
   fill: url(#golf-tree-gradient-back);
@@ -1593,8 +1599,8 @@ label.field-label {
   stroke-width: 1;
 }
 .golf-ball {
-  stroke: rgba(0, 0, 0, 0.35);
-  stroke-width: 1.5;
+  stroke: rgba(0, 0, 0, 0.45);
+  stroke-width: 1.8;
 }
 .golf-ball-shadow {
   fill: rgba(0, 0, 0, 0.3);
@@ -1694,59 +1700,65 @@ label.field-label {
 }
 .golf-cow-body,
 .golf-cow-head {
-  fill: #f4f0ea;
-  stroke: #cac4b8;
-  stroke-width: 1;
+  fill: #ffffff;
+  stroke: #2a2a30;
+  stroke-width: 1.4;
 }
 .golf-cow-spot {
-  fill: #2a2a30;
+  fill: #201f24;
 }
 .golf-cow-leg {
-  fill: #cac4b8;
+  fill: #e2ddd2;
+  stroke: #2a2a30;
+  stroke-width: 1;
 }
 .golf-truck-bed {
-  fill: #e0483f;
-  stroke: #a4322b;
-  stroke-width: 1;
+  fill: #ee3b30;
+  stroke: #7a1e18;
+  stroke-width: 1.4;
 }
 .golf-truck-cab {
-  fill: #ea6b62;
-  stroke: #a4322b;
-  stroke-width: 1;
+  fill: #f4695e;
+  stroke: #7a1e18;
+  stroke-width: 1.4;
 }
 .golf-truck-window {
-  fill: #bfe3f5;
+  fill: #cdeefb;
+  stroke: #7a1e18;
+  stroke-width: 0.75;
 }
 .golf-truck-wheel {
-  fill: #2a2a30;
-  stroke: #55555f;
+  fill: #201f24;
+  stroke: #000000;
   stroke-width: 1;
 }
 .golf-tent-body {
-  fill: #f4c95d;
-  stroke: #c79b3a;
-  stroke-width: 1;
+  fill: #ffcb3d;
+  stroke: #a9740f;
+  stroke-width: 1.4;
 }
 .golf-tent-door {
-  fill: #c79b3a;
+  fill: #a9740f;
 }
 .golf-house-wall {
-  fill: #f4f0ea;
-  stroke: #cac4b8;
-  stroke-width: 1;
+  fill: #ffffff;
+  stroke: #2a2a30;
+  stroke-width: 1.4;
 }
 .golf-house-roof {
-  fill: #e0483f;
-  stroke: #a4322b;
-  stroke-width: 1;
+  fill: #ee3b30;
+  stroke: #7a1e18;
+  stroke-width: 1.4;
 }
 .golf-house-door {
   fill: #8f5527;
+  stroke: #5c3717;
+  stroke-width: 0.75;
 }
 .golf-bush-leaf {
-  fill: #3a9c5c;
-  stroke: #1a5c33;
-  stroke-width: 1;
+  fill: #45ab68;
+  stroke: #164a29;
+  stroke-width: 1.4;
 }
 .golf-sparkle-shape {
   fill: #fff6d8;

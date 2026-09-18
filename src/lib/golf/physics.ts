@@ -16,6 +16,16 @@ const WIND_STRENGTH = 0.6; // acceleration (units/s^2) per unit of entry speed w
 export const GOLF_MAX_PULL = 110; // course units — how far back the slingshot drag maxes out
 export const GOLF_MAX_SPEED = 340; // units/s at full pull
 
+// Balls are drawn bigger than course.ballRadius on screen (see
+// GolfScreen's own use of this same constant for rendering) so they stay
+// legible now the whole course is visible at once instead of zoomed in.
+// Ball-to-ball collision has to use this same scaled radius, not the bare
+// physics one, or the two circles start reacting to each other well
+// before they visually touch — exported here (not just kept in the UI
+// layer) specifically so physics and rendering can never drift apart
+// again like that.
+export const GOLF_BALL_VISUAL_SCALE = 1.35;
+
 function len(v: GolfPoint): number {
   return Math.hypot(v.x, v.y);
 }
@@ -239,7 +249,7 @@ export function simulateShot(
   // frame, exactly like a real shot — that's what lets a chain of hits
   // ripple from ball to ball within the same simulateShot call.
   function resolveBallCollisions(): void {
-    const minDist = course.ballRadius * 2;
+    const minDist = course.ballRadius * 2 * GOLF_BALL_VISUAL_SCALE;
     for (let i = 0; i < bodies.length; i++) {
       const a = bodies[i];
       if (a.status === "sunk" || a.status === "watered") continue;
