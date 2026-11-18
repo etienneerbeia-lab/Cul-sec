@@ -1,17 +1,4 @@
-/* Visuels propres aux mini-jeux (golf, arc, cartes, dés...). Les couleurs
-   passent par les tokens de globals.css. */
-.playing-card {
-  width: 190px;
-  height: 266px;
-  background: var(--cream);
-  border-radius: 16px;
-  border: 3px solid var(--gold);
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 16px;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(0, 0, 0, 0.05) inset;
-}
+/* Visuels propres au mini-golf et au tir à l'arc (SVG). */
 .playing-card.small {
   width: 66px;
   height: 92px;
@@ -26,12 +13,6 @@
   border-radius: 13px;
   border-width: 2.5px;
 }
-.playing-card .corner {
-  font-family: var(--font-display), serif;
-  font-weight: 700;
-  font-size: 1.6rem;
-  line-height: 1;
-}
 .playing-card.small .corner {
   font-size: 0.85rem;
 }
@@ -42,138 +23,16 @@
   align-self: flex-end;
   transform: rotate(180deg);
 }
-.playing-card .center-suit {
-  font-size: 3.6rem;
-  text-align: center;
-}
 .playing-card.small .center-suit {
   font-size: 1.5rem;
 }
 .playing-card.duel .center-suit {
   font-size: 2.4rem;
 }
-.suit-red {
-  color: var(--wine);
-}
-.suit-black {
-  color: var(--ink);
-}
 .player-chip .pcard {
   font-family: var(--font-display), serif;
   font-weight: 700;
   font-size: 1.1rem;
-}
-
-.dice-row {
-  display: flex;
-  gap: 22px;
-  justify-content: center;
-  margin: 18px 0;
-}
-/* Plain 2D pip card — two earlier attempts at a real CSS 3D cube never
-   rendered reliably, so the "rolling" motion comes entirely from Die.tsx
-   swapping the displayed face rapidly (see .dice-flicker below) rather
-   than from any 3D transform. */
-.die-2d {
-  width: 64px;
-  height: 64px;
-  border-radius: 12px;
-  background: var(--cream);
-  border: 2px solid var(--gold);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
-  padding: 8px;
-}
-.die-2d.die-2d-idle {
-  opacity: 0.6;
-}
-.die-2d.die-2d-small {
-  width: 26px;
-  height: 26px;
-  padding: 4px;
-  border-radius: 6px;
-  border-width: 1px;
-}
-.die-2d-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(3, 1fr);
-  width: 100%;
-  height: 100%;
-  gap: 2px;
-}
-.die-pip {
-  border-radius: 50%;
-  background: var(--felt-dark);
-  align-self: center;
-  justify-self: center;
-  width: 60%;
-  height: 60%;
-}
-.die-pip-empty {
-  background: transparent;
-}
-/* Applied to .dice-row while a die is mid-"roll" — each die wobbles in
-   place (small rotate + scale pulse) while Die.tsx swaps its face every
-   ~90ms, together reading as a fast slot-machine-style roll. */
-.dice-flicker .die-2d {
-  animation: dice-wobble 0.15s ease-in-out infinite;
-}
-@keyframes dice-wobble {
-  0%,
-  100% {
-    transform: rotate(0deg) scale(1);
-  }
-  25% {
-    transform: rotate(-6deg) scale(1.05);
-  }
-  50% {
-    transform: rotate(0deg) scale(0.96);
-  }
-  75% {
-    transform: rotate(6deg) scale(1.05);
-  }
-}
-.dice-tap-area {
-  display: block;
-  width: 100%;
-  background: transparent;
-  border: none;
-  padding: 0;
-  margin: 0;
-  cursor: pointer;
-}
-.dice-tap-area:disabled {
-  cursor: default;
-}
-.dice-tap-area .dice-row {
-  margin: 12px 0;
-  transition: transform 0.12s ease;
-}
-.dice-tap-area:not(:disabled):active .dice-row {
-  transform: scale(0.96);
-}
-.dice-sum {
-  font-family: var(--font-display), serif;
-  font-size: 2.4rem;
-  font-weight: 700;
-  color: var(--gold);
-  text-align: center;
-  margin-bottom: 4px;
-}
-.dice-chip-result {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.dice-tiebreak-banner {
-  background: rgba(139, 38, 53, 0.22);
-  border: 1px solid rgba(178, 51, 71, 0.5);
-  border-radius: 12px;
-  padding: 12px 16px;
-  text-align: center;
-  margin: 0 0 14px;
-  font-size: 0.9rem;
-  color: var(--offwhite);
 }
 .modal-card {
   width: 100%;
@@ -188,42 +47,6 @@
 .modal-card .hint {
   margin-bottom: 0;
 }
-
-/* ---- Texas express: poker-table betting screen ---- */
-.poker-table {
-  position: relative;
-  border-radius: 26px;
-  background: radial-gradient(ellipse at 50% 30%, var(--felt) 0%, var(--felt-dark) 100%);
-  border: 3px solid var(--gold-dim);
-  box-shadow:
-    0 14px 30px rgba(0, 0, 0, 0.4),
-    inset 0 0 0 6px rgba(0, 0, 0, 0.16),
-    inset 0 0 44px rgba(0, 0, 0, 0.35);
-  padding: 14px 10px 18px;
-  margin: 10px 0 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.poker-opponents {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
-}
-.poker-seat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  min-width: 62px;
-  padding: 6px 10px;
-  border-radius: 12px;
-  background: rgba(0, 0, 0, 0.24);
-  border: 1.5px solid rgba(236, 230, 245, 0.15);
-  transition: box-shadow 0.2s ease, border-color 0.2s ease;
-}
 .poker-seat.active {
   border-color: var(--gold);
   background: rgba(224, 86, 140, 0.16);
@@ -232,41 +55,9 @@
 .poker-seat.folded {
   opacity: 0.4;
 }
-.poker-seat-name {
-  font-size: 0.76rem;
-  font-weight: 700;
-  color: var(--offwhite);
-  white-space: nowrap;
-  max-width: 90px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.poker-seat-bet {
-  font-size: 0.7rem;
-  color: var(--muted);
-}
 .poker-seat.active .poker-seat-bet {
   color: var(--gold);
   font-weight: 700;
-}
-
-.poker-center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 0 2px;
-}
-.poker-street-label {
-  font-size: 0.72rem;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-.poker-community {
-  display: flex;
-  gap: 6px;
-  justify-content: center;
 }
 .poker-community .playing-card.small {
   width: 44px;
@@ -281,169 +72,13 @@
 .poker-community .playing-card.small .center-suit {
   font-size: 1rem;
 }
-/* A not-yet-dealt community card sits face-down; the instant everyone's
-   acted and the server reveals it, `is-revealed` flips on and the card
-   turns over live for every screen watching — no host "continue" step. */
-.poker-card-slot {
-  perspective: 600px;
-  width: 44px;
-  height: 62px;
-}
-.poker-card-flip {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  transition: transform 0.55s cubic-bezier(0.4, 0.1, 0.2, 1);
-  transform-style: preserve-3d;
-}
-.poker-card-flip.is-revealed {
-  transform: rotateY(180deg);
-}
-.poker-card-face {
-  position: absolute;
-  inset: 0;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.poker-card-face.front {
-  transform: rotateY(180deg);
-}
-.poker-card-back-mini {
-  width: 100%;
-  height: 100%;
-  border-radius: 8px;
-  border: 1.5px solid var(--gold);
-  background: repeating-linear-gradient(
-    135deg,
-    var(--felt) 0px,
-    var(--felt) 6px,
-    var(--felt-dark) 6px,
-    var(--felt-dark) 12px
-  );
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-}
-.poker-pot {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(224, 86, 140, 0.35);
-  border-radius: 999px;
-  padding: 6px 18px;
-}
-.poker-pot-label {
-  font-size: 0.68rem;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-.poker-pot-value {
-  font-family: var(--font-display), serif;
-  font-weight: 700;
-  font-size: 1.15rem;
-  color: var(--gold);
-}
-
-.poker-turn-indicator {
-  text-align: center;
-  font-size: 0.85rem;
-  color: var(--muted);
-  margin: 2px 0 8px;
-}
-.poker-turn-indicator strong {
-  color: var(--gold);
-}
-
-.poker-my-seat {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px;
-  border-radius: 14px;
-  background: rgba(236, 230, 245, 0.05);
-  border: 1.5px solid rgba(236, 230, 245, 0.15);
-  margin-bottom: 4px;
-  transition: box-shadow 0.2s ease, border-color 0.2s ease;
-}
 .poker-my-seat.active {
   border-color: var(--gold);
   box-shadow: 0 0 0 3px var(--gold-glow), 0 0 18px var(--gold-glow);
 }
-.poker-my-cards {
-  display: flex;
-  gap: 6px;
-  flex-shrink: 0;
-}
-.poker-my-meta {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-  min-width: 0;
-}
-.poker-my-name {
-  font-weight: 700;
-  color: var(--cream);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-}
-.poker-my-status {
-  font-size: 0.8rem;
-  color: var(--muted);
-}
 .poker-my-seat.active .poker-my-status {
   color: var(--gold);
   font-weight: 700;
-}
-
-/* ---- Blackjack: dealer up top, players in a row below ---- */
-.bj-table {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  margin: 10px 0 14px;
-}
-.bj-dealer-zone {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 16px 10px;
-  border-radius: 20px;
-  background: radial-gradient(ellipse at 50% 0%, var(--felt) 0%, var(--felt-dark) 100%);
-  border: 2px solid var(--gold-dim);
-  box-shadow: inset 0 0 0 5px rgba(0, 0, 0, 0.14), inset 0 0 36px rgba(0, 0, 0, 0.3);
-}
-.bj-dealer-label {
-  font-size: 0.72rem;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-.bj-dealer-total {
-  font-family: var(--font-display), serif;
-  font-weight: 700;
-  color: var(--gold);
-  font-size: 1.1rem;
-  min-height: 1.4em;
-}
-/* Dedicated row for a dealer's or a seat's cards — kept independent of
-   .poker-community (which has no flex-wrap of its own; it only ever holds
-   a fixed, already-known number of community cards) rather than patched
-   with overrides, since a hand here can grow to any number of cards and
-   genuinely needs to wrap onto more lines instead of overflowing. */
-.bj-cards-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  justify-content: center;
-  width: 100%;
 }
 .bj-cards-row .playing-card.small {
   width: 44px;
@@ -458,156 +93,11 @@
 .bj-cards-row .playing-card.small .center-suit {
   font-size: 1rem;
 }
-/* Grid, not flex-wrap: a fixed number of equal-width columns computed
-   purely from the row's own width — never from what's inside each seat.
-   flex-wrap re-decides how many seats fit per row on every render based
-   on each seat's current content width, so a hand growing by one card
-   (or shrinking after a round resets) could silently reflow the whole
-   arrangement — 3-across one moment, 2-over-1 the next. A seat's cards
-   wrap onto a second line inside its own fixed cell instead (see
-   .poker-community's own flex-wrap) rather than ever changing the grid. */
-.bj-seats {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  gap: 10px;
-}
-.bj-seat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: rgba(0, 0, 0, 0.24);
-  border: 1.5px solid rgba(236, 230, 245, 0.15);
-  min-width: 0;
-  transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease, background 0.2s ease;
-}
 .bj-seat.active {
   border-color: var(--gold);
   background: rgba(224, 86, 140, 0.14);
   box-shadow: 0 0 0 3px var(--gold-glow), 0 0 14px var(--gold-glow);
   transform: scale(1.04);
-}
-.bj-seat-name {
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--offwhite);
-  white-space: nowrap;
-}
-.bj-seat-hand {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 6px;
-  border-radius: 8px;
-  width: 100%;
-  min-width: 0;
-}
-.bj-seat-hand.active-hand {
-  outline: 1.5px dashed var(--gold);
-}
-.bj-seat-waiting {
-  font-size: 0.8rem;
-  color: var(--muted);
-}
-.bj-seat-meta {
-  font-size: 0.74rem;
-  color: var(--muted);
-  text-align: center;
-  line-height: 1.35;
-}
-.bj-seat-meta strong {
-  color: var(--gold);
-  font-weight: 700;
-}
-
-/* A newly-dealt card fades and pops in — real DOM elements appearing for
-   the first time (the reveal queue below only ever appends), so a plain
-   @keyframes entrance is safe here: no risk of the transition-on-existing-
-   element pitfall that ruled out @keyframes for the flip animations. */
-@keyframes bj-card-in {
-  from {
-    opacity: 0;
-    transform: scale(0.7) translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-.bj-card-in {
-  animation: bj-card-in 0.35s ease-out;
-}
-
-/* ---- Duel éclair: face-down cards that flip live for everyone ---- */
-.duel-card-row {
-  display: flex;
-  gap: 18px;
-  justify-content: center;
-  align-items: flex-start;
-  margin: 18px 0;
-  flex-wrap: wrap;
-}
-.duel-card-col {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-}
-.duel-card-name {
-  font-weight: 600;
-  color: var(--offwhite);
-  font-size: 0.9rem;
-  text-align: center;
-}
-.duel-card-slot {
-  perspective: 1000px;
-  width: 128px;
-  height: 179px;
-}
-.duel-card-flip {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  transition: transform 0.6s ease-in-out;
-  transform-style: preserve-3d;
-}
-.duel-card-flip.is-revealed {
-  transform: rotateY(180deg);
-}
-.duel-card-face {
-  position: absolute;
-  inset: 0;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.duel-card-face.front {
-  transform: rotateY(180deg);
-}
-.duel-card-back {
-  width: 100%;
-  height: 100%;
-  border-radius: 13px;
-  border: 2.5px solid var(--gold);
-  background: repeating-linear-gradient(
-    135deg,
-    var(--felt) 0px,
-    var(--felt) 10px,
-    var(--felt-dark) 10px,
-    var(--felt-dark) 20px
-  );
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(0, 0, 0, 0.05) inset;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2.4rem;
-  color: var(--gold);
-  opacity: 0.6;
 }
 
 /* Mini-golf */
@@ -1030,10 +520,6 @@
     transform: translate(-1.5px, 1px);
   }
 }
-.golf-turn-hint {
-  text-align: center;
-  margin-top: 10px;
-}
 .golf-cancel-label {
   fill: #d8d8e0;
   font-size: 15px;
@@ -1041,22 +527,6 @@
   paint-order: stroke;
   stroke: rgba(0, 0, 0, 0.55);
   stroke-width: 3px;
-}
-.golf-results-card {
-  max-width: 360px;
-  max-height: 80dvh;
-  overflow-y: auto;
-}
-.golf-results-list {
-  margin-top: 14px;
-  text-align: left;
-}
-.golf-rank-dot {
-  display: inline-block;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  margin-right: 6px;
 }
 
 /* Decor — purely cosmetic scenery, see GolfDecor in types.ts. */
@@ -1305,38 +775,6 @@
   touch-action: none;
   display: block;
 }
-.archery-progress {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 6px;
-  padding: 0 4px;
-}
-.archery-progress-label {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--cream);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.archery-progress-dots {
-  display: flex;
-  gap: 6px;
-  flex-shrink: 0;
-}
-.archery-progress-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: 2px solid rgba(236, 230, 245, 0.35);
-  background: transparent;
-}
-.archery-progress-dot-done {
-  background: var(--gold);
-  border-color: var(--gold);
-}
 .archery-cancel-btn {
   position: absolute;
   top: 10px;
@@ -1359,20 +797,21 @@
   stroke: rgba(0, 0, 0, 0.25);
   stroke-width: 1;
 }
-.archery-ring-outer {
-  fill: var(--cream);
+.archery-ring-white {
+  fill: #f5f1ea;
 }
-.archery-ring-second {
-  fill: var(--felt-dark);
+.archery-ring-black {
+  fill: #1d1a22;
+  stroke: rgba(255, 255, 255, 0.35) !important;
 }
-.archery-ring-third {
-  fill: var(--wine);
+.archery-ring-blue {
+  fill: #2b8fd6;
 }
-.archery-ring-fourth {
-  fill: var(--wine-bright);
+.archery-ring-red {
+  fill: #e23b3b;
 }
-.archery-ring-bullseye {
-  fill: var(--gold);
+.archery-ring-gold {
+  fill: #ffd23f;
 }
 .archery-archer {
   fill: var(--muted);
@@ -1414,17 +853,4 @@
   stroke: rgba(0, 0, 0, 0.65);
   stroke-width: 5px;
   stroke-linejoin: round;
-}
-.archery-turn-hint {
-  text-align: center;
-  margin-top: 10px;
-}
-.archery-results-card {
-  max-width: 360px;
-  max-height: 80dvh;
-  overflow-y: auto;
-}
-.archery-results-list {
-  margin-top: 14px;
-  text-align: left;
 }

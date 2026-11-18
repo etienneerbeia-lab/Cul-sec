@@ -1,4 +1,8 @@
-import type { QuizQuestionState } from "../game/types";
+interface QuizQuestionState {
+  answerKind: "year" | "text";
+  answer?: string;
+  acceptableAnswers?: string[];
+}
 
 const COMBINING_DIACRITICS = new RegExp("[\\u0300-\\u036f]", "g");
 const LEADING_FILLERS = /^(le |la |les |l['’]|d['’]|du |de |des |en |l['’]an(?:nee)? )+/;

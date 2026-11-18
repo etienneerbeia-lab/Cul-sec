@@ -53,13 +53,12 @@ function applyGameAction(room: Room, slug: string, action: Action, now: number):
       confirmRoundIntro(g, ctx);
       break;
     case "nextRound":
-      if (g.phase !== "showdown" && g.phase !== "quizRecap") notNow();
+      if (g.phase !== "showdown") notNow();
       seatLateJoiners(room);
       nextRound(g);
       break;
     case "endNight":
-      if (!["showdown", "quizRecap"].includes(g.phase) && !(g.phase === "quiz" && g.quiz?.status === "result"))
-        notNow();
+      if (g.phase !== "showdown") notNow();
       endNight(g);
       break;
     case "restart":

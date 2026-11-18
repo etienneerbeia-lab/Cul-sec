@@ -23,9 +23,6 @@ export function viewFor(game: GameState, slug: string | null): PlayerView {
   // Cartes communes : seulement celles déjà retournées.
   if (g.community) g = { ...g, community: g.community.slice(0, g.communityRevealed ?? 0) };
 
-  if (g.quiz && g.quiz.status === "asking") {
-    g = { ...g, quiz: { ...g.quiz, question: { ...g.quiz.question, answer: undefined, acceptableAnswers: undefined } } };
-  }
 
   if (g.vote) {
     if (slug) myVoteChoice = g.vote.votes[slug] ?? null;

@@ -89,7 +89,7 @@ function humanMove(s: StateResponse): Record<string, unknown> | null {
       if (bj.stage === "betting" && !bj.betResponded.includes(me)) return { type: "bjBet", amount: 2 };
       if (bj.stage === "playerTurns" && bj.players[bj.turnPointer].slug === me) return { type: "bjAct", action: "stand" };
       if (bj.stage === "distributing" && bj.distributionQueue[0]?.slug === me)
-        return { type: "bjDistribute", targets: [{ slug: pickOther(s, me), amount: bj.distributionQueue[0].amount }] };
+        return { type: "bjDistribute", targetSlug: pickOther(s, me) };
       return null;
     }
     case "golf": {

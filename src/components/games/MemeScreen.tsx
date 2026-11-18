@@ -13,10 +13,22 @@ import { cleanName } from "../ui/Players";
 import { GulpList, NextRoundActions, sumGulps } from "../ui/Results";
 
 // L'image du mème avec la légende incrustée, façon générateur de mèmes.
-function Meme({ url, caption, small = false }: { url: string; caption?: string; small?: boolean }) {
+// La place est réservée au bon format ; si l'image ne charge pas, on
+// affiche un cadre de secours (la partie continue).
+function Meme({ url, caption, ratio = 1, small = false }: { url: string; caption?: string; ratio?: number; small?: boolean }) {
+  const [failed, setFailed] = useState(false);
   return (
-    <div className={`relative overflow-hidden rounded-2xl border border-white/10 bg-black ${small ? "max-h-[34vh]" : "max-h-[42vh]"}`}>
-      <img src={url} alt="Mème" className="mx-auto block max-h-[inherit] w-full object-contain" />
+    <div
+      className="relative mx-auto overflow-hidden rounded-2xl border border-white/10 bg-black"
+      style={{ aspectRatio: String(ratio), maxHeight: small ? "34vh" : "42vh", maxWidth: "100%" }}
+    >
+      {failed ? (
+        <div className="grid h-full w-full place-items-center p-4 text-center text-sm text-mute">
+          Image indisponible : imagine la scène et lâche ta meilleure vanne 😅
+        </div>
+      ) : (
+        <img src={url} alt="Mème" className="block h-full w-full object-contain" onError={() => setFailed(true)} />
+      )}
       {caption && (
         <div
           className="absolute inset-x-2 bottom-2 text-center font-display font-extrabold uppercase leading-tight text-white"
@@ -45,7 +57,7 @@ export default function MemeScreen() {
     const best = tallies[0];
     return (
       <Screen actions={<NextRoundActions />}>
-        <Meme url={r.memeUrl!} caption={best?.caption} />
+        <Meme url={r.memeUrl!} ratio={m.template.width / m.template.height} caption={best?.caption} />
         {best && <p className="mt-2 text-center text-sm text-mute">🏆 Légende de {cleanName(best.name)}</p>}
         <div className="stagger mt-4 flex flex-col gap-2">
           {tallies.map((t) => (
@@ -93,7 +105,7 @@ export default function MemeScreen() {
         <div className="mb-3">
           <TimerBar deadlineAt={game.timer?.deadlineAt} totalMs={MEME_CAPTION_MS} />
         </div>
-        <Meme url={m.template.url} caption={sent ? undefined : draft} />
+        <Meme url={m.template.url} ratio={m.template.width / m.template.height} caption={sent ? undefined : draft} />
         <p className="mt-3 text-center text-sm text-mute">Le temps écoulé, ce que tu as tapé est envoyé tel quel.</p>
         <AutoSubmit draft={draft} />
       </Screen>
@@ -120,7 +132,7 @@ export default function MemeScreen() {
       <div className="mb-3">
         <TimerBar deadlineAt={game.timer?.deadlineAt} totalMs={MEME_VOTE_MS} />
       </div>
-      <Meme small url={m.template.url} caption={picked ? m.captions[picked] : undefined} />
+      <Meme small url={m.template.url} ratio={m.template.width / m.template.height} caption={picked ? m.captions[picked] : undefined} />
       <Kicker className="mt-4 mb-2 px-1">La plus drôle ?</Kicker>
       <div className="flex flex-col gap-2">
         {options.map((slug) => (

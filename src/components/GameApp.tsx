@@ -6,6 +6,7 @@ import { syncClock } from "@/lib/clock";
 import { haptic } from "@/lib/haptics";
 import { useViewportHeight } from "@/lib/useViewportHeight";
 import { roundTypeById } from "@/lib/game/roundTypes";
+import { RULES } from "@/lib/game/rules";
 import type { Card, CulSecRule, GameState, Player, RoundTypeId } from "@/lib/game/types";
 import { GameContext, type GameCtx } from "./GameContext";
 import { Button, IconButton } from "./ui/Button";
@@ -322,6 +323,18 @@ export default function GameApp() {
       )}
 
       <Sheet open={menuOpen} onClose={() => setMenuOpen(false)}>
+        {rt && inGame && phase !== "final" && (
+          <div className="mb-5">
+            <Kicker className="mb-2">
+              {rt.icon} Règles · {rt.label}
+            </Kicker>
+            <ul className="flex flex-col gap-1.5 text-[0.95rem] leading-snug text-ink-2">
+              {[...RULES[rt.id].how, ...RULES[rt.id].gulps.map((l) => `🍺 ${l}`)].map((l) => (
+                <li key={l}>{l}</li>
+              ))}
+            </ul>
+          </div>
+        )}
         {game && game.playersPublic.length > 0 && phase !== "lobby" && (
           <>
             <Kicker className="mb-2">Classement</Kicker>

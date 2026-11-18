@@ -1,6 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { haptic } from "@/lib/haptics";
+import { GOLF_MAX_STROKES } from "@/lib/golf/engine";
+import { useGame } from "../GameContext";
+import { TimerBar } from "../ui/Feedback";
+import { Kicker, Screen } from "../ui/Layout";
+import { cleanName, PlayerRow } from "../ui/Players";
+import { GulpList, NextRoundActions, sumGulps } from "../ui/Results";
 import type {
   GameState,
   GolfCourse,
@@ -57,118 +64,84 @@ function inWindZone(p: GolfPoint, course: GolfCourse): boolean {
   return course.windZones.some((z) => p.x >= z.x && p.x <= z.x + z.width && p.y >= z.y && p.y <= z.y + z.height);
 }
 
-export default function GolfScreen({
-  game,
-  mySlug,
-  isHost,
-  busy,
-  onShoot,
-  onNextRound,
-  onEndNight,
-}: {
-  game: GameState;
-  mySlug: string;
-  isHost: boolean;
-  busy: boolean;
-  onShoot: (velocity: GolfPoint) => void;
-  onNextRound: () => void;
-  onEndNight: () => void;
-}) {
+export default function GolfScreen() {
+  const { game, mySlug, busy, act } = useGame();
   const gl = game.golf!;
   const course = golfCourseById(gl.courseId);
   const activePlayer = game.playersPublic[gl.playerIdx];
   const isMeActive = activePlayer.slug === mySlug && game.phase === "golf";
   const amFinished = gl.finishedSlugs.includes(mySlug);
 
-  // Same "replay one shot at a time" mechanism as the dice mini-game's
-  // rolls: starts at however many shots already happened (a fresh page
-  // load shouldn't replay the whole hole), then only advances as fresh
-  // ones land, which is what makes every viewer watch each shot's
-  // trajectory live instead of the ball just teleporting to its new spot.
+  // Rejoue les coups un par un (animation de la trajectoire), au lieu de
+  // téléporter la balle : on part du nombre de coups déjà joués.
   const [shownCount, setShownCount] = useState(() => gl.shots.length);
   const pendingShot = shownCount < gl.shots.length ? gl.shots[shownCount] : null;
-
   const resolved = game.phase === "showdown" && !pendingShot;
   const r = resolved ? game.lastResults : undefined;
 
+  if (resolved && r?.golfRanking) {
+    return (
+      <Screen actions={<NextRoundActions />}>
+        <div className="mb-4 text-center">
+          <div className="animate-pop text-5xl">⛳</div>
+          <h2 className="font-display text-2xl font-extrabold">{course.label}</h2>
+        </div>
+        <Kicker className="mb-2 px-1">Classement au nombre de coups</Kicker>
+        <div className="stagger mb-5 flex flex-col gap-2">
+          {r.golfRanking.map((e) => (
+            <PlayerRow
+              key={e.slug}
+              name={e.name}
+              slug={e.slug}
+              me={e.slug === mySlug}
+              active={e.rank === 1}
+              detail={`${ordinal(e.rank)}${e.strokes > GOLF_MAX_STROKES ? " · balle ramassée" : ""}`}
+              right={<span className="font-display text-xl font-extrabold">{e.strokes > GOLF_MAX_STROKES ? `${GOLF_MAX_STROKES}+` : e.strokes} coup{e.strokes > 1 ? "s" : ""}</span>}
+            />
+          ))}
+        </div>
+        <GulpList rows={sumGulps(game, (game.drinks ?? []).map((d) => ({ slug: d.slug, gulps: d.n })))} />
+      </Screen>
+    );
+  }
+
+  const hint = pendingShot
+    ? pendingShot.wentInWater
+      ? `${cleanName(pendingShot.name)} tombe à l'eau…`
+      : `${cleanName(pendingShot.name)} joue son coup n°${pendingShot.strokeNumber}…`
+    : amFinished
+      ? `Fini en ${gl.strokeCounts[mySlug]} coup(s), en attente des autres…`
+      : isMeActive
+        ? "À toi ! Tire en arrière depuis ta balle, relâche pour frapper."
+        : `${cleanName(activePlayer.name)} vise…`;
+
   return (
     <>
-      <GolfHeader
-        game={game}
-        gl={gl}
-        course={course}
-        mySlug={mySlug}
-        activeSlug={resolved ? null : activePlayer.slug}
-      />
-
-      <GolfBoard
-        key={pendingShot ? `${pendingShot.slug}:${pendingShot.strokeNumber}` : "idle"}
-        course={course}
-        positions={gl.positions}
-        players={game.playersPublic}
-        finishedSlugs={gl.finishedSlugs}
-        pendingShot={pendingShot}
-        onShotAnimDone={() => setShownCount((n) => n + 1)}
-        interactive={isMeActive && !pendingShot}
-        myBallPos={gl.positions[mySlug] ?? course.start}
-        destroyedObstacles={gl.destroyedObstacles}
-        busy={busy}
-        onRelease={(velocity) => onShoot(velocity)}
-      />
-
-      {!resolved && (
-        <div className="hint golf-turn-hint">
-          {pendingShot
-            ? pendingShot.wentInWater
-              ? `${pendingShot.name} tombe à l'eau — retour à la position précédente...`
-              : `${pendingShot.name} joue son coup n°${pendingShot.strokeNumber}...`
-            : amFinished
-              ? `Fini en ${gl.strokeCounts[mySlug]} coup(s) — en attente des autres...`
-              : isMeActive
-                ? "À toi de jouer — glisse ton doigt en arrière pour viser, relâche pour tirer."
-                : `En attente de ${activePlayer.name}...`}
-        </div>
-      )}
-
-      {resolved && (
-        <div className="modal-overlay">
-          <div className="modal-card golf-results-card">
-            <div className="glyph">⛳</div>
-            <div className="modal-title">Classement du trou</div>
-            <div className="players-list golf-results-list">
-              {r!.golfRanking!.map((entry) => {
-                const pi = game.playersPublic.findIndex((p) => p.slug === entry.slug);
-                return (
-                  <div className="player-chip" key={entry.slug}>
-                    <span className="pname">
-                      <span className="golf-rank-dot" style={{ background: PLAYER_COLORS[pi % PLAYER_COLORS.length] }} />
-                      {ordinal(entry.rank)} — {entry.name}
-                    </span>
-                    <span className="pmeta">
-                      {entry.strokes} coup{entry.strokes > 1 ? "s" : ""}
-                      {entry.gulps > 0 && ` — Boit ${entry.gulps} 🥃`}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-            {isHost ? (
-              <div className="modal-actions">
-                <button className="btn-primary" disabled={busy} onClick={onNextRound}>
-                  Manche suivante
-                </button>
-                <button className="btn-ghost" disabled={busy} onClick={onEndNight}>
-                  Terminer la soirée
-                </button>
-              </div>
-            ) : (
-              <div className="hint" style={{ marginTop: 16 }}>
-                En attente de l&apos;hôte pour continuer...
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      <GolfHeader game={game} gl={gl} course={course} mySlug={mySlug} activeSlug={resolved ? null : activePlayer.slug} />
+      <div className="flex min-h-0 flex-1 flex-col justify-center">
+        <GolfBoard
+          key={pendingShot ? `${pendingShot.slug}:${pendingShot.strokeNumber}` : "idle"}
+          course={course}
+          positions={gl.positions}
+          players={game.playersPublic}
+          finishedSlugs={gl.finishedSlugs}
+          pendingShot={pendingShot}
+          onShotAnimDone={() => setShownCount((n) => n + 1)}
+          interactive={isMeActive && !pendingShot}
+          myBallPos={gl.positions[mySlug] ?? course.start}
+          destroyedObstacles={gl.destroyedObstacles}
+          busy={busy}
+          onRelease={(velocity) => {
+            haptic("impact");
+            act({ type: "golfShot", velocity });
+          }}
+        />
+      </div>
+      <div className="cs-actionbar pt-2!">
+        {isMeActive && !pendingShot && <TimerBar deadlineAt={game.timer?.deadlineAt} totalMs={45000} />}
+        <p className={`text-center text-[0.95rem] ${isMeActive && !pendingShot ? "font-semibold text-ink" : "text-ink-2"}`}>{hint}</p>
+        <p className="text-center text-xs text-mute">{GOLF_MAX_STROKES} coups max · on boit l&apos;écart avec le meilleur</p>
+      </div>
     </>
   );
 }

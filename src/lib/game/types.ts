@@ -53,13 +53,9 @@ export type GamePhase =
   | "roundIntro"
   | "betting"
   | "showdown"
-  | "quiz"
-  | "quizRecap"
-  | "duelReveal"
   | "vote"
   | "memeCaption"
   | "memeVote"
-  | "dice"
   | "undercoverClue"
   | "undercoverVote"
   | "undercoverGuess"
@@ -113,7 +109,6 @@ export interface LastResults {
   memeLeastFunny?: string[];
   memeNoCaptioners?: string[];
   // "dice" (Dés qui tremblent)
-  diceRolls?: DiceRoll[];
   diceLowest?: string[];
   // Gulps the sole loser named in diceLowest actually drinks — the base
   // 2, or double that per tie-break level it took to separate them (4,
@@ -123,7 +118,6 @@ export interface LastResults {
   // Empty/absent if the round settled without a tie. One entry per
   // tie-break level that occurred, in order, for the recap to show the
   // whole chain rather than just the final result.
-  diceTieBreaks?: DiceTieBreakRound[];
   // "undercover"
   undercoverWord?: string;
   undercoverImpostorWord?: string;
@@ -151,64 +145,7 @@ export interface LastResults {
   handLabels?: Record<string, string>;
 }
 
-export type QuizQuestionType = "capital" | "flag" | "date";
-export type QuizAnswerKind = "year" | "text";
-export type QuizTurnStatus = "asking" | "distributing" | "result";
 
-export interface QuizQuestionState {
-  id: string;
-  type: QuizQuestionType;
-  difficulty: number;
-  prompt: string;
-  flagEmoji?: string;
-  answerKind: QuizAnswerKind;
-  // Present in server-side state at all times, but the API route strips
-  // these two fields from the response while status === "asking" so no
-  // client ever receives the answer before it's actually resolved.
-  answer?: string;
-  acceptableAnswers?: string[];
-}
-
-export interface QuizDistributionEntry {
-  slug: string;
-  name: string;
-  amount: number;
-}
-
-export interface QuizHistoryEntry {
-  playerName: string;
-  type: QuizQuestionType;
-  prompt: string;
-  givenAnswer: string;
-  correct: boolean;
-  correctAnswer: string;
-}
-
-export interface QuizRoundState {
-  turnOrder: number[];
-  turnPointer: number;
-  playerIdx: number;
-  status: QuizTurnStatus;
-  question: QuizQuestionState;
-  askedAt: number;
-  lastAnswerGiven?: string;
-  correct?: boolean;
-  distribution?: QuizDistributionEntry[];
-  history?: QuizHistoryEntry[];
-}
-
-// Shared 15s-to-answer countdown, reused as-is by every timed mini-game
-// (Culture G and Tu préfères) so their pace feels consistent.
-export const TIMED_ANSWER_MS = 15000;
-
-export interface DuelRevealState {
-  revealed: [boolean, boolean];
-  // Populated the instant each duelist reveals (not just once both have) —
-  // that's the whole point of the button: publishing that one card to the
-  // table. Null until its slot's `revealed` flips true, at which point
-  // it's plain public data like anything else in this object.
-  revealedCards: [Card | null, Card | null];
-}
 
 export type VoteChoice = "A" | "B";
 
@@ -266,58 +203,6 @@ export interface MemeRoundState {
   // voter slug -> author slug they voted for.
   votes: Record<string, string>;
   voteResponded: string[];
-}
-
-// Dés qui tremblent — turn-based like Culture G (one player acts at a
-// time, in table order), but every roll is public the instant it happens
-// (there's nothing to hide — no redaction needed anywhere for this one).
-export interface DiceRoll {
-  slug: string;
-  name: string;
-  d1: number;
-  d2: number;
-  sum: number;
-}
-
-// A completed tie-break level, once every tied player has rolled again —
-// either it settled (one sole lowest sum) or it's about to be superseded
-// by the next level. Kept both as history (see DiceRoundState below) and
-// as the shape LastResults.diceTieBreaks reuses for the final recap.
-export interface DiceTieBreakRound {
-  level: number; // 1 for the first departage, 2 for the next if it also ties, etc.
-  amount: number; // gulps the sole loser of THIS level drinks — base*2^level
-  tiedSum: number; // the sum that was tied, which triggered this level
-  participantSlugs: string[]; // who's contesting, in the same relative order as the main round
-  participantNames: string[];
-  rolls: DiceRoll[];
-}
-
-// The currently in-progress tie-break level — same shape as a finished
-// DiceTieBreakRound plus its own live turn pointer, since it's rolled
-// through exactly like the main round (rollDice() just routes to this
-// instead once it's set).
-export interface DiceTieBreakState extends DiceTieBreakRound {
-  turnOrder: number[]; // playersPublic indices, parallel to participantSlugs/Names
-  turnPointer: number;
-  playerIdx: number;
-}
-
-export interface DiceRoundState {
-  turnOrder: number[];
-  turnPointer: number;
-  playerIdx: number;
-  // Completed rolls so far, in the order they happened — doubles as the
-  // live "who's rolled what" table every client renders while it fills up.
-  rolls: DiceRoll[];
-  // Set the moment the main round (or a previous tie-break level) ends
-  // in a tie for lowest sum — only the tied players re-roll here. Stays
-  // within phase "dice" the whole time, same as the main round; nothing
-  // moves to "showdown" until a level finally produces a sole loser.
-  tieBreak?: DiceTieBreakState;
-  // Every tie-break level once it's been resolved (superseded by the
-  // next level, or the one that finally decided the round) — lets the
-  // live "Lancers" table and the final recap show the whole chain.
-  tieBreakHistory?: DiceTieBreakRound[];
 }
 
 // Undercover: everyone gets the same secret word except one impostor —
@@ -771,7 +656,6 @@ export interface GameState {
   needsToAct?: number[];
   turnIdx?: number;
   lastResults?: LastResults;
-  quiz?: QuizRoundState;
   usedQuestionIds?: string[];
   totalRounds?: number;
   // Which mini-games the host opted into at launch — setupRoundType only
@@ -781,10 +665,8 @@ export interface GameState {
   enabledRoundTypeIds?: RoundTypeId[];
   culSecRule?: CulSecRule;
   culSecTargetSlug?: string;
-  duelReveal?: DuelRevealState;
   vote?: VoteRoundState;
   meme?: MemeRoundState;
-  dice?: DiceRoundState;
   undercover?: UndercoverRoundState;
   blackjack?: BlackjackRoundState;
   golf?: GolfRoundState;

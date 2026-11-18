@@ -1,3 +1,4 @@
+import { drink } from "../game/module";
 import { makeShuffledDeck, shuffleArr } from "../game/cards";
 import type {
   BlackjackDealEvent,
@@ -147,6 +148,15 @@ function dealInitial(g: GameState): void {
 
   bj.stage = "playerTurns";
   bj.turnPointer = 0;
+  // La banque regarde sa carte cachée si elle montre un As ou un 10 : avec
+  // un blackjack, la main s'arrête tout de suite (règle européenne avec
+  // « peek », comme dans les casinos).
+  const up = bj.dealer.cards[0];
+  if ((up.value === 14 || up.value >= 10) && handValue([up, bj.dealer.hiddenCard!]) === 21) {
+    bj.players.forEach((p) => p.hands.forEach((h) => h.status === "playing" && (h.status = "stand")));
+    startDealerTurn(g);
+    return;
+  }
   if (!findNextActionable(g)) startDealerTurn(g);
 }
 
@@ -288,7 +298,7 @@ function resolveBlackjackRound(g: GameState): void {
       }
 
       if (outcome === "lose") {
-        pub.gulpsTotal += amount;
+        drink(g, pub.slug, amount, hand.status === "bust" ? "Sauté" : "Battu par la banque");
       } else if ((outcome === "win" || outcome === "blackjack") && g.playersPublic.length > 1) {
         distributionQueue.push({ slug: p.slug, name: p.name, handIdx, amount });
       }
@@ -312,19 +322,13 @@ function resolveBlackjackRound(g: GameState): void {
   else bj.stage = "distributing";
 }
 
-export function applyBlackjackDistribution(
-  g: GameState,
-  targets: { slug: string; amount: number }[]
-): void {
+// Le gagnant fait boire sa mise à un joueur de son choix.
+export function applyBlackjackDistribution(g: GameState, targetSlug: string): void {
   const bj = g.blackjack!;
   const pending = bj.distributionQueue[0];
   const byslug = new Map(g.playersPublic.map((p) => [p.slug, p]));
-
-  targets.forEach(({ slug, amount }) => {
-    const p = byslug.get(slug);
-    if (!p || amount <= 0) return;
-    p.gulpsTotal += amount;
-  });
+  const targets = [{ slug: targetSlug, amount: pending.amount }];
+  drink(g, targetSlug, pending.amount, `Offert par ${pending.name}`);
 
   const resultEntry = bj.results!.find((r) => r.slug === pending.slug && r.handIdx === pending.handIdx)!;
   resultEntry.distributedTo = targets

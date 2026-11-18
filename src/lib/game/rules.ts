@@ -72,15 +72,23 @@ export const RULES: Record<RoundTypeId, GameRules> = {
     ],
   },
   blackjack: {
-    how: ["Mise 1 à 5 gorgées, puis affronte la banque.", "Approche-toi de 21 sans dépasser."],
-    gulps: ["Perdu : tu bois ta mise.", "Gagné : tu distribues ta mise."],
+    how: [
+      "Mise de 1 à 5 gorgées, puis approche-toi de 21 sans dépasser.",
+      "Carte, rester, doubler (une seule carte de plus) ou séparer une paire.",
+      "La banque tire jusqu'à 17 ; avec un As ou un 10 visible, elle vérifie son blackjack.",
+    ],
+    gulps: ["Perdu ou sauté : tu bois ta mise.", "Gagné : tu fais boire ta mise à qui tu veux (blackjack : ×1,5)."],
   },
   golf: {
-    how: ["Tire en arrière pour viser, relâche pour frapper.", "6 coups maximum par trou."],
-    gulps: ["Chacun boit son rang − 1 (le 1er ne boit pas)."],
+    how: ["Tire en arrière depuis ta balle pour viser, relâche pour frapper.", "Chacun joue son trou, 6 coups maximum."],
+    gulps: ["Tu bois l'écart de coups avec le meilleur (5 max).", "Trou en un : tous les autres boivent 2."],
   },
   archery: {
-    how: ["3 flèches chacun.", "Vise en tenant compte du vent, relâche pour tirer."],
-    gulps: ["Chacun boit son rang − 1 (le 1er ne boit pas)."],
+    how: [
+      "3 flèches chacun. Pose le doigt pour viser, maintiens pour bander l'arc, relâche.",
+      "Le vent change à chaque flèche et ton bras tremble si tu tiens trop longtemps.",
+      "Cible officielle : 10 points au centre, 1 sur l'anneau extérieur.",
+    ],
+    gulps: ["1 gorgée par tranche de 6 points de retard sur le meilleur (5 max)."],
   },
 };

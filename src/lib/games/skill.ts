@@ -1,6 +1,6 @@
 import { roundTypeById } from "../game/roundTypes";
 import { fail, notNow } from "../errors";
-import { type GameModule, rand } from "../game/module";
+import { type GameModule, pick, rand } from "../game/module";
 import {
   applyBlackjackBet,
   applyBlackjackDistribution,
@@ -17,7 +17,6 @@ import { GOLF_MAX_SPEED, GOLF_STEP_DT, simulateShot } from "../golf/physics";
 import { applyArcheryShot, archeryActiveSlug, startArcheryRound } from "../archery/engine";
 import { ARCHERY_CENTER, ARCHERY_LAUNCH_POINT, ARCHERY_MAX_DEVIATION, WIND_VECTORS } from "../archery/physics";
 import type { Card, GameState, GolfPoint } from "../game/types";
-import { parseTargets, randomDistribution } from "./party";
 
 function isPoint(v: unknown): v is GolfPoint {
   const p = v as GolfPoint;
@@ -96,7 +95,10 @@ export const blackjackModule: GameModule = {
       if (bj.stage !== "distributing") notNow();
       const pending = bj.distributionQueue[0];
       if (!pending || pending.slug !== slug) fail(403, "Ce n'est pas ton tour de distribuer.");
-      applyBlackjackDistribution(g, parseTargets(g, slug, a.targets, pending.amount));
+      const target = a.targetSlug;
+      if (typeof target !== "string" || target === slug || !g.playersPublic.some((p) => p.slug === target))
+        fail(400, "Choisis qui boit.");
+      applyBlackjackDistribution(g, target);
     } else fail(400, "Action inconnue.");
   },
   pending(g) {
@@ -121,7 +123,7 @@ export const blackjackModule: GameModule = {
     if (bj.stage === "betting") return { type: "bjBet", amount: bot ? 1 + Math.floor(Math.random() * 3) : 1 };
     if (bj.stage === "playerTurns") return { type: "bjAct", action: bot ? blackjackBotMove(g) : "stand" };
     if (bj.stage === "distributing")
-      return { type: "bjDistribute", targets: randomDistribution(g, slug, bj.distributionQueue[0].amount) };
+      return { type: "bjDistribute", targetSlug: pick(g.playersPublic.filter((p) => p.slug !== slug)).slug };
     return null;
   },
   botDelay(g) {
@@ -216,8 +218,8 @@ export const archeryModule: GameModule = {
     // réaliste : impact = départ + (visée - départ)·p + vent·p.
     const dir = WIND_VECTORS[wind.direction];
     const power = rand(0.88, 1);
-    const drift = wind.intensity * ARCHERY_MAX_DEVIATION * power * rand(0.7, 1.25);
-    const target = { x: ARCHERY_CENTER.x + rand(-24, 24) - dir.x * drift, y: ARCHERY_CENTER.y + rand(-24, 24) - dir.y * drift };
+    const drift = wind.intensity * ARCHERY_MAX_DEVIATION * power * rand(0.55, 1.4);
+    const target = { x: ARCHERY_CENTER.x + rand(-38, 38) - dir.x * drift, y: ARCHERY_CENTER.y + rand(-38, 38) - dir.y * drift };
     const aim = {
       x: ARCHERY_LAUNCH_POINT.x + (target.x - ARCHERY_LAUNCH_POINT.x) / power,
       y: ARCHERY_LAUNCH_POINT.y + (target.y - ARCHERY_LAUNCH_POINT.y) / power,

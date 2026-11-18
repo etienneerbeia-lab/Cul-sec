@@ -1,6 +1,7 @@
 import { ARCHERY_ARROWS_PER_TURN } from "../game/types";
 import type { ArcheryPoint, ArcheryRankingEntry, ArcheryShotRecord, GameState } from "../game/types";
-import { archeryScoreForDistance, clampToTarget, randomWind, simulateArcheryShot } from "./physics";
+import { archeryScoreForDistance, arrowDispersion, clampToTarget, randomWind, simulateArcheryShot } from "./physics";
+import { drink } from "../game/module";
 
 function orderAllPlayers(g: GameState): number[] {
   const n = g.playersPublic.length;
@@ -45,7 +46,7 @@ export function applyArcheryShot(g: GameState, slug: string, rawAim: ArcheryPoin
   const aim = clampToTarget(rawAim);
   const power = Math.max(0, Math.min(1, rawPower));
   const wind = ar.wind;
-  const { impact, path, distance } = simulateArcheryShot(aim, wind, power);
+  const { impact, path, distance } = simulateArcheryShot(aim, wind, power, arrowDispersion(power));
   const points = archeryScoreForDistance(distance);
 
   const shot: ArcheryShotRecord = { slug, name: player.name, arrowNumber: ar.arrowNumber, wind, aim, power, impact, path, points };
@@ -99,10 +100,12 @@ function resolveArcheryRound(g: GameState): void {
     ranking.push({ slug, name, totalScore, rank, gulps: rank - 1 });
   });
 
+  // On boit selon l'écart avec le meilleur total : 1 gorgée par tranche de
+  // 6 points (arrondi au-dessus), 5 max.
+  const best = sorted[0]?.[1].totalScore ?? 0;
   ranking.forEach((entry) => {
-    if (entry.gulps > 0) {
-      g.playersPublic.find((p) => p.slug === entry.slug)!.gulpsTotal += entry.gulps;
-    }
+    entry.gulps = Math.min(5, Math.ceil((best - entry.totalScore) / 6));
+    drink(g, entry.slug, entry.gulps, `${best - entry.totalScore} points de moins que le meilleur`);
   });
 
   g.lastResults = { type: "archery", archeryRanking: ranking };

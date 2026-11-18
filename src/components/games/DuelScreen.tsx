@@ -71,7 +71,7 @@ export default function DuelScreen() {
               <Avatar name={slot.p.name} slug={slot.p.slug} size={48} />
               <PlayerName name={slot.p.name} me={slot.p.slug === mySlug} />
               <div className={done && d.winner === slot.side ? "drop-shadow-[0_0_24px_rgba(159,242,122,0.6)]" : ""}>
-                <PlayingCardV2 card={slot.card} faceDown={!slot.card} size="lg" />
+                <PlayingCardV2 card={slot.card} faceDown={!slot.card} size="md" />
               </div>
               {d.stage === "bets" && (
                 <span className="text-sm text-mute">

@@ -1,6 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { haptic } from "@/lib/haptics";
+import { useGame } from "../GameContext";
+import { TimerBar } from "../ui/Feedback";
+import { Kicker, Screen } from "../ui/Layout";
+import { Avatar, cleanName, PlayerName, PlayerRow } from "../ui/Players";
+import { GulpList, NextRoundActions, sumGulps } from "../ui/Results";
 import type { ArcheryPoint, ArcheryShotRecord, ArcheryWind, GameState } from "@/lib/game/types";
 import { ARCHERY_ARROWS_PER_TURN } from "@/lib/game/types";
 import {
@@ -26,152 +32,105 @@ const ARCHERY_CHARGE_MS = 1000;
 // tap-and-release never counts as a real attempt.
 const ARCHERY_CANCEL_POWER = 0.08;
 
-function ordinal(rank: number): string {
-  return rank === 1 ? "1er" : `${rank}e`;
-}
 
-export default function ArcheryScreen({
-  game,
-  mySlug,
-  isHost,
-  busy,
-  onShoot,
-  onNextRound,
-  onEndNight,
-}: {
-  game: GameState;
-  mySlug: string;
-  isHost: boolean;
-  busy: boolean;
-  onShoot: (aim: ArcheryPoint, power: number) => void;
-  onNextRound: () => void;
-  onEndNight: () => void;
-}) {
+export default function ArcheryScreen() {
+  const { game, mySlug, busy, act } = useGame();
   const ar = game.archery!;
   const activePlayer = game.playersPublic[ar.playerIdx];
   const isMeActive = activePlayer.slug === mySlug && game.phase === "archery";
 
-  // Same "replay one shot at a time" mechanism as dice/golf: starts at
-  // however many arrows already happened (a fresh page load shouldn't
-  // replay the whole round), then only advances as fresh ones land.
+  // Rejoue les flèches une à une (pas de rejeu complet au rechargement).
   const [shownCount, setShownCount] = useState(() => ar.shots.length);
   const pendingShot = shownCount < ar.shots.length ? ar.shots[shownCount] : null;
-
   const resolved = game.phase === "showdown" && !pendingShot;
   const r = resolved ? game.lastResults : undefined;
 
-  // While a shot is mid-replay, show the wind that was actually blowing
-  // for it rather than whatever's already been rolled for the next arrow
-  // — otherwise the banner would spoil (or contradict) what everyone's
-  // about to watch land.
+  // Pendant un replay, on montre le vent qui soufflait pour CETTE flèche.
   const displayedWind: ArcheryWind = pendingShot ? pendingShot.wind : ar.wind;
-
-  // Whoever the progress indicator and dots should reflect right now —
-  // the player mid-replay if there is one, otherwise whoever's up.
   const progressSlug = pendingShot ? pendingShot.slug : activePlayer.slug;
   const progressName = pendingShot ? pendingShot.name : activePlayer.name;
-  const arrowsDoneByProgressPlayer = ar.shots.filter((s) => s.slug === progressSlug).length;
+  const progressShots = ar.shots.filter((s) => s.slug === progressSlug && (!pendingShot || ar.shots.indexOf(s) <= ar.shots.indexOf(pendingShot)));
   const displayArrowNumber = pendingShot ? pendingShot.arrowNumber : ar.arrowNumber;
 
   const impactBySlug: Record<string, ArcheryPoint> = {};
-  ar.shots.forEach((s) => {
-    if (!pendingShot || s.slug !== pendingShot.slug || s.arrowNumber !== pendingShot.arrowNumber) {
-      impactBySlug[`${s.slug}:${s.arrowNumber}`] = s.impact;
-    }
+  ar.shots.forEach((s, i) => {
+    if (i < shownCount) impactBySlug[`${s.slug}:${s.arrowNumber}`] = s.impact;
   });
+
+  if (resolved && r?.archeryRanking) {
+    return (
+      <Screen actions={<NextRoundActions />}>
+        <div className="mb-4 text-center">
+          <div className="animate-pop text-5xl">🏹</div>
+          <h2 className="font-display text-2xl font-extrabold">Résultats du tir</h2>
+        </div>
+        <div className="stagger mb-5 flex flex-col gap-2">
+          {r.archeryRanking.map((e) => (
+            <PlayerRow
+              key={e.slug}
+              name={e.name}
+              slug={e.slug}
+              me={e.slug === mySlug}
+              active={e.rank === 1}
+              detail={ar.shots.filter((s) => s.slug === e.slug).map((s) => s.points).join(" + ")}
+              right={<span className="font-display text-xl font-extrabold">{e.totalScore} pts</span>}
+            />
+          ))}
+        </div>
+        <GulpList rows={sumGulps(game, (game.drinks ?? []).map((d) => ({ slug: d.slug, gulps: d.n })))} />
+      </Screen>
+    );
+  }
 
   return (
     <>
-      <div className="table-status">
-        <div>
-          <div className="label">Manche</div>
-          <div className="value">
-            {game.round}
-            {game.totalRounds ? `/${game.totalRounds}` : ""}
-          </div>
+      <div className="mb-2 flex items-center gap-2">
+        <Avatar name={progressName} slug={progressSlug} size={34} />
+        <div className="min-w-0 flex-1">
+          <Kicker>
+            Flèche {displayArrowNumber} / {ARCHERY_ARROWS_PER_TURN}
+          </Kicker>
+          <PlayerName name={progressName} me={progressSlug === mySlug} />
         </div>
-        <div>
-          <div className="label">Tir à l&apos;arc</div>
-          <div className="value">
-            Joueur {ar.turnPointer + 1}/{ar.turnOrder.length}
-          </div>
+        <div className="flex gap-1.5">
+          {Array.from({ length: ARCHERY_ARROWS_PER_TURN }).map((_, i) => (
+            <span
+              key={i}
+              className={`grid h-8 w-8 place-items-center rounded-full font-display text-sm font-extrabold ${
+                progressShots[i] ? "bg-beer text-[#2a1600]" : "border border-white/20 text-mute"
+              }`}
+            >
+              {progressShots[i]?.points ?? "·"}
+            </span>
+          ))}
         </div>
       </div>
-
-      {!resolved && (
-        <div className="archery-progress">
-          <div className="archery-progress-label">
-            {progressName} — Flèche {displayArrowNumber}/{ARCHERY_ARROWS_PER_TURN}
-          </div>
-          <div className="archery-progress-dots">
-            {Array.from({ length: ARCHERY_ARROWS_PER_TURN }).map((_, i) => (
-              <span
-                key={i}
-                className={i < arrowsDoneByProgressPlayer ? "archery-progress-dot archery-progress-dot-done" : "archery-progress-dot"}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
       <WindBanner wind={displayedWind} />
-
-      <ArcheryBoard
-        key={pendingShot ? `${pendingShot.slug}:${pendingShot.arrowNumber}` : `turn-${ar.shots.length}`}
-        impacts={impactBySlug}
-        players={game.playersPublic}
-        pendingShot={pendingShot}
-        onShotAnimDone={() => setShownCount((n) => n + 1)}
-        interactive={isMeActive && !pendingShot}
-        busy={busy}
-        onFire={onShoot}
-      />
-
-      {!resolved && (
-        <div className="hint archery-turn-hint">
+      <div className="flex min-h-0 flex-1 flex-col justify-center">
+        <ArcheryBoard
+          key={pendingShot ? `${pendingShot.slug}:${pendingShot.arrowNumber}` : `turn-${ar.shots.length}`}
+          impacts={impactBySlug}
+          players={game.playersPublic}
+          pendingShot={pendingShot}
+          onShotAnimDone={() => setShownCount((n) => n + 1)}
+          interactive={isMeActive && !pendingShot}
+          busy={busy}
+          onFire={(aim, power) => {
+            haptic("impact");
+            act({ type: "archeryShot", aim, power });
+          }}
+        />
+      </div>
+      <div className="cs-actionbar pt-2!">
+        {isMeActive && !pendingShot && <TimerBar deadlineAt={game.timer?.deadlineAt} totalMs={40000} />}
+        <p className={`text-center text-[0.95rem] ${isMeActive && !pendingShot ? "font-semibold" : "text-ink-2"}`}>
           {pendingShot
-            ? `${pendingShot.name} décoche sa flèche...`
+            ? `${cleanName(pendingShot.name)} décoche…`
             : isMeActive
-              ? "Touche n'importe où pour viser, maintiens pour charger, glisse pour ajuster."
-              : `En attente de ${activePlayer.name}...`}
-        </div>
-      )}
-
-      {resolved && (
-        <div className="modal-overlay">
-          <div className="modal-card archery-results-card">
-            <div className="glyph">🏹</div>
-            <div className="modal-title">Classement</div>
-            <div className="players-list archery-results-list">
-              {r!.archeryRanking!.map((entry) => (
-                <div className="player-chip" key={entry.slug}>
-                  <span className="pname">
-                    {ordinal(entry.rank)} — {entry.name}
-                  </span>
-                  <span className="pmeta">
-                    {entry.totalScore} point{entry.totalScore > 1 ? "s" : ""}
-                    {entry.gulps > 0 && ` — Boit ${entry.gulps} 🥃`}
-                  </span>
-                </div>
-              ))}
-            </div>
-            {isHost ? (
-              <div className="modal-actions">
-                <button className="btn-primary" disabled={busy} onClick={onNextRound}>
-                  Manche suivante
-                </button>
-                <button className="btn-ghost" disabled={busy} onClick={onEndNight}>
-                  Terminer la soirée
-                </button>
-              </div>
-            ) : (
-              <div className="hint" style={{ marginTop: 16 }}>
-                En attente de l&apos;hôte pour continuer...
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+              ? "Pose le doigt pour viser, maintiens pour bander l'arc, relâche pour tirer. Le viseur tremble : sois rapide !"
+              : `${cleanName(activePlayer.name)} vise…`}
+        </p>
+      </div>
     </>
   );
 }
@@ -259,7 +218,9 @@ function ArcheryBoard({
   // golf's pull-distance-is-power model. Releasing fires at the current
   // aim/power (or cancels below ARCHERY_CANCEL_POWER); the CANCEL button
   // does the same thing without needing to lift the aiming finger.
-  const [aim, setAim] = useState<ArcheryPoint | null>(null);
+  const [rawAim, setAim] = useState<ArcheryPoint | null>(null);
+  const [sway, setSway] = useState<ArcheryPoint>({ x: 0, y: 0 });
+  const aim = rawAim ? clampToTarget({ x: rawAim.x + sway.x, y: rawAim.y + sway.y }) : null;
   const [power, setPower] = useState(0);
   const holdingRef = useRef(false);
   const chargeStartRef = useRef(0);
@@ -334,6 +295,10 @@ function ArcheryBoard({
     if (!holdingRef.current) return;
     const elapsed = performance.now() - chargeStartRef.current;
     setPower(Math.min(1, elapsed / ARCHERY_CHARGE_MS));
+    // Le bras tremble en tenant l'arc bandé, de plus en plus avec la fatigue.
+    const t = elapsed / 1000;
+    const amp = 3 + 9 * Math.max(0, (elapsed - ARCHERY_CHARGE_MS) / 2500) + 2 * Math.min(1, elapsed / ARCHERY_CHARGE_MS);
+    setSway({ x: Math.sin(t * 2.3) * amp + Math.sin(t * 5.1) * amp * 0.3, y: Math.cos(t * 1.9) * amp * 0.8 });
     chargeRafRef.current = requestAnimationFrame(chargeTick);
   }
 
@@ -342,6 +307,7 @@ function ArcheryBoard({
     (e.target as Element).setPointerCapture(e.pointerId);
     const p = clampToTarget(toBoardSpace(e.clientX, e.clientY, svgRef.current!));
     setAim(p);
+    setSway({ x: 0, y: 0 });
     setPower(0);
     holdingRef.current = true;
     chargeStartRef.current = performance.now();
@@ -397,7 +363,7 @@ function ArcheryBoard({
         <rect x={0} y={0} width={ARCHERY_TARGET_SIZE} height={ARCHERY_BOARD_HEIGHT} className="archery-backdrop" />
         {ARCHERY_RINGS.map((ring) => (
           <circle
-            key={ring.cls}
+            key={ring.r}
             cx={ARCHERY_CENTER.x}
             cy={ARCHERY_CENTER.y}
             r={ring.r}

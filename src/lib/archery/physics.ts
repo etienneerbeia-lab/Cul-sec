@@ -16,13 +16,11 @@ export const ARCHERY_LAUNCH_POINT: ArcheryPoint = { x: ARCHERY_CENTER.x, y: ARCH
 // below) is a continuous falloff from ARCHERY_OUTER_RADIUS, not which band
 // an arrow visually lands in, but these still line up with 2-point steps
 // (10/8/6/4/2) at each ring's radius for a sane-looking target.
-export const ARCHERY_RINGS: { r: number; cls: string }[] = [
-  { r: 150, cls: "outer" },
-  { r: 120, cls: "second" },
-  { r: 90, cls: "third" },
-  { r: 60, cls: "fourth" },
-  { r: 30, cls: "bullseye" },
-];
+// 10 anneaux, couleurs d'une cible officielle (blanc, noir, bleu, rouge, or).
+export const ARCHERY_RINGS: { r: number; cls: string }[] = Array.from({ length: 10 }, (_, i) => ({
+  r: 150 - i * 15,
+  cls: ["white", "white", "black", "black", "blue", "blue", "red", "red", "gold", "gold"][i] + (i % 2 ? " inner" : ""),
+}));
 
 // How far off the aim point the wind can push an arrow at full (1.0)
 // intensity — big enough that a dead-center aim can end up clear outside
@@ -115,7 +113,12 @@ export interface ArcheryShotResult {
 // barely drifts either — it just plops down short and close to true,
 // still a bad score, but for a different reason than a full-power shot
 // the wind carried wide.
-export function simulateArcheryShot(aim: ArcheryPoint, wind: ArcheryWind, power: number): ArcheryShotResult {
+export function simulateArcheryShot(
+  aim: ArcheryPoint,
+  wind: ArcheryWind,
+  power: number,
+  dispersion: ArcheryPoint = { x: 0, y: 0 }
+): ArcheryShotResult {
   const p = Math.max(0, Math.min(1, power));
   const drawnAim = {
     x: ARCHERY_LAUNCH_POINT.x + (aim.x - ARCHERY_LAUNCH_POINT.x) * p,
@@ -126,7 +129,10 @@ export function simulateArcheryShot(aim: ArcheryPoint, wind: ArcheryWind, power:
     x: dir.x * wind.intensity * ARCHERY_MAX_DEVIATION * p,
     y: dir.y * wind.intensity * ARCHERY_MAX_DEVIATION * p,
   };
-  const impact = clampToTarget({ x: drawnAim.x + deviation.x, y: drawnAim.y + deviation.y });
+  const impact = clampToTarget({
+    x: drawnAim.x + deviation.x + dispersion.x,
+    y: drawnAim.y + deviation.y + dispersion.y,
+  });
 
   // The flight drifts progressively off the drawn line as the wind pushes
   // it — starts true from the launch point, ends at the actual impact —
@@ -136,8 +142,8 @@ export function simulateArcheryShot(aim: ArcheryPoint, wind: ArcheryWind, power:
   for (let i = 0; i <= ARCHERY_PATH_SAMPLES; i++) {
     const t = i / ARCHERY_PATH_SAMPLES;
     const eased = t * t;
-    const x = ARCHERY_LAUNCH_POINT.x + (drawnAim.x - ARCHERY_LAUNCH_POINT.x) * t + deviation.x * eased;
-    const y = ARCHERY_LAUNCH_POINT.y + (drawnAim.y - ARCHERY_LAUNCH_POINT.y) * t + deviation.y * eased;
+    const x = ARCHERY_LAUNCH_POINT.x + (drawnAim.x - ARCHERY_LAUNCH_POINT.x) * t + (deviation.x + dispersion.x) * eased;
+    const y = ARCHERY_LAUNCH_POINT.y + (drawnAim.y - ARCHERY_LAUNCH_POINT.y) * t + (deviation.y + dispersion.y) * eased;
     path.push({ x: round1(x), y: round1(y) });
   }
   path[path.length - 1] = { x: round1(impact.x), y: round1(impact.y) };
@@ -150,8 +156,21 @@ export function simulateArcheryShot(aim: ArcheryPoint, wind: ArcheryWind, power:
 // ring) — smoother than scoring by which discrete ring the impact falls
 // in, but still lines up with ARCHERY_RINGS' radii at each whole-point
 // boundary. Never negative, never above 10.
+// Comme une vraie cible : 10 anneaux de même largeur, 10 points au centre,
+// 1 point sur l'anneau extérieur, 0 en dehors.
 export function archeryScoreForDistance(distance: number): number {
   if (distance >= ARCHERY_OUTER_RADIUS) return 0;
-  const raw = 10 * (1 - distance / ARCHERY_OUTER_RADIUS);
-  return Math.max(0, Math.min(10, Math.round(raw)));
+  return 10 - Math.floor(distance / (ARCHERY_OUTER_RADIUS / 10));
+}
+
+// Dispersion naturelle d'une flèche (tension de la corde, lâcher) : un
+// petit écart aléatoire, plus grand quand l'arc n'est pas bandé à fond.
+export function arrowDispersion(power: number): ArcheryPoint {
+  const sigma = 5 + (1 - Math.max(0, Math.min(1, power))) * 10;
+  const gauss = () => {
+    const u = 1 - Math.random();
+    const v = Math.random();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  };
+  return { x: gauss() * sigma, y: gauss() * sigma };
 }
