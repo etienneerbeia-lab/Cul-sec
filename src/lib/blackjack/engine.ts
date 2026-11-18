@@ -1,4 +1,4 @@
-import { makeShuffledDeck } from "../game/cards";
+import { makeShuffledDeck, shuffleArr } from "../game/cards";
 import type {
   BlackjackDealEvent,
   BlackjackHand,
@@ -117,7 +117,10 @@ function findNextActionable(g: GameState): boolean {
 // card-back itself appears in the right spot in the sequence).
 function dealInitial(g: GameState): void {
   const bj = g.blackjack!;
-  const deck = makeShuffledDeck();
+  // Sabot de 6 jeux, comme au casino : ne s'épuise jamais en une manche.
+  const deck: Card[] = [];
+  for (let i = 0; i < 6; i++) deck.push(...makeShuffledDeck());
+  shuffleArr(deck);
 
   bj.players.forEach((p) => {
     p.hands = [newHand(0, bj.bets[p.slug])];
@@ -286,7 +289,7 @@ function resolveBlackjackRound(g: GameState): void {
 
       if (outcome === "lose") {
         pub.gulpsTotal += amount;
-      } else if (outcome === "win" || outcome === "blackjack") {
+      } else if ((outcome === "win" || outcome === "blackjack") && g.playersPublic.length > 1) {
         distributionQueue.push({ slug: p.slug, name: p.name, handIdx, amount });
       }
 

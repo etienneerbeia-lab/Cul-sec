@@ -8,7 +8,6 @@ import type {
   GolfObstacle,
   GolfPoint,
   GolfShotRecord,
-  GolfStruckBallResult,
   GolfWindZone,
 } from "@/lib/game/types";
 import { golfCourseById } from "@/lib/golf/courses";
@@ -16,7 +15,6 @@ import {
   GOLF_BALL_VISUAL_SCALE,
   GOLF_MAX_PULL,
   GOLF_STEP_DT,
-  simulateShot,
   velocityFromPull,
 } from "@/lib/golf/physics";
 
@@ -72,14 +70,7 @@ export default function GolfScreen({
   mySlug: string;
   isHost: boolean;
   busy: boolean;
-  onShoot: (
-    path: GolfPoint[],
-    finalPos: GolfPoint,
-    sunk: boolean,
-    wentInWater: boolean,
-    destroyedObstacle?: number,
-    struckBalls?: GolfStruckBallResult[]
-  ) => void;
+  onShoot: (velocity: GolfPoint) => void;
   onNextRound: () => void;
   onEndNight: () => void;
 }) {
@@ -122,19 +113,7 @@ export default function GolfScreen({
         myBallPos={gl.positions[mySlug] ?? course.start}
         destroyedObstacles={gl.destroyedObstacles}
         busy={busy}
-        onRelease={(velocity) => {
-          const otherBalls = game.playersPublic
-            .filter((p) => p.slug !== mySlug && !gl.finishedSlugs.includes(p.slug))
-            .map((p) => ({ slug: p.slug, pos: gl.positions[p.slug] ?? course.start }));
-          const result = simulateShot(
-            course,
-            gl.positions[mySlug] ?? course.start,
-            velocity,
-            gl.destroyedObstacles,
-            otherBalls
-          );
-          onShoot(result.path, result.finalPos, result.sunk, result.wentInWater, result.destroyedObstacle, result.struckBalls);
-        }}
+        onRelease={(velocity) => onShoot(velocity)}
       />
 
       {!resolved && (

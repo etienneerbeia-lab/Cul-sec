@@ -3,6 +3,7 @@ import type { RoundType, Street } from "./types";
 export const ROUND_TYPES: RoundType[] = [
   {
     id: "high",
+    minPlayers: 2,
     label: "Carte la plus haute",
     tagline: "Une carte chacun, cachée. La plus forte l'emporte.",
     icon: "🂡",
@@ -10,6 +11,7 @@ export const ROUND_TYPES: RoundType[] = [
   },
   {
     id: "holdem",
+    minPlayers: 2,
     label: "Poker",
     tagline: "Deux cartes, flop, turn, river. Qui se couche boit le pot.",
     icon: "♠️",
@@ -17,6 +19,7 @@ export const ROUND_TYPES: RoundType[] = [
   },
   {
     id: "duel",
+    minPlayers: 2,
     label: "Bataille",
     tagline: "Deux joueurs tirés au sort s'affrontent en une carte, sans mise.",
     icon: "⚔️",
@@ -24,6 +27,7 @@ export const ROUND_TYPES: RoundType[] = [
   },
   {
     id: "quiz",
+    minPlayers: 1,
     label: "Culture G",
     tagline: "Chacun son tour : capitales, drapeaux, dates. Bonne réponse, tu fais boire ; mauvaise, tu bois.",
     icon: "🧠",
@@ -31,6 +35,7 @@ export const ROUND_TYPES: RoundType[] = [
   },
   {
     id: "vote",
+    minPlayers: 3,
     label: "Tu préfères",
     tagline: "Un dilemme, deux camps. Vote en secret : le camp minoritaire boit.",
     icon: "🗳️",
@@ -38,6 +43,7 @@ export const ROUND_TYPES: RoundType[] = [
   },
   {
     id: "meme",
+    minPlayers: 3,
     label: "Make It Meme",
     tagline: "Une image, une minute, ta meilleure légende. Le moins drôle boit.",
     icon: "😂",
@@ -45,6 +51,7 @@ export const ROUND_TYPES: RoundType[] = [
   },
   {
     id: "dice",
+    minPlayers: 2,
     label: "Lancé de dés",
     tagline: "Lance tes dés à ton tour. Le plus petit score boit.",
     icon: "🎲",
@@ -52,6 +59,7 @@ export const ROUND_TYPES: RoundType[] = [
   },
   {
     id: "undercover",
+    minPlayers: 4,
     label: "Undercover",
     tagline: "Même mot pour tous sauf un imposteur. Décrivez-le à voix haute, démasquez-le au vote.",
     icon: "🕵️",
@@ -59,6 +67,7 @@ export const ROUND_TYPES: RoundType[] = [
   },
   {
     id: "blackjack",
+    minPlayers: 1,
     label: "Blackjack",
     tagline: "Mise ta gorgée, affronte la banque. Bats le croupier ou bois ta mise.",
     icon: "🎰",
@@ -66,6 +75,7 @@ export const ROUND_TYPES: RoundType[] = [
   },
   {
     id: "golf",
+    minPlayers: 1,
     label: "Mini-golf",
     tagline: "Vise, tire, rentre ta balle. Classement au nombre de coups : le mieux classé ne boit pas.",
     icon: "⛳",
@@ -73,6 +83,7 @@ export const ROUND_TYPES: RoundType[] = [
   },
   {
     id: "archery",
+    minPlayers: 1,
     label: "Tir à l'arc",
     tagline: "Trois flèches chacun, le vent change à chaque tir. Le plus petit score boit le plus.",
     icon: "🏹",

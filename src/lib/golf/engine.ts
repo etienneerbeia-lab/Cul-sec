@@ -1,6 +1,8 @@
 import type { GameState, GolfPoint, GolfRankingEntry, GolfShotRecord, GolfStruckBallResult } from "../game/types";
 import { GOLF_COURSES } from "./courses";
 
+export const GOLF_MAX_STROKES = 6;
+
 function orderAllPlayers(g: GameState): number[] {
   const n = g.playersPublic.length;
   const order: number[] = [];
@@ -109,6 +111,12 @@ export function applyGolfShot(
   }
 
   if (sunk) {
+    gl.finishedSlugs = [...gl.finishedSlugs, slug];
+  } else if (strokeNumber >= GOLF_MAX_STROKES) {
+    // Limite de coups atteinte sans rentrer la balle : le trou est fini,
+    // compté un coup de pénalité au-dessus de la limite (comme au vrai
+    // mini-golf, où l'on ramasse sa balle au bout de N coups).
+    gl.strokeCounts[slug] = GOLF_MAX_STROKES + 1;
     gl.finishedSlugs = [...gl.finishedSlugs, slug];
   }
 

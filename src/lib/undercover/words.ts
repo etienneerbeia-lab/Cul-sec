@@ -63,3 +63,32 @@ export const WORD_PAIRS: WordPair[] = RAW_PAIRS.map(([word, closeWord], i) => ({
   word,
   closeWord,
 }));
+
+// Indices vagues que peut donner un bot (ou un Mister White) quand aucun
+// indice spécifique n'est connu pour son mot.
+const GENERIC_CLUES = [
+  "Ça se partage",
+  "On en a tous déjà vu",
+  "Plutôt agréable",
+  "Ça dépend des goûts",
+  "Un classique",
+  "Souvent le week-end",
+  "Ça peut être grand",
+  "Ça coûte cher parfois",
+  "Les enfants adorent",
+  "On en parle souvent",
+];
+
+export function botClueFor(word: string | null, used: string[]): string {
+  const pair = word ? WORD_PAIRS.find((p) => p.word === word || p.closeWord === word) : undefined;
+  const specific = pair ? (pair.word === word ? pair.hints : pair.closeHints) : undefined;
+  const pool = [...(specific ?? []), ...GENERIC_CLUES].filter((c) => !used.includes(c.toLowerCase()));
+  const list = specific?.length ? specific.filter((c) => !used.includes(c.toLowerCase())) : pool;
+  const from = list.length ? list : pool.length ? pool : GENERIC_CLUES;
+  return from[Math.floor(Math.random() * from.length)];
+}
+
+export function randomWord(): string {
+  const p = WORD_PAIRS[Math.floor(Math.random() * WORD_PAIRS.length)];
+  return Math.random() < 0.5 ? p.word : p.closeWord;
+}

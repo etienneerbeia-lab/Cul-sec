@@ -92,8 +92,10 @@ export function applyQuizAnswer(g: GameState, rawAnswer: string): void {
   q.lastAnswerGiven = rawAnswer;
   q.correct = correct;
 
-  if (correct) {
+  if (correct && g.playersPublic.length > 1) {
     q.status = "distributing";
+  } else if (correct) {
+    q.status = "result";
   } else {
     player.gulpsTotal += 2;
     q.status = "result";

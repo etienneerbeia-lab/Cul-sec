@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ROUND_TYPES } from "@/lib/game/roundTypes";
 import { MIN_ENABLED_ROUND_TYPES, type CulSecRule, type Player, type RoundTypeId } from "@/lib/game/types";
 
-const ROUND_OPTIONS = [5, 10, 20];
+const ROUND_OPTIONS = [5, 10, 15, 20];
 const ALL_ROUND_TYPE_IDS = ROUND_TYPES.map((t) => t.id);
 
 export default function LobbyScreen({
@@ -29,7 +29,7 @@ export default function LobbyScreen({
   // hand — undefined/empty for a brand-new room, which falls back to
   // "everything on" like before.
   previousEnabledRoundTypeIds?: RoundTypeId[];
-  onLaunch: (totalRounds: number, culSecRule: CulSecRule, enabledRoundTypeIds: RoundTypeId[]) => void;
+  onLaunch: (totalRounds: number, culSecRule: CulSecRule, enabledRoundTypeIds: RoundTypeId[], bots: number) => void;
   onRename: (name: string) => void;
 }) {
   const [totalRounds, setTotalRounds] = useState(10);
@@ -47,9 +47,21 @@ export default function LobbyScreen({
     });
   }
 
-  const enoughPlayers = players.length >= 3;
+  // Plus de minimum de 3 : on peut lancer seul (mode solo / test). En solo
+  // le serveur ajoute automatiquement assez de bots pour que chaque jeu
+  // choisi soit jouable ; à plusieurs, l'hôte peut en ajouter lui-même.
+  const [extraBots, setExtraBots] = useState(0);
+  const humans = players.filter((p) => !p.bot).length;
+  const solo = humans === 1;
+  const autoBots = solo
+    ? Math.max(0, ...ROUND_TYPES.filter((t) => enabledIds.has(t.id)).map((t) => t.minPlayers)) - 1
+    : 0;
+  const botCount = Math.min(6, Math.max(autoBots, extraBots));
+  const tableSize = humans + botCount;
+  const enoughPlayers = humans >= 1;
   const enoughGames = enabledIds.size >= MIN_ENABLED_ROUND_TYPES;
-  const enough = enoughPlayers && enoughGames;
+  const playable = ROUND_TYPES.filter((t) => enabledIds.has(t.id) && t.minPlayers <= tableSize).length;
+  const enough = enoughPlayers && enoughGames && playable > 0;
 
   return (
     <>
@@ -125,13 +137,32 @@ export default function LobbyScreen({
                     onClick={() => toggleRoundType(t.id)}
                   >
                     <span className="mt-icon">{t.icon}</span>
-                    <span className="mt-label">{t.label}</span>
+                    <span className="mt-label">
+                      {t.label}
+                      {t.minPlayers > tableSize && <small> · {t.minPlayers} joueurs min, sauté</small>}
+                    </span>
                     <span className="mt-check">{active ? "✓" : ""}</span>
                   </button>
                 );
               })}
             </div>
             {!enoughGames && <div className="hint error-text">Choisis au moins 2 mini-jeux.</div>}
+          </div>
+
+          <label className="field-label">Bots 🤖</label>
+          <div className="chip-row">
+            <button className="chip" type="button" onClick={() => setExtraBots(Math.max(autoBots, botCount) - 1)} disabled={botCount <= autoBots}>
+              −
+            </button>
+            <span className="chip chip-selected">{botCount}</span>
+            <button className="chip" type="button" onClick={() => setExtraBots(botCount + 1)} disabled={botCount >= 6}>
+              +
+            </button>
+          </div>
+          <div className="hint">
+            {solo
+              ? `Mode solo : ${botCount} bot${botCount > 1 ? "s" : ""} joueront contre toi.`
+              : "Ajoute des bots pour compléter la table si vous êtes peu nombreux."}
           </div>
         </>
       )}
@@ -143,11 +174,13 @@ export default function LobbyScreen({
           <button
             className="btn-primary"
             disabled={!enough || busy}
-            onClick={() => onLaunch(totalRounds, culSecRule, Array.from(enabledIds))}
+            onClick={() => onLaunch(totalRounds, culSecRule, Array.from(enabledIds), botCount)}
           >
             Lancer la partie
           </button>
-          {!enoughPlayers && <div className="hint">Il faut au moins 3 joueurs pour commencer.</div>}
+          {enoughGames && playable === 0 && (
+            <div className="hint">Aucun jeu choisi n&apos;est jouable à {tableSize} : ajoute des bots.</div>
+          )}
         </>
       ) : (
         <div className="hint">En attente que l&apos;hôte lance la partie...</div>

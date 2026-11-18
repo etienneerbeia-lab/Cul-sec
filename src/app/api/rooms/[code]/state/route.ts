@@ -1,109 +1,47 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireSession } from "@/lib/auth";
-import { getGame, getHand, getHost, getPlayers, roomExists } from "@/lib/store";
-import type { Card } from "@/lib/game/types";
+import { handleError, roomCode, sessionToken } from "@/lib/auth";
+import { tick } from "@/lib/game/room";
+import { viewFor } from "@/lib/game/view";
+import { mutateRoom, readRoom, touchPresence, type Room } from "@/lib/store";
 
+// Rafraîchissement d'un joueur. Une lecture groupée (1 requête Upstash),
+// puis — seulement si un bot doit jouer ou un délai a expiré — une écriture
+// atomique. ?beat=1 (envoyé une fois sur trois) met à jour la présence.
 export async function GET(req: NextRequest, { params }: { params: Promise<{ code: string }> }) {
-  const code = (await params).code.toUpperCase();
-  if (!(await roomExists(code))) {
-    return NextResponse.json({ error: "Code introuvable." }, { status: 404 });
-  }
-
-  const session = await requireSession(req, code);
-  const [players, game, hostSlug] = await Promise.all([
-    getPlayers(code),
-    getGame(code),
-    getHost(code),
-  ]);
-
-  // Duel deliberately isn't in this list: nobody, not even a duelist, sees
-  // their own card before it's actually revealed — that state comes only
-  // from game.duelReveal.revealedCards, same as everyone else.
-  let myHand: Card[] | null = null;
-  if (session && game && ["betting", "showdown"].includes(game.phase)) {
-    const hand = await getHand(code, game.round, session.slug);
-    myHand = hand.length ? hand : null;
-  }
-
-  // Never let the answer reach any client before the active player has
-  // actually submitted — the question prompt itself is public (everyone
-  // watches along), only the answer stays server-side until resolved.
-  let publicGame =
-    game && game.quiz && game.quiz.status === "asking"
-      ? {
-          ...game,
-          quiz: {
-            ...game.quiz,
-            question: { ...game.quiz.question, answer: undefined, acceptableAnswers: undefined },
-          },
-        }
-      : game;
-
-  // Same idea for "Tu préfères": everyone sees the prompt, nobody sees who
-  // voted for what (not even a live vote count, to avoid bandwagoning)
-  // until the round resolves and moves on to phase "showdown".
-  let myVoteChoice: "A" | "B" | null = null;
-  if (publicGame?.vote) {
-    // `responded` (who has acted) stays public so the "waiting on the
-    // table" screen can show progress — it never says *what* anyone chose.
-    if (session) myVoteChoice = publicGame.vote.votes[session.slug] ?? null;
-    publicGame = { ...publicGame, vote: { ...publicGame.vote, votes: {} } };
-  }
-
-  // "Légende de mème": while everyone is still privately writing, nobody
-  // (not even the author) needs their caption echoed back by the server —
-  // the client already knows its own draft locally. Once voting starts the
-  // captions themselves become the public thing being judged, so they're
-  // sent as-is; only the slug->author mapping stays implicit until the
-  // round resolves into lastResults.
-  if (publicGame?.meme && publicGame.phase === "memeCaption") {
-    publicGame = { ...publicGame, meme: { ...publicGame.meme, captions: {} } };
-  }
-
-  // Undercover: the whole round hinges on nobody but the impostor knowing
-  // who the impostor is (or what their "close" word is) until it resolves
-  // — so those three fields never leave the server, and each session only
-  // ever learns its own word via myUndercoverWord below. Live votes are
-  // hidden the same way as the vote/meme mini-games.
-  let myUndercoverWord: string | null = null;
-  if (publicGame?.undercover) {
-    const u = publicGame.undercover;
-    if (session) {
-      myUndercoverWord =
-        session.slug === u.impostorSlug ? (u.isMisterWhite ? null : u.impostorWord ?? null) : u.secretWord ?? null;
+  try {
+    const code = await roomCode(params);
+    const token = sessionToken(req, code);
+    const snap = await readRoom(code, token);
+    if (!snap) return NextResponse.json({ error: "Code introuvable." }, { status: 404 });
+    const slug = snap.session?.slug ?? null;
+    const now = Date.now();
+    if (slug && req.nextUrl.searchParams.get("beat")) {
+      snap.seen[slug] = now;
+      await touchPresence(code, slug);
     }
-    publicGame = {
-      ...publicGame,
-      undercover: { ...u, secretWord: undefined, impostorSlug: undefined, impostorWord: undefined, votes: {} },
-    };
-  }
 
-  // Blackjack: every player's cards are public by design (see that
-  // engine's own comment), only the dealer's hole card stays hidden until
-  // its own turn — and the undealt deck never needs to leave the server.
-  if (publicGame?.blackjack) {
-    publicGame = {
-      ...publicGame,
-      blackjack: {
-        ...publicGame.blackjack,
-        deck: [],
-        // Both "still hidden" and "already revealed" serialize to `null`
-        // here — the client tells them apart via `dealer.cards.length`
-        // (1 card dealt vs. 2) instead, so this never needs to leak the
-        // actual card while it's still a secret.
-        dealer: { ...publicGame.blackjack.dealer, hiddenCard: null },
-      },
-    };
-  }
+    let room: Room = snap.room;
+    let version = snap.version;
+    // Essai à blanc sur une copie : n'écrit que s'il y a vraiment du nouveau.
+    const probe: Room = structuredClone(room);
+    if (tick(probe, now, snap.seen)) {
+      const res = await mutateRoom(code, (r, s) => (tick(r, Date.now(), { ...s.seen, ...snap.seen }) ? true : false));
+      room = res.room;
+      version = res.version;
+    }
 
-  return NextResponse.json({
-    players,
-    game: publicGame,
-    myHand,
-    myVoteChoice,
-    myUndercoverWord,
-    mySlug: session?.slug ?? null,
-    myName: session?.name ?? null,
-    isHost: session ? session.slug === hostSlug : false,
-  });
+    const view = viewFor(room.game, slug);
+    return NextResponse.json({
+      v: version,
+      serverNow: Date.now(),
+      players: room.players,
+      ...view,
+      mySlug: slug,
+      myName: room.players.find((p) => p.slug === slug)?.name ?? null,
+      isHost: !!slug && slug === room.hostSlug,
+      hostSlug: room.hostSlug,
+    });
+  } catch (e) {
+    return handleError(e);
+  }
 }

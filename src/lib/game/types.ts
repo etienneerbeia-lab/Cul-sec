@@ -29,6 +29,8 @@ export interface RoundType {
   tagline: string;
   icon: string;
   cards: number;
+  // Minimum de joueurs à table (humains + bots) pour que le jeu soit tiré.
+  minPlayers: number;
 }
 
 // The host must keep at least this many mini-games active in the lobby's
@@ -39,6 +41,7 @@ export const MIN_ENABLED_ROUND_TYPES = 2;
 export interface PlayerPublic {
   name: string;
   slug: string;
+  bot?: boolean;
   gulpsTotal: number;
   folded: boolean;
   bet: number;
@@ -782,9 +785,36 @@ export interface GameState {
   blackjack?: BlackjackRoundState;
   golf?: GolfRoundState;
   archery?: ArcheryRoundState;
+  // ---- v2 ----
+  // Mains privées (cartes) de la manche — jamais envoyées telles quelles,
+  // chaque joueur ne reçoit que la sienne (voir lib/game/view.ts).
+  hands?: Record<string, Card[]>;
+  timer?: WaitTimer;
+  botPlan?: BotPlan;
+  // Incrémenté à chaque action acceptée : sert de clé d'attente aux jeux
+  // tour par tour (chaque coup ouvre une nouvelle attente).
+  seq?: number;
 }
 
 export interface Player {
   name: string;
   slug: string;
+  // Joueur virtuel géré par le serveur (mode solo / table incomplète).
+  bot?: boolean;
+  // A quitté la partie : ses tours sont joués automatiquement.
+  left?: boolean;
+}
+
+// Timer générique d'une attente (tour d'un joueur, vote simultané...) —
+// posé par le serveur (lib/game/tick.ts) dès que l'attente commence.
+export interface WaitTimer {
+  key: string;
+  deadlineAt: number | null;
+}
+
+// Heures (serveur) auxquelles chaque bot concerné jouera son coup pour
+// l'attente identifiée par `key`.
+export interface BotPlan {
+  key: string;
+  at: Record<string, number>;
 }

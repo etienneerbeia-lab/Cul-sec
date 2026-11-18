@@ -68,9 +68,9 @@ export function advanceClueReveal(g: GameState): void {
 // Called once per remaining player as they cast their vote. Self-votes and
 // votes for eliminated/out-of-scope players are rejected by the route
 // layer before this is ever called.
-export function applyUndercoverVote(g: GameState, voterSlug: string, targetSlug: string): void {
+export function applyUndercoverVote(g: GameState, voterSlug: string, targetSlug: string | null): void {
   const u = g.undercover!;
-  u.votes[voterSlug] = targetSlug;
+  if (targetSlug) u.votes[voterSlug] = targetSlug;
   if (!u.voteResponded.includes(voterSlug)) u.voteResponded.push(voterSlug);
   if (u.voteResponded.length >= u.remainingSlugs.length) resolveUndercoverVote(g);
 }

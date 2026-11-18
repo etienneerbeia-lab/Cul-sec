@@ -40,6 +40,9 @@ export interface RoomResponse {
 }
 
 export interface StateResponse {
+  v: number;
+  serverNow: number;
+  hostSlug: string;
   players: Player[];
   game: GameState | null;
   myHand: Card[] | null;

@@ -31,7 +31,7 @@ import UndercoverGuessScreen from "./screens/UndercoverGuessScreen";
 import BlackjackScreen from "./screens/BlackjackScreen";
 import GolfScreen from "./screens/GolfScreen";
 import ArcheryScreen from "./screens/ArcheryScreen";
-import type { ArcheryPoint, GolfPoint, GolfStruckBallResult } from "@/lib/game/types";
+import type { ArcheryPoint, GolfPoint } from "@/lib/game/types";
 
 const POLL_MS = 1500;
 
@@ -52,10 +52,17 @@ export default function GameApp() {
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const roomCodeRef = useRef("");
+  // Dernière version reçue : une réponse plus ancienne (arrivée en retard)
+  // est ignorée, pour que l'écran ne recule jamais.
+  const versionRef = useRef(0);
+  const pollCountRef = useRef(0);
 
   const refresh = useCallback(async (code: string) => {
     try {
-      const data = await apiGet<StateResponse>(`/api/rooms/${code}/state`);
+      const beat = pollCountRef.current++ % 3 === 0 ? "?beat=1" : "";
+      const data = await apiGet<StateResponse>(`/api/rooms/${code}/state${beat}`);
+      if (data.v < versionRef.current) return;
+      versionRef.current = data.v;
       setPlayers(data.players);
       setGame(data.game);
       setMyHand(data.myHand);
@@ -140,10 +147,12 @@ export default function GameApp() {
   async function handleQuit() {
     stopPolling();
     try {
+      await apiPost(`/api/rooms/${roomCodeRef.current}/leave`);
       await apiDelete("/api/session");
     } catch {
       // cookie will just expire on its own
     }
+    versionRef.current = 0;
     setRoomCode("");
     setMySlug("");
     setIsHost(false);
@@ -154,6 +163,11 @@ export default function GameApp() {
     setMyUndercoverWord(null);
     setError("");
   }
+
+  const act = useCallback(
+    (action: { type: string; [key: string]: unknown }) => apiPost(`/api/rooms/${roomCodeRef.current}/action`, action),
+    []
+  );
 
   async function runAction(fn: () => Promise<unknown>) {
     setBusy(true);
@@ -252,7 +266,7 @@ export default function GameApp() {
                 disabled={busy}
                 onClick={() => {
                   setShowBackToLobbyConfirm(false);
-                  runAction(() => apiPost(`/api/rooms/${roomCode}/restart`));
+                  runAction(() => act({ type: "restart" }));
                 }}
               >
                 Revenir au lobby
@@ -274,9 +288,9 @@ export default function GameApp() {
           busy={busy}
           error={error}
           previousEnabledRoundTypeIds={game?.enabledRoundTypeIds}
-          onLaunch={(totalRounds: number, culSecRule: CulSecRule, enabledRoundTypeIds: RoundTypeId[]) =>
+          onLaunch={(totalRounds: number, culSecRule: CulSecRule, enabledRoundTypeIds: RoundTypeId[], bots: number) =>
             runAction(() =>
-              apiPost(`/api/rooms/${roomCode}/launch`, { totalRounds, culSecRule, enabledRoundTypeIds })
+              apiPost(`/api/rooms/${roomCode}/launch`, { totalRounds, culSecRule, enabledRoundTypeIds, bots })
             )
           }
           onRename={(name: string) => runAction(() => apiPost(`/api/rooms/${roomCode}/rename`, { name }))}
@@ -286,7 +300,7 @@ export default function GameApp() {
           game={game}
           isHost={isHost}
           busy={busy}
-          onConfirm={() => runAction(() => apiPost(`/api/rooms/${roomCode}/confirm-intro`))}
+          onConfirm={() => runAction(() => act({ type: "confirmIntro" }))}
         />
       ) : phase === "betting" ? (
         <BettingScreen
@@ -295,7 +309,7 @@ export default function GameApp() {
           mySlug={mySlug}
           busy={busy}
           onAct={(action: BetAction) =>
-            runAction(() => apiPost(`/api/rooms/${roomCode}/act`, { action }))
+            runAction(() => act({ type: "bet", action }))
           }
         />
       ) : phase === "duelReveal" || (phase === "showdown" && game.lastResults?.type === "duel") ? (
@@ -304,9 +318,9 @@ export default function GameApp() {
           mySlug={mySlug}
           isHost={isHost}
           busy={busy}
-          onReveal={() => runAction(() => apiPost(`/api/rooms/${roomCode}/duel-reveal`))}
-          onNextRound={() => runAction(() => apiPost(`/api/rooms/${roomCode}/next-round`))}
-          onEndNight={() => runAction(() => apiPost(`/api/rooms/${roomCode}/end-night`))}
+          onReveal={() => runAction(() => act({ type: "duelReveal" }))}
+          onNextRound={() => runAction(() => act({ type: "nextRound" }))}
+          onEndNight={() => runAction(() => act({ type: "endNight" }))}
         />
       ) : phase === "dice" || (phase === "showdown" && game.lastResults?.type === "dice") ? (
         <DiceScreen
@@ -314,9 +328,9 @@ export default function GameApp() {
           mySlug={mySlug}
           isHost={isHost}
           busy={busy}
-          onRoll={() => runAction(() => apiPost(`/api/rooms/${roomCode}/dice-roll`))}
-          onNextRound={() => runAction(() => apiPost(`/api/rooms/${roomCode}/next-round`))}
-          onEndNight={() => runAction(() => apiPost(`/api/rooms/${roomCode}/end-night`))}
+          onRoll={() => runAction(() => act({ type: "diceRoll" }))}
+          onNextRound={() => runAction(() => act({ type: "nextRound" }))}
+          onEndNight={() => runAction(() => act({ type: "endNight" }))}
         />
       ) : phase === "golf" || (phase === "showdown" && game.lastResults?.type === "golf") ? (
         <GolfScreen
@@ -324,27 +338,9 @@ export default function GameApp() {
           mySlug={mySlug}
           isHost={isHost}
           busy={busy}
-          onShoot={(
-            path: GolfPoint[],
-            finalPos: GolfPoint,
-            sunk: boolean,
-            wentInWater: boolean,
-            destroyedObstacle?: number,
-            struckBalls?: GolfStruckBallResult[]
-          ) =>
-            runAction(() =>
-              apiPost(`/api/rooms/${roomCode}/golf-shot`, {
-                path,
-                finalPos,
-                sunk,
-                wentInWater,
-                destroyedObstacle,
-                struckBalls,
-              })
-            )
-          }
-          onNextRound={() => runAction(() => apiPost(`/api/rooms/${roomCode}/next-round`))}
-          onEndNight={() => runAction(() => apiPost(`/api/rooms/${roomCode}/end-night`))}
+          onShoot={(velocity: GolfPoint) => runAction(() => act({ type: "golfShot", velocity }))}
+          onNextRound={() => runAction(() => act({ type: "nextRound" }))}
+          onEndNight={() => runAction(() => act({ type: "endNight" }))}
         />
       ) : phase === "archery" || (phase === "showdown" && game.lastResults?.type === "archery") ? (
         <ArcheryScreen
@@ -353,10 +349,10 @@ export default function GameApp() {
           isHost={isHost}
           busy={busy}
           onShoot={(aim: ArcheryPoint, power: number) =>
-            runAction(() => apiPost(`/api/rooms/${roomCode}/archery-shot`, { aim, power }))
+            runAction(() => act({ type: "archeryShot", aim, power }))
           }
-          onNextRound={() => runAction(() => apiPost(`/api/rooms/${roomCode}/next-round`))}
-          onEndNight={() => runAction(() => apiPost(`/api/rooms/${roomCode}/end-night`))}
+          onNextRound={() => runAction(() => act({ type: "nextRound" }))}
+          onEndNight={() => runAction(() => act({ type: "endNight" }))}
         />
       ) : phase === "blackjack" || (phase === "showdown" && game.lastResults?.type === "blackjack") ? (
         <BlackjackScreen
@@ -364,23 +360,23 @@ export default function GameApp() {
           mySlug={mySlug}
           isHost={isHost}
           busy={busy}
-          onBet={(amount) => runAction(() => apiPost(`/api/rooms/${roomCode}/blackjack-bet`, { amount }))}
+          onBet={(amount) => runAction(() => act({ type: "bjBet", amount }))}
           onAct={(action: BlackjackAction) =>
-            runAction(() => apiPost(`/api/rooms/${roomCode}/blackjack-act`, { action }))
+            runAction(() => act({ type: "bjAct", action }))
           }
           onDistribute={(targets) =>
-            runAction(() => apiPost(`/api/rooms/${roomCode}/blackjack-distribute`, { targets }))
+            runAction(() => act({ type: "bjDistribute", targets }))
           }
-          onNextRound={() => runAction(() => apiPost(`/api/rooms/${roomCode}/next-round`))}
-          onEndNight={() => runAction(() => apiPost(`/api/rooms/${roomCode}/end-night`))}
+          onNextRound={() => runAction(() => act({ type: "nextRound" }))}
+          onEndNight={() => runAction(() => act({ type: "endNight" }))}
         />
       ) : phase === "showdown" ? (
         <ShowdownScreen
           game={game}
           isHost={isHost}
           busy={busy}
-          onNextRound={() => runAction(() => apiPost(`/api/rooms/${roomCode}/next-round`))}
-          onEndNight={() => runAction(() => apiPost(`/api/rooms/${roomCode}/end-night`))}
+          onNextRound={() => runAction(() => act({ type: "nextRound" }))}
+          onEndNight={() => runAction(() => act({ type: "endNight" }))}
         />
       ) : phase === "quiz" ? (
         <QuizScreen
@@ -389,13 +385,13 @@ export default function GameApp() {
           isHost={isHost}
           busy={busy}
           onSubmitAnswer={(answer) =>
-            runAction(() => apiPost(`/api/rooms/${roomCode}/quiz-answer`, { answer }))
+            runAction(() => act({ type: "quizAnswer", answer }))
           }
           onDistribute={(targets) =>
-            runAction(() => apiPost(`/api/rooms/${roomCode}/quiz-distribute`, { targets }))
+            runAction(() => act({ type: "quizDistribute", targets }))
           }
-          onNext={() => runAction(() => apiPost(`/api/rooms/${roomCode}/quiz-next`))}
-          onEndNight={() => runAction(() => apiPost(`/api/rooms/${roomCode}/end-night`))}
+          onNext={() => runAction(() => act({ type: "quizNext" }))}
+          onEndNight={() => runAction(() => act({ type: "endNight" }))}
         />
       ) : phase === "vote" ? (
         <VoteScreen
@@ -403,7 +399,7 @@ export default function GameApp() {
           myVoteChoice={myVoteChoice}
           busy={busy}
           onSubmitVote={(choice) =>
-            runAction(() => apiPost(`/api/rooms/${roomCode}/vote-answer`, { choice }))
+            runAction(() => act({ type: "vote", choice }))
           }
         />
       ) : phase === "memeCaption" ? (
@@ -413,9 +409,9 @@ export default function GameApp() {
           isHost={isHost}
           busy={busy}
           onSubmitCaption={(caption) =>
-            runAction(() => apiPost(`/api/rooms/${roomCode}/meme-caption`, { caption }))
+            runAction(() => act({ type: "memeCaption", caption }))
           }
-          onForceReveal={() => runAction(() => apiPost(`/api/rooms/${roomCode}/meme-caption-reveal`))}
+          onForceReveal={() => runAction(() => act({ type: "memeCaptionReveal" }))}
         />
       ) : phase === "memeVote" ? (
         <MemeVoteScreen
@@ -423,7 +419,7 @@ export default function GameApp() {
           mySlug={mySlug}
           busy={busy}
           onSubmitVote={(authorSlug) =>
-            runAction(() => apiPost(`/api/rooms/${roomCode}/meme-vote`, { authorSlug }))
+            runAction(() => act({ type: "memeVote", authorSlug }))
           }
         />
       ) : phase === "undercoverClue" ? (
@@ -433,9 +429,9 @@ export default function GameApp() {
           myWord={myUndercoverWord}
           busy={busy}
           onSubmitClue={(text) =>
-            runAction(() => apiPost(`/api/rooms/${roomCode}/undercover-clue`, { text }))
+            runAction(() => act({ type: "ucClue", text }))
           }
-          onAdvance={() => runAction(() => apiPost(`/api/rooms/${roomCode}/undercover-clue-advance`))}
+          onAdvance={() => runAction(() => act({ type: "ucAdvance" }))}
         />
       ) : phase === "undercoverVote" ? (
         <UndercoverVoteScreen
@@ -443,7 +439,7 @@ export default function GameApp() {
           mySlug={mySlug}
           busy={busy}
           onSubmitVote={(targetSlug) =>
-            runAction(() => apiPost(`/api/rooms/${roomCode}/undercover-vote`, { targetSlug }))
+            runAction(() => act({ type: "ucVote", targetSlug }))
           }
         />
       ) : phase === "undercoverGuess" ? (
@@ -452,7 +448,7 @@ export default function GameApp() {
           myWord={myUndercoverWord}
           busy={busy}
           onSubmitGuess={(guess) =>
-            runAction(() => apiPost(`/api/rooms/${roomCode}/undercover-guess`, { guess }))
+            runAction(() => act({ type: "ucGuess", guess }))
           }
         />
       ) : phase === "quizRecap" ? (
@@ -460,8 +456,8 @@ export default function GameApp() {
           game={game}
           isHost={isHost}
           busy={busy}
-          onContinue={() => runAction(() => apiPost(`/api/rooms/${roomCode}/quiz-recap-continue`))}
-          onEndNight={() => runAction(() => apiPost(`/api/rooms/${roomCode}/end-night`))}
+          onContinue={() => runAction(() => act({ type: "nextRound" }))}
+          onEndNight={() => runAction(() => act({ type: "endNight" }))}
         />
       ) : phase === "final" ? (
         <FinalScreen
@@ -469,9 +465,9 @@ export default function GameApp() {
           mySlug={mySlug}
           isHost={isHost}
           onAssignCulSec={(targetSlug) =>
-            runAction(() => apiPost(`/api/rooms/${roomCode}/assign-cul-sec`, { targetSlug }))
+            runAction(() => act({ type: "assignCulSec", targetSlug }))
           }
-          onRejouer={() => runAction(() => apiPost(`/api/rooms/${roomCode}/restart`))}
+          onRejouer={() => runAction(() => act({ type: "restart" }))}
           onNewRoom={handleQuit}
         />
       ) : null}
