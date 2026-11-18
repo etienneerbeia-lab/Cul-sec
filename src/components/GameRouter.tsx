@@ -9,25 +9,26 @@ import DuelScreen from "./games/DuelScreen";
 import QcmScreen from "./games/QcmScreen";
 import VoteScreenV2 from "./games/VoteScreen";
 import MemeScreen from "./games/MemeScreen";
+import Dice421Screen from "./games/Dice421Screen";
+import UndercoverScreen from "./games/UndercoverScreen";
 import RoundIntroScreen from "./screens/RoundIntroScreen";
-import ShowdownScreen from "./screens/ShowdownScreen";
 import FinalScreen from "./screens/FinalScreen";
-import DiceScreen from "./screens/DiceScreen";
-import UndercoverClueScreen from "./screens/UndercoverClueScreen";
-import UndercoverVoteScreen from "./screens/UndercoverVoteScreen";
-import UndercoverGuessScreen from "./screens/UndercoverGuessScreen";
 import BlackjackScreen from "./screens/BlackjackScreen";
 import GolfScreen from "./screens/GolfScreen";
 import ArcheryScreen from "./screens/ArcheryScreen";
 
 // Choisit l'écran du mini-jeu en cours (en dehors du salon).
 export default function GameRouter({ onQuit }: { onQuit: () => void }) {
-  const { game, mySlug, isHost, busy, myUndercoverWord, act } = useGame();
+  const { game, mySlug, isHost, busy, act } = useGame();
   const phase = game.phase;
   const runAction = (fn: () => void) => fn();
   return (
     <>
-      {phase === "memeCaption" || phase === "memeVote" || (phase === "showdown" && game.lastResults?.type === "meme") ? (
+      {phase === "undercoverClue" || phase === "undercoverVote" || phase === "undercoverGuess" || (phase === "showdown" && game.lastResults?.type === "undercover") ? (
+        <UndercoverScreen />
+      ) : phase === "dice421" || (phase === "showdown" && game.lastResults?.type === "dice") ? (
+        <Dice421Screen />
+      ) : phase === "memeCaption" || phase === "memeVote" || (phase === "showdown" && game.lastResults?.type === "meme") ? (
         <MemeScreen />
       ) : phase === "vote" || (phase === "showdown" && game.lastResults?.type === "vote") ? (
         <VoteScreenV2 />
@@ -45,16 +46,6 @@ export default function GameRouter({ onQuit }: { onQuit: () => void }) {
           isHost={isHost}
           busy={busy}
           onConfirm={() => runAction(() => act({ type: "confirmIntro" }))}
-        />
-      ) : phase === "dice" || (phase === "showdown" && game.lastResults?.type === "dice") ? (
-        <DiceScreen
-          game={game}
-          mySlug={mySlug}
-          isHost={isHost}
-          busy={busy}
-          onRoll={() => runAction(() => act({ type: "diceRoll" }))}
-          onNextRound={() => runAction(() => act({ type: "nextRound" }))}
-          onEndNight={() => runAction(() => act({ type: "endNight" }))}
         />
       ) : phase === "golf" || (phase === "showdown" && game.lastResults?.type === "golf") ? (
         <GolfScreen
@@ -93,43 +84,6 @@ export default function GameRouter({ onQuit }: { onQuit: () => void }) {
           }
           onNextRound={() => runAction(() => act({ type: "nextRound" }))}
           onEndNight={() => runAction(() => act({ type: "endNight" }))}
-        />
-      ) : phase === "showdown" ? (
-        <ShowdownScreen
-          game={game}
-          isHost={isHost}
-          busy={busy}
-          onNextRound={() => runAction(() => act({ type: "nextRound" }))}
-          onEndNight={() => runAction(() => act({ type: "endNight" }))}
-        />
-      ) : phase === "undercoverClue" ? (
-        <UndercoverClueScreen
-          game={game}
-          mySlug={mySlug}
-          myWord={myUndercoverWord}
-          busy={busy}
-          onSubmitClue={(text) =>
-            runAction(() => act({ type: "ucClue", text }))
-          }
-          onAdvance={() => runAction(() => act({ type: "ucAdvance" }))}
-        />
-      ) : phase === "undercoverVote" ? (
-        <UndercoverVoteScreen
-          game={game}
-          mySlug={mySlug}
-          busy={busy}
-          onSubmitVote={(targetSlug) =>
-            runAction(() => act({ type: "ucVote", targetSlug }))
-          }
-        />
-      ) : phase === "undercoverGuess" ? (
-        <UndercoverGuessScreen
-          game={game}
-          myWord={myUndercoverWord}
-          busy={busy}
-          onSubmitGuess={(guess) =>
-            runAction(() => act({ type: "ucGuess", guess }))
-          }
         />
       ) : phase === "final" ? (
         <FinalScreen

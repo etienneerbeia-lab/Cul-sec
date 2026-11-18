@@ -53,15 +53,23 @@ export const RULES: Record<RoundTypeId, GameRules> = {
     gulps: ["Légende la moins votée : 2 gorgées (égalité générale : personne).", "Pas de légende : 2 gorgées."],
   },
   dice: {
-    how: ["Chacun lance deux dés à son tour."],
-    gulps: ["Le plus petit score : 2 gorgées.", "Égalité : on relance, mise doublée."],
+    how: [
+      "À ton tour : lance 3 dés, jusqu'à 3 fois. Touche les dés à garder avant de relancer.",
+      "Du plus fort au plus faible : 421, brelan d'as, brelans (666…222), suites (654…321), puis le reste.",
+    ],
+    gulps: ["Le plus petit score : 2 gorgées.", "Quelqu'un fait 421 : tous les autres boivent 1."],
   },
   undercover: {
     how: [
-      "Tout le monde a le même mot, sauf un imposteur.",
-      "Chacun donne un indice, puis on vote pour éliminer.",
+      "Tout le monde a le même mot, sauf l'imposteur (mot proche, ou aucun mot : Mister White dès 5 joueurs).",
+      "Chacun dit un indice à voix haute et le tape, puis on vote pour éliminer quelqu'un.",
+      "Ça continue jusqu'à démasquer l'imposteur… ou qu'il ne reste que deux joueurs.",
     ],
-    gulps: ["Imposteur démasqué : il boit 2.", "Imposteur survivant : tous les autres boivent 2."],
+    gulps: [
+      "Imposteur démasqué : il boit 3.",
+      "Imposteur survivant : tous les autres boivent 2.",
+      "Mister White démasqué qui devine le mot : les autres boivent 1.",
+    ],
   },
   blackjack: {
     how: ["Mise 1 à 5 gorgées, puis affronte la banque.", "Approche-toi de 21 sans dépasser."],

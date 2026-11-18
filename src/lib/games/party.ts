@@ -13,7 +13,7 @@ import {
 } from "../undercover/engine";
 import { CLUE_REVEAL_MS } from "../game/types";
 import { BOT_MEME_CAPTIONS } from "../bots/captions";
-import { botClueFor, randomWord } from "../undercover/words";
+import { botClueFor, randomWord, WORD_PAIRS } from "../undercover/words";
 
 const GRACE_MS = 1500;
 
@@ -199,7 +199,16 @@ export const undercoverModule: GameModule = {
     if (g.phase === "undercoverVote") {
       if (!bot) return { type: "ucVote", targetSlug: null };
       const pool = (u.tieBreakCandidates ?? u.remainingSlugs).filter((s) => s !== slug);
-      return { type: "ucVote", targetSlug: pool.length ? pick(pool) : null };
+      if (!pool.length) return { type: "ucVote", targetSlug: null };
+      // Un bot civil repère (parfois) un indice qui colle mieux au mot
+      // proche qu'au sien — comme un joueur attentif.
+      if (slug !== u.impostorSlug && chance(0.6)) {
+        const pair = WORD_PAIRS.find((p) => p.word === u.secretWord);
+        const theirs = (pair?.closeHints ?? []).map((h) => h.toLowerCase());
+        const suspects = pool.filter((s) => u.clues.some((c) => c.slug === s && theirs.includes(c.text.toLowerCase())));
+        if (suspects.length) return { type: "ucVote", targetSlug: pick(suspects) };
+      }
+      return { type: "ucVote", targetSlug: pick(pool) };
     }
     if (g.phase === "undercoverGuess")
       return { type: "ucGuess", guess: bot && chance(0.35) ? u.secretWord! : bot ? randomWord() : "" };

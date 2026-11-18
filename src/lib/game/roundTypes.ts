@@ -52,8 +52,8 @@ export const ROUND_TYPES: RoundType[] = [
   {
     id: "dice",
     minPlayers: 2,
-    label: "Lancé de dés",
-    tagline: "Lance tes dés à ton tour. Le plus petit score boit.",
+    label: "421",
+    tagline: "Trois dés, trois lancers, garde ce que tu veux. Le plus petit score boit.",
     icon: "🎲",
     cards: 0,
   },

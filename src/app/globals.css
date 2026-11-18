@@ -864,3 +864,24 @@ input[type="text"]:focus {
   align-items: center;
   justify-content: center;
 }
+
+/* Dé qui roule : rebondit et tourne avant de se poser */
+@keyframes cs-dice-roll {
+  0% {
+    transform: translate(-40px, -60px) rotate(-200deg) scale(0.7);
+    opacity: 0;
+  }
+  35% {
+    transform: translate(10px, 10px) rotate(-60deg) scale(1.05);
+    opacity: 1;
+  }
+  60% {
+    transform: translate(-4px, -10px) rotate(25deg);
+  }
+  80% {
+    transform: translate(2px, 0) rotate(-8deg);
+  }
+  100% {
+    transform: none;
+  }
+}

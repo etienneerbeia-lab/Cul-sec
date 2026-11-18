@@ -1,4 +1,4 @@
-import { pickFresh } from "../game/module";
+import { drink, pickFresh } from "../game/module";
 import { checkAnswer } from "../quiz/match";
 import type { GameState, UndercoverOutcome } from "../game/types";
 import { CLUE_REVEAL_MS } from "../game/types";
@@ -161,15 +161,15 @@ function resolveUndercoverFinal(g: GameState, outcome: UndercoverOutcome, guessT
   const u = g.undercover!;
   const impostor = g.playersPublic.find((p) => p.slug === u.impostorSlug)!;
 
+  const others = g.playersPublic.filter((p) => p.slug !== u.impostorSlug);
   if (outcome === "caught_wrong_guess" || outcome === "caught_direct") {
-    impostor.gulpsTotal += 2;
+    drink(g, impostor.slug, 3, "Imposteur démasqué");
   } else if (outcome === "survived") {
-    g.playersPublic.forEach((p) => {
-      if (p.slug !== u.impostorSlug) p.gulpsTotal += 2;
-    });
+    others.forEach((p) => drink(g, p.slug, 2, "L'imposteur a survécu"));
+  } else {
+    // Mister White démasqué mais il trouve le mot : il gagne quand même.
+    others.forEach((p) => drink(g, p.slug, 1, "Mister White a trouvé le mot"));
   }
-  // "caught_correct_guess": nobody drinks — the table caught him, he
-  // wriggled out of it, close enough to a wash.
 
   g.lastResults = {
     type: "undercover",

@@ -66,10 +66,10 @@ function humanMove(s: StateResponse): Record<string, unknown> | null {
       const opt = g.meme!.voteOrder.find((x) => x !== me);
       return { type: "memeVote", authorSlug: opt ?? null };
     }
-    case "dice": {
-      const d = g.dice!;
-      const idx = d.tieBreak ? d.tieBreak.playerIdx : d.playerIdx;
-      return idx === meIdx ? { type: "diceRoll" } : null;
+    case "dice421": {
+      const cur = g.dice421!.current;
+      if (cur?.slug !== me) return null;
+      return cur.throws < 2 ? { type: "d421Roll", hold: [true, false, false] } : { type: "d421Stop" };
     }
     case "undercoverClue": {
       const u = g.undercover!;

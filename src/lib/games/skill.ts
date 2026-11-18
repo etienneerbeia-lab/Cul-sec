@@ -1,7 +1,6 @@
 import { roundTypeById } from "../game/roundTypes";
 import { fail, notNow } from "../errors";
 import { type GameModule, rand } from "../game/module";
-import { diceActiveSlug, rollDice, startDiceRound } from "../dice/engine";
 import {
   applyBlackjackBet,
   applyBlackjackDistribution,
@@ -24,25 +23,6 @@ function isPoint(v: unknown): v is GolfPoint {
   const p = v as GolfPoint;
   return !!p && typeof p === "object" && Number.isFinite(p.x) && Number.isFinite(p.y);
 }
-
-// ---------- Dés ----------
-export const diceModule: GameModule = {
-  id: "dice",
-  minPlayers: roundTypeById("dice").minPlayers,
-  start: (g) => startDiceRound(g),
-  act(g, slug, a) {
-    if (g.phase !== "dice" || !g.dice || a.type !== "diceRoll") notNow();
-    if (diceActiveSlug(g) !== slug) fail(403, "Ce n'est pas ton tour.");
-    rollDice(g);
-  },
-  pending(g) {
-    if (g.phase !== "dice" || !g.dice) return null;
-    return { key: `dice:${g.seq ?? 0}`, actors: [diceActiveSlug(g)], timeoutMs: 30000 };
-  },
-  auto: () => ({ type: "diceRoll" }),
-  // L'animation d'un lancer dure ~2,5 s chez chaque joueur.
-  botDelay: () => [3000, 4500],
-};
 
 // ---------- Blackjack ----------
 function cardPoints(c: Card): number {
