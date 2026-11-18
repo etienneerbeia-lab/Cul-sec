@@ -1,9 +1,10 @@
+import { pickFresh } from "../game/module";
 import { shuffleArr } from "../game/cards";
 import type { GameState, MemeVoteTally } from "../game/types";
 import { MEME_TEMPLATES } from "./templates";
 
 export function startMemeRound(g: GameState): void {
-  const template = MEME_TEMPLATES[Math.floor(Math.random() * MEME_TEMPLATES.length)];
+  const template = pickFresh(g, MEME_TEMPLATES.map((t) => ({ ...t, id: `meme-${t.id}` })));
   g.meme = {
     template,
     askedAt: Date.now(),

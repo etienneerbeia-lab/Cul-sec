@@ -1,8 +1,9 @@
+import { pickFresh } from "../game/module";
 import type { GameState, PlayerPublic, VoteChoice } from "../game/types";
 import { VOTE_QUESTIONS } from "./questions";
 
 export function startVoteRound(g: GameState): void {
-  const chosen = VOTE_QUESTIONS[Math.floor(Math.random() * VOTE_QUESTIONS.length)];
+  const chosen = pickFresh(g, VOTE_QUESTIONS);
   g.vote = {
     question: { id: chosen.id, promptA: chosen.promptA, promptB: chosen.promptB },
     askedAt: Date.now(),

@@ -54,6 +54,7 @@ function applyGameAction(room: Room, slug: string, action: Action, now: number):
       break;
     case "nextRound":
       if (g.phase !== "showdown" && g.phase !== "quizRecap") notNow();
+      seatLateJoiners(room);
       nextRound(g);
       break;
     case "endNight":
@@ -79,6 +80,27 @@ function applyGameAction(room: Room, slug: string, action: Action, now: number):
     }
   }
   g.seq = (g.seq ?? 0) + 1;
+}
+
+// Les joueurs arrivés en cours de partie prennent place à la manche
+// suivante, avec le plus petit score de la table (ni avantage ni punition).
+function seatLateJoiners(room: Room): void {
+  const g = room.game;
+  const seated = new Set(g.playersPublic.map((p) => p.slug));
+  const min = Math.min(...g.playersPublic.map((p) => p.gulpsTotal));
+  room.players
+    .filter((p) => !seated.has(p.slug) && !p.left)
+    .forEach((p) => {
+      g.playersPublic.push({
+        name: p.name,
+        slug: p.slug,
+        bot: p.bot || undefined,
+        gulpsTotal: Number.isFinite(min) ? min : 0,
+        folded: false,
+        bet: 0,
+        foldCost: null,
+      });
+    });
 }
 
 function autoAction(room: Room, slug: string, bot: boolean, now: number): Action | null {
@@ -181,7 +203,9 @@ export function tick(room: Room, now: number, seen?: Record<string, number>): bo
 function transferHostIfAway(room: Room, now: number, seen: Record<string, number>): boolean {
   const fresh = (slug: string) => seen[slug] !== undefined && now - seen[slug] < HOST_AWAY_MS;
   const host = room.players.find((p) => p.slug === room.hostSlug);
-  if (host && !host.left && fresh(host.slug)) return false;
+  // Pas encore de signe de vie connu (« jamais vu ») = on ne sait pas, on
+  // ne transfère pas ; seul un hôte parti ou silencieux depuis 20 s cède.
+  if (host && !host.left && (seen[host.slug] === undefined || fresh(host.slug))) return false;
   const candidate = room.players.find((p) => !p.bot && !p.left && fresh(p.slug));
   if (!candidate || candidate.slug === room.hostSlug) return false;
   room.hostSlug = candidate.slug;

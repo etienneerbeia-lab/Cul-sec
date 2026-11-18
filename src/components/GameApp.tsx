@@ -12,6 +12,7 @@ import {
   type StateResponse,
 } from "@/lib/api-client";
 import type { Card, CulSecRule, GameState, Player, RoundTypeId, VoteChoice } from "@/lib/game/types";
+import { syncClock } from "@/lib/clock";
 import HomeScreen from "./screens/HomeScreen";
 import LobbyScreen from "./screens/LobbyScreen";
 import RoundIntroScreen from "./screens/RoundIntroScreen";
@@ -33,7 +34,7 @@ import GolfScreen from "./screens/GolfScreen";
 import ArcheryScreen from "./screens/ArcheryScreen";
 import type { ArcheryPoint, GolfPoint } from "@/lib/game/types";
 
-const POLL_MS = 1500;
+const POLL_MS = 1200;
 
 export default function GameApp() {
   const [booting, setBooting] = useState(true);
@@ -60,7 +61,14 @@ export default function GameApp() {
   const refresh = useCallback(async (code: string) => {
     try {
       const beat = pollCountRef.current++ % 3 === 0 ? "?beat=1" : "";
+      const startedAt = Date.now();
       const data = await apiGet<StateResponse>(`/api/rooms/${code}/state${beat}`);
+      syncClock(data.serverNow, startedAt);
+      if (!data.mySlug) {
+        // Session expirée ou salon supprimé : retour à l'accueil.
+        setRoomCode("");
+        return;
+      }
       if (data.v < versionRef.current) return;
       versionRef.current = data.v;
       setPlayers(data.players);
@@ -86,10 +94,22 @@ export default function GameApp() {
       roomCodeRef.current = code;
       if (pollRef.current) return;
       refresh(code);
-      pollRef.current = setInterval(() => refresh(code), POLL_MS);
+      // Rien n'est demandé quand l'appli est en arrière-plan (économise le
+      // quota Upstash) ; on rafraîchit dès qu'elle revient au premier plan.
+      pollRef.current = setInterval(() => {
+        if (!document.hidden) refresh(code);
+      }, POLL_MS);
     },
     [refresh]
   );
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (!document.hidden && roomCodeRef.current) refresh(roomCodeRef.current);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [refresh]);
 
   useEffect(() => {
     (async () => {
@@ -233,7 +253,7 @@ export default function GameApp() {
         <div className="modal-overlay" onClick={() => setShowQuitConfirm(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="modal-title">Quitter la partie ?</div>
-            <div className="hint">Tu pourras rejoindre à nouveau avec le code si besoin.</div>
+            <div className="hint">Tes tours seront joués automatiquement. Pour revenir, rejoins avec le code {roomCode} et le même prénom.</div>
             <div className="modal-actions">
               <button
                 className="btn-wine"
@@ -279,7 +299,13 @@ export default function GameApp() {
         </div>
       )}
 
-      {!game || phase === "lobby" ? (
+      {game && phase !== "lobby" && phase !== "final" && !game.playersPublic.some((p) => p.slug === mySlug) ? (
+        <div className="pass-screen">
+          <div className="glyph">🍻</div>
+          <div className="pass-name">Tu arrives en cours de partie</div>
+          <div className="hint">Tu prends place à la table dès la prochaine manche.</div>
+        </div>
+      ) : !game || phase === "lobby" ? (
         <LobbyScreen
           roomCode={roomCode}
           players={players}

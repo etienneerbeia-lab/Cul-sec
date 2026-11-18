@@ -66,3 +66,19 @@ export function tableOrder(g: GameState): number[] {
 export function findPlayer(g: GameState, slug: string) {
   return g.playersPublic.find((p) => p.slug === slug);
 }
+
+// Tire un contenu (question, image, paire de mots...) pas encore vu ce
+// soir ; quand tout a été vu, on recommence. Les ids vus sont gardés dans
+// g.usedQuestionIds (partagé par tous les jeux, préfixes distincts).
+export function pickFresh<T extends { id: string }>(g: GameState, list: T[]): T {
+  const used = new Set(g.usedQuestionIds ?? []);
+  let pool = list.filter((x) => !used.has(x.id));
+  if (pool.length === 0) {
+    const ids = new Set(list.map((x) => x.id));
+    g.usedQuestionIds = (g.usedQuestionIds ?? []).filter((id) => !ids.has(id));
+    pool = list;
+  }
+  const chosen = pick(pool);
+  g.usedQuestionIds = [...(g.usedQuestionIds ?? []), chosen.id];
+  return chosen;
+}

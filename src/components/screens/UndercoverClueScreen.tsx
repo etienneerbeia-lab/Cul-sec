@@ -1,5 +1,6 @@
 "use client";
 
+import { serverNow } from "@/lib/clock";
 import { useEffect, useRef, useState } from "react";
 import { CLUE_REVEAL_MS } from "@/lib/game/types";
 import type { GameState } from "@/lib/game/types";
@@ -30,10 +31,10 @@ export default function UndercoverClueScreen({
 
   const [value, setValue] = useState("");
 
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState(() => serverNow());
   useEffect(() => {
     if (!isRevealing) return;
-    const id = setInterval(() => setNow(Date.now()), 250);
+    const id = setInterval(() => setNow(serverNow()), 250);
     return () => clearInterval(id);
   }, [isRevealing, u.revealUntil]);
 

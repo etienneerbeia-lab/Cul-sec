@@ -1,5 +1,6 @@
 "use client";
 
+import { serverNow } from "@/lib/clock";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TIMED_ANSWER_MS } from "@/lib/game/types";
 import type { GameState } from "@/lib/game/types";
@@ -34,23 +35,27 @@ export default function QuizScreen({
   const isMe = activePlayer.slug === mySlug;
   const isLastPlayer = q.turnPointer + 1 >= q.turnOrder.length;
 
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState(() => serverNow());
   useEffect(() => {
     if (q.status !== "asking") return;
-    const id = setInterval(() => setNow(Date.now()), 250);
+    const id = setInterval(() => setNow(serverNow()), 250);
     return () => clearInterval(id);
   }, [q.status, q.askedAt]);
 
   const remainingMs = Math.max(0, TIMED_ANSWER_MS - (now - q.askedAt));
   const remainingSec = Math.ceil(remainingMs / 1000);
 
+  // Brouillon de réponse, rattaché à la question en cours.
+  const [draftState, setDraftState] = useState({ at: 0, text: "" });
+  const draft = draftState.at === q.askedAt ? draftState.text : "";
   const timedOutForRef = useRef<number | null>(null);
   useEffect(() => {
     if (q.status === "asking" && isMe && remainingMs <= 0 && timedOutForRef.current !== q.askedAt) {
       timedOutForRef.current = q.askedAt;
-      onSubmitAnswer("");
+      // Temps écoulé : on envoie ce qui a été tapé, pas une réponse vide.
+      onSubmitAnswer(draft.trim());
     }
-  }, [q.status, isMe, remainingMs, q.askedAt, onSubmitAnswer]);
+  }, [q.status, isMe, remainingMs, q.askedAt, onSubmitAnswer, draft]);
 
   return (
     <>
@@ -80,7 +85,7 @@ export default function QuizScreen({
         </div>
       )}
 
-      {q.status === "asking" && (isMe ? <AnswerForm onSubmit={onSubmitAnswer} busy={busy} /> : <div className="hint">En attente de {activePlayer.name}...</div>)}
+      {q.status === "asking" && (isMe ? <AnswerForm key={q.askedAt} onSubmit={onSubmitAnswer} busy={busy} onDraft={(text) => setDraftState({ at: q.askedAt, text })} /> : <div className="hint">En attente de {activePlayer.name}...</div>)}
 
       {q.status !== "asking" && (
         <>
@@ -141,7 +146,15 @@ export default function QuizScreen({
   );
 }
 
-function AnswerForm({ onSubmit, busy }: { onSubmit: (answer: string) => void; busy: boolean }) {
+function AnswerForm({
+  onSubmit,
+  busy,
+  onDraft,
+}: {
+  onSubmit: (answer: string) => void;
+  busy: boolean;
+  onDraft: (v: string) => void;
+}) {
   const [value, setValue] = useState("");
   return (
     <div className="name-inputs" style={{ marginTop: 16 }}>
@@ -149,7 +162,10 @@ function AnswerForm({ onSubmit, busy }: { onSubmit: (answer: string) => void; bu
         type="text"
         placeholder="Ta réponse"
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={(e) => {
+          setValue(e.target.value);
+          onDraft(e.target.value);
+        }}
         onKeyDown={(e) => {
           if (e.key === "Enter" && value.trim() && !busy) onSubmit(value.trim());
         }}

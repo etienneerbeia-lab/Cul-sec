@@ -1,5 +1,6 @@
 "use client";
 
+import { serverNow } from "@/lib/clock";
 import { useEffect, useRef, useState } from "react";
 import { MEME_CAPTION_MS } from "@/lib/game/types";
 import type { GameState } from "@/lib/game/types";
@@ -25,9 +26,9 @@ export default function MemeCaptionScreen({
   const iHaveSubmitted = m.captionResponded.includes(mySlug);
 
   const [value, setValue] = useState("");
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState(() => serverNow());
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 250);
+    const id = setInterval(() => setNow(serverNow()), 250);
     return () => clearInterval(id);
   }, [m.askedAt]);
 
@@ -39,9 +40,10 @@ export default function MemeCaptionScreen({
   useEffect(() => {
     if (!iHaveSubmitted && timeUp && timedOutForRef.current !== m.askedAt) {
       timedOutForRef.current = m.askedAt;
-      onSubmitCaption("");
+      // Temps écoulé : on envoie ce qui a été tapé, pas une légende vide.
+      onSubmitCaption(value.trim());
     }
-  }, [iHaveSubmitted, timeUp, m.askedAt, onSubmitCaption]);
+  }, [iHaveSubmitted, timeUp, m.askedAt, onSubmitCaption, value]);
 
   return (
     <>

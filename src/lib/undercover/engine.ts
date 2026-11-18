@@ -1,3 +1,4 @@
+import { pickFresh } from "../game/module";
 import { checkAnswer } from "../quiz/match";
 import type { GameState, UndercoverOutcome } from "../game/types";
 import { CLUE_REVEAL_MS } from "../game/types";
@@ -16,8 +17,15 @@ function tableOrder(g: GameState, slugs: string[]): string[] {
   return order;
 }
 
+// Règle du vrai jeu : Mister White ne parle jamais en premier (il n'a
+// aucun indice sur lequel s'appuyer).
+function misterWhiteNotFirst(order: string[], impostor: string, isMisterWhite: boolean): string[] {
+  if (!isMisterWhite || order[0] !== impostor || order.length < 2) return order;
+  return [...order.slice(1), order[0]];
+}
+
 export function startUndercoverRound(g: GameState): void {
-  const pair = WORD_PAIRS[Math.floor(Math.random() * WORD_PAIRS.length)];
+  const pair = pickFresh(g, WORD_PAIRS);
   const impostorSlug = g.playersPublic[Math.floor(Math.random() * g.playersPublic.length)].slug;
   const isMisterWhite = g.playersPublic.length >= 5;
   const remainingSlugs = g.playersPublic.map((p) => p.slug);
@@ -30,7 +38,7 @@ export function startUndercoverRound(g: GameState): void {
     remainingSlugs,
     eliminatedSlugs: [],
     cycle: 0,
-    clueOrder: tableOrder(g, remainingSlugs),
+    clueOrder: misterWhiteNotFirst(tableOrder(g, remainingSlugs), impostorSlug, isMisterWhite),
     cluePointer: 0,
     clues: [],
     votes: {},
@@ -127,7 +135,7 @@ function applyOutcomeFor(g: GameState, targetSlug: string, byLottery: boolean): 
   }
 
   u.cycle += 1;
-  u.clueOrder = tableOrder(g, u.remainingSlugs);
+  u.clueOrder = misterWhiteNotFirst(tableOrder(g, u.remainingSlugs), u.impostorSlug!, u.isMisterWhite);
   u.cluePointer = 0;
   u.votes = {};
   u.voteResponded = [];

@@ -1,5 +1,6 @@
 "use client";
 
+import { serverNow } from "@/lib/clock";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TIMED_ANSWER_MS } from "@/lib/game/types";
 import type { GameState, VoteChoice } from "@/lib/game/types";
@@ -23,9 +24,9 @@ export default function VoteScreen({
     [game.playersPublic, v.responded]
   );
 
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState(() => serverNow());
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 250);
+    const id = setInterval(() => setNow(serverNow()), 250);
     return () => clearInterval(id);
   }, [v.askedAt]);
 
