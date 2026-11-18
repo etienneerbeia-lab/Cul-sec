@@ -42,7 +42,7 @@ export default function HomeMark() {
         <text
           x="73"
           y="80"
-          fontFamily="var(--font-fraunces), serif"
+          fontFamily="var(--font-display), serif"
           fontSize="46"
           fill="var(--wine)"
           textAnchor="middle"
@@ -53,7 +53,7 @@ export default function HomeMark() {
         <text
           x="48"
           y="42"
-          fontFamily="var(--font-fraunces), serif"
+          fontFamily="var(--font-display), serif"
           fontWeight="700"
           fontSize="16"
           fill="var(--wine)"
@@ -64,7 +64,7 @@ export default function HomeMark() {
         <text
           x="48"
           y="42"
-          fontFamily="var(--font-fraunces), serif"
+          fontFamily="var(--font-display), serif"
           fontWeight="700"
           fontSize="16"
           fill="var(--wine)"
