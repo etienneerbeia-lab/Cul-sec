@@ -7,14 +7,14 @@ import "./globals.css";
 // Google Fonts et la PWA les a toujours en cache.
 const display = localFont({
   src: "./fonts/bricolage.woff2",
-  variable: "--font-display",
+  variable: "--font-bricolage",
   weight: "200 800",
   display: "swap",
 });
 
 const sans = localFont({
   src: "./fonts/inter.woff2",
-  variable: "--font-sans",
+  variable: "--font-inter",
   weight: "100 900",
   display: "swap",
 });
@@ -43,7 +43,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
-  themeColor: "#241a44",
+  themeColor: "#0b0614",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
