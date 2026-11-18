@@ -6,7 +6,7 @@ import { syncClock } from "@/lib/clock";
 import { haptic } from "@/lib/haptics";
 import { useViewportHeight } from "@/lib/useViewportHeight";
 import { roundTypeById } from "@/lib/game/roundTypes";
-import type { Card, CulSecRule, GameState, Player, RoundTypeId, VoteChoice } from "@/lib/game/types";
+import type { Card, CulSecRule, GameState, Player, RoundTypeId } from "@/lib/game/types";
 import { GameContext, type GameCtx } from "./GameContext";
 import { Button, IconButton } from "./ui/Button";
 import { CountUp, Sheet } from "./ui/Feedback";
@@ -27,7 +27,7 @@ export default function GameApp() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [game, setGame] = useState<GameState | null>(null);
   const [myHand, setMyHand] = useState<Card[] | null>(null);
-  const [myVoteChoice, setMyVoteChoice] = useState<VoteChoice | null>(null);
+  const [myVoteChoice, setMyVoteChoice] = useState<string | null>(null);
   const [myUndercoverWord, setMyUndercoverWord] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");

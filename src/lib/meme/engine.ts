@@ -1,4 +1,4 @@
-import { pickFresh } from "../game/module";
+import { drink, pickFresh } from "../game/module";
 import { shuffleArr } from "../game/cards";
 import type { GameState, MemeVoteTally } from "../game/types";
 import { MEME_TEMPLATES } from "./templates";
@@ -114,19 +114,18 @@ function resolveMemeRound(g: GameState): void {
   if (tallies.length > 1) {
     const minVotes = Math.min(...tallies.map((t) => t.votes));
     const losers = tallies.filter((t) => t.votes === minVotes);
-    losers.forEach((t) => {
-      byslug.get(t.slug)!.gulpsTotal += 2;
-    });
-    leastFunny = losers.map((t) => t.name);
+    // Égalité générale (tout le monde a autant de voix) : personne ne boit.
+    if (losers.length < tallies.length) {
+      losers.forEach((t) => drink(g, t.slug, 2, "Légende la moins drôle"));
+      leastFunny = losers.map((t) => t.name);
+    }
   }
 
   // Not writing a caption in time is never neutral, same rule as every
   // other timed mini-game's timeout — always costs 2, independent of
   // whether there was even a contest to judge.
   const noCaptioners = g.playersPublic.filter((p) => !(p.slug in m.captions));
-  noCaptioners.forEach((p) => {
-    p.gulpsTotal += 2;
-  });
+  noCaptioners.forEach((p) => drink(g, p.slug, 2, "Pas de légende"));
 
   g.lastResults = {
     type: "meme",

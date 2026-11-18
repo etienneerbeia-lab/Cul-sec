@@ -1,9 +1,8 @@
 import { roundTypeById } from "../game/roundTypes";
 import { fail, notNow } from "../errors";
 import { chance, findPlayer, type GameModule, pick } from "../game/module";
-import { MEME_CAPTION_MS, TIMED_ANSWER_MS, type GameState } from "../game/types";
-import { advanceQuizTurn, applyQuizAnswer, applyQuizDistribution, startQuizRound } from "../quiz/engine";
-import { applyVote, resolveVote, startVoteRound } from "../vote/engine";
+import { MEME_CAPTION_MS, MEME_VOTE_MS, type GameState } from "../game/types";
+import { applyVote, startVoteRound, VOTE_MS } from "../vote/engine";
 import { forceMemeCaptionEnd, forceMemeVoteEnd, startMemeRound, submitMemeCaption, submitMemeVote } from "../meme/engine";
 import {
   advanceClueReveal,
@@ -52,76 +51,33 @@ export function parseTargets(g: GameState, slug: string, raw: unknown, total: nu
   return out;
 }
 
-// ---------- Culture G ----------
-export const quizModule: GameModule = {
-  id: "quiz",
-  minPlayers: roundTypeById("quiz").minPlayers,
-  start: (g) => startQuizRound(g),
-  act(g, slug, a, ctx) {
-    const q = g.quiz;
-    if (!q) notNow();
-    const active = g.playersPublic[q.playerIdx].slug;
-    if (a.type === "quizAnswer") {
-      if (g.phase !== "quiz" || q.status !== "asking") notNow();
-      if (slug !== active) fail(403, "Ce n'est pas ton tour.");
-      applyQuizAnswer(g, typeof a.answer === "string" ? a.answer.slice(0, 80) : "");
-    } else if (a.type === "quizDistribute") {
-      if (g.phase !== "quiz" || q.status !== "distributing") notNow();
-      if (slug !== active) fail(403, "Ce n'est pas ton tour.");
-      applyQuizDistribution(g, parseTargets(g, slug, a.targets, 2));
-    } else if (a.type === "quizNext") {
-      if (g.phase !== "quiz" || q.status !== "result") notNow();
-      if (slug !== ctx.hostSlug) fail(403, "Réservé à l'hôte.");
-      if (advanceQuizTurn(g)) g.phase = "quizRecap";
-    } else fail(400, "Action inconnue.");
-  },
-  pending(g) {
-    const q = g.quiz;
-    if (g.phase !== "quiz" || !q) return null;
-    const active = g.playersPublic[q.playerIdx].slug;
-    if (q.status === "asking")
-      return { key: `quiz:${q.turnPointer}:ask`, actors: [active], timeoutMs: TIMED_ANSWER_MS + GRACE_MS };
-    if (q.status === "distributing")
-      return { key: `quiz:${q.turnPointer}:dist`, actors: [active], timeoutMs: 30000 };
-    return null;
-  },
-  auto(g, slug, _ctx, { bot }) {
-    const q = g.quiz!;
-    if (q.status === "asking") {
-      const p = [0, 0.8, 0.55, 0.3][q.question.difficulty] ?? 0.5;
-      if (!bot) return { type: "quizAnswer", answer: "" };
-      return { type: "quizAnswer", answer: chance(p) ? q.question.answer ?? "" : pick(["Aucune idée", "Euh…", "Passe"]) };
-    }
-    if (q.status === "distributing") return { type: "quizDistribute", targets: randomDistribution(g, slug, 2) };
-    return null;
-  },
-  botDelay: (g) => (g.quiz?.status === "asking" ? [3000, 9000] : [1500, 3000]),
-};
-
-// ---------- Tu préfères ----------
+// ---------- Tu préfères / Qui de nous ----------
 export const voteModule: GameModule = {
   id: "vote",
   minPlayers: roundTypeById("vote").minPlayers,
-  start: (g) => startVoteRound(g),
-  act(g, slug, a, ctx) {
-    if (g.phase !== "vote" || !g.vote) notNow();
-    if (a.type === "vote") {
-      if (!findPlayer(g, slug)) fail(403, "Tu ne participes pas à cette manche.");
-      if (g.vote.responded.includes(slug)) fail(409, "Tu as déjà voté.");
-      applyVote(g, slug, a.choice === "A" || a.choice === "B" ? a.choice : null);
-    } else if (a.type === "voteReveal") {
-      if (slug !== ctx.hostSlug) fail(403, "Réservé à l'hôte.");
-      if (ctx.now - g.vote.askedAt < TIMED_ANSWER_MS) fail(409, "Le temps n'est pas encore écoulé.");
-      resolveVote(g);
-    } else fail(400, "Action inconnue.");
+  start: (g, ctx) => startVoteRound(g, ctx.now),
+  act(g, slug, a) {
+    const v = g.vote;
+    if (g.phase !== "vote" || !v || a.type !== "vote") notNow();
+    if (v.responded.includes(slug)) fail(409, "Tu as déjà voté.");
+    let choice: string | null = null;
+    if (v.mode === "qui") {
+      if (a.choice === slug) fail(400, "Pas le droit de voter pour toi.");
+      if (typeof a.choice === "string" && g.playersPublic.some((p) => p.slug === a.choice)) choice = a.choice;
+    } else if (a.choice === "A" || a.choice === "B") choice = a.choice;
+    applyVote(g, slug, choice);
   },
   pending(g) {
     if (g.phase !== "vote" || !g.vote) return null;
     const actors = g.playersPublic.filter((p) => !g.vote!.responded.includes(p.slug)).map((p) => p.slug);
-    return { key: `vote:${g.round}`, actors, timeoutMs: TIMED_ANSWER_MS + GRACE_MS };
+    return { key: `vote:${g.round}`, actors, timeoutMs: VOTE_MS + GRACE_MS };
   },
-  auto: (_g, _slug, _ctx, { bot }) => ({ type: "vote", choice: bot ? pick(["A", "B"]) : null }),
-  botDelay: () => [2000, 9000],
+  auto(g, slug, _ctx, { bot }) {
+    if (!bot) return { type: "vote", choice: null };
+    if (g.vote!.mode === "qui") return { type: "vote", choice: pick(g.playersPublic.filter((p) => p.slug !== slug)).slug };
+    return { type: "vote", choice: pick(["A", "B"]) };
+  },
+  botDelay: () => [2500, 12000],
 };
 
 // ---------- Make It Meme ----------
@@ -160,7 +116,7 @@ export const memeModule: GameModule = {
     }
     if (g.phase === "memeVote") {
       const actors = g.playersPublic.filter((p) => !m.voteResponded.includes(p.slug)).map((p) => p.slug);
-      return { key: `meme:vote:${g.round}`, actors, timeoutMs: 30000 };
+      return { key: `meme:vote:${g.round}`, actors, timeoutMs: MEME_VOTE_MS + GRACE_MS };
     }
     return null;
   },
@@ -170,7 +126,7 @@ export const memeModule: GameModule = {
     const options = m.voteOrder.filter((s) => s !== slug);
     return { type: "memeVote", authorSlug: bot && options.length ? pick(options) : null };
   },
-  botDelay: (g) => (g.phase === "memeCaption" ? [8000, 30000] : [3000, 9000]),
+  botDelay: (g) => (g.phase === "memeCaption" ? [8000, 32000] : [3000, 12000]),
 };
 
 // ---------- Undercover ----------

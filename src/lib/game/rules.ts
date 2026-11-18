@@ -34,16 +34,23 @@ export const RULES: Record<RoundTypeId, GameRules> = {
     gulps: ["Le perdant : 2 gorgées, +2 par bataille.", "Mauvais pari (ou pas de pari) : 1 gorgée."],
   },
   quiz: {
-    how: ["Chacun son tour, une question.", "15 secondes pour répondre."],
-    gulps: ["Bonne réponse : tu distribues 2 gorgées.", "Mauvaise réponse : tu bois 2."],
+    how: ["5 questions à choix multiples, tout le monde répond en même temps.", "12 secondes par question, une seule réponse."],
+    gulps: ["Mauvaise réponse ou pas de réponse : 1 gorgée.", "Le meilleur de la manche fait boire 3 gorgées à qui il veut."],
   },
   vote: {
-    how: ["Un dilemme, deux choix.", "Vote en secret en 15 secondes."],
-    gulps: ["Le camp minoritaire : 2 gorgées.", "Pas de vote : 2 gorgées."],
+    how: [
+      "Tu préfères : deux choix, vote en secret (20 s).",
+      "Ou Qui de nous… : vote pour le joueur le plus susceptible de… (pas toi !).",
+    ],
+    gulps: [
+      "Tu préfères : le camp minoritaire boit 2 ; égalité, tout le monde boit 1.",
+      "Qui de nous : 1 gorgée par voix reçue (5 max).",
+      "Pas de vote : 2 gorgées.",
+    ],
   },
   meme: {
-    how: ["Une image, 60 secondes pour la légender.", "Vote pour la légende la plus drôle (pas la tienne)."],
-    gulps: ["La moins votée : 2 gorgées.", "Pas de légende : 2 gorgées."],
+    how: ["Une image, 45 secondes pour écrire la légende la plus drôle.", "Puis vote pour ta préférée (pas la tienne)."],
+    gulps: ["Légende la moins votée : 2 gorgées (égalité générale : personne).", "Pas de légende : 2 gorgées."],
   },
   dice: {
     how: ["Chacun lance deux dés à son tour."],

@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import type { Card, GameState, Player, VoteChoice } from "@/lib/game/types";
+import type { Card, GameState, Player } from "@/lib/game/types";
 
 export type ActFn = (action: { type: string; [key: string]: unknown }) => void;
 
@@ -13,7 +13,7 @@ export interface GameCtx {
   isHost: boolean;
   busy: boolean;
   myHand: Card[] | null;
-  myVoteChoice: VoteChoice | null;
+  myVoteChoice: string | null;
   myUndercoverWord: string | null;
   // Envoie une action au serveur (avec gestion d'erreur et rafraîchissement).
   act: ActFn;

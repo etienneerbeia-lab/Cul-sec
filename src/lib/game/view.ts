@@ -1,9 +1,9 @@
-import type { Card, GameState, VoteChoice } from "./types";
+import type { Card, GameState } from "./types";
 
 export interface PlayerView {
   game: GameState;
   myHand: Card[] | null;
-  myVoteChoice: VoteChoice | null;
+  myVoteChoice: string | null;
   myUndercoverWord: string | null;
 }
 
@@ -13,7 +13,7 @@ export interface PlayerView {
 export function viewFor(game: GameState, slug: string | null): PlayerView {
   let g: GameState = { ...game, hands: undefined, botPlan: undefined };
   let myHand: Card[] | null = null;
-  let myVoteChoice: VoteChoice | null = null;
+  let myVoteChoice: string | null = null;
   let myUndercoverWord: string | null = null;
 
   if (slug && game.hands?.[slug] && ["betting", "showdown"].includes(game.phase) && game.roundTypeId !== "duel") {

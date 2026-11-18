@@ -6,14 +6,12 @@ import { useGame } from "./GameContext";
 import HighLowScreen from "./games/HighLowScreen";
 import PokerScreen from "./games/PokerScreen";
 import DuelScreen from "./games/DuelScreen";
+import QcmScreen from "./games/QcmScreen";
+import VoteScreenV2 from "./games/VoteScreen";
+import MemeScreen from "./games/MemeScreen";
 import RoundIntroScreen from "./screens/RoundIntroScreen";
 import ShowdownScreen from "./screens/ShowdownScreen";
 import FinalScreen from "./screens/FinalScreen";
-import QuizScreen from "./screens/QuizScreen";
-import QuizRecapScreen from "./screens/QuizRecapScreen";
-import VoteScreen from "./screens/VoteScreen";
-import MemeCaptionScreen from "./screens/MemeCaptionScreen";
-import MemeVoteScreen from "./screens/MemeVoteScreen";
 import DiceScreen from "./screens/DiceScreen";
 import UndercoverClueScreen from "./screens/UndercoverClueScreen";
 import UndercoverVoteScreen from "./screens/UndercoverVoteScreen";
@@ -24,12 +22,18 @@ import ArcheryScreen from "./screens/ArcheryScreen";
 
 // Choisit l'écran du mini-jeu en cours (en dehors du salon).
 export default function GameRouter({ onQuit }: { onQuit: () => void }) {
-  const { game, mySlug, isHost, busy, myVoteChoice, myUndercoverWord, act } = useGame();
+  const { game, mySlug, isHost, busy, myUndercoverWord, act } = useGame();
   const phase = game.phase;
   const runAction = (fn: () => void) => fn();
   return (
     <>
-      {phase === "betting" || (phase === "showdown" && game.lastResults?.type === "holdem") ? (
+      {phase === "memeCaption" || phase === "memeVote" || (phase === "showdown" && game.lastResults?.type === "meme") ? (
+        <MemeScreen />
+      ) : phase === "vote" || (phase === "showdown" && game.lastResults?.type === "vote") ? (
+        <VoteScreenV2 />
+      ) : phase === "qcm" || (phase === "showdown" && game.lastResults?.type === "quiz") ? (
+        <QcmScreen />
+      ) : phase === "betting" || (phase === "showdown" && game.lastResults?.type === "holdem") ? (
         <PokerScreen />
       ) : phase === "duel" || (phase === "showdown" && game.lastResults?.type === "duel") ? (
         <DuelScreen />
@@ -98,50 +102,6 @@ export default function GameRouter({ onQuit }: { onQuit: () => void }) {
           onNextRound={() => runAction(() => act({ type: "nextRound" }))}
           onEndNight={() => runAction(() => act({ type: "endNight" }))}
         />
-      ) : phase === "quiz" ? (
-        <QuizScreen
-          game={game}
-          mySlug={mySlug}
-          isHost={isHost}
-          busy={busy}
-          onSubmitAnswer={(answer) =>
-            runAction(() => act({ type: "quizAnswer", answer }))
-          }
-          onDistribute={(targets) =>
-            runAction(() => act({ type: "quizDistribute", targets }))
-          }
-          onNext={() => runAction(() => act({ type: "quizNext" }))}
-          onEndNight={() => runAction(() => act({ type: "endNight" }))}
-        />
-      ) : phase === "vote" ? (
-        <VoteScreen
-          game={game}
-          myVoteChoice={myVoteChoice}
-          busy={busy}
-          onSubmitVote={(choice) =>
-            runAction(() => act({ type: "vote", choice }))
-          }
-        />
-      ) : phase === "memeCaption" ? (
-        <MemeCaptionScreen
-          game={game}
-          mySlug={mySlug}
-          isHost={isHost}
-          busy={busy}
-          onSubmitCaption={(caption) =>
-            runAction(() => act({ type: "memeCaption", caption }))
-          }
-          onForceReveal={() => runAction(() => act({ type: "memeCaptionReveal" }))}
-        />
-      ) : phase === "memeVote" ? (
-        <MemeVoteScreen
-          game={game}
-          mySlug={mySlug}
-          busy={busy}
-          onSubmitVote={(authorSlug) =>
-            runAction(() => act({ type: "memeVote", authorSlug }))
-          }
-        />
       ) : phase === "undercoverClue" ? (
         <UndercoverClueScreen
           game={game}
@@ -170,14 +130,6 @@ export default function GameRouter({ onQuit }: { onQuit: () => void }) {
           onSubmitGuess={(guess) =>
             runAction(() => act({ type: "ucGuess", guess }))
           }
-        />
-      ) : phase === "quizRecap" ? (
-        <QuizRecapScreen
-          game={game}
-          isHost={isHost}
-          busy={busy}
-          onContinue={() => runAction(() => act({ type: "nextRound" }))}
-          onEndNight={() => runAction(() => act({ type: "endNight" }))}
         />
       ) : phase === "final" ? (
         <FinalScreen

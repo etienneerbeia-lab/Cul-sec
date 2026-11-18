@@ -37,7 +37,6 @@ function humanMove(s: StateResponse): Record<string, unknown> | null {
   if (s.isHost) {
     if (g.phase === "roundIntro") return { type: "confirmIntro" };
     if (g.phase === "showdown" || g.phase === "quizRecap") return { type: "nextRound" };
-    if (g.phase === "quiz" && g.quiz!.status === "result") return { type: "quizNext" };
   }
   switch (g.phase) {
     case "highlow":
@@ -51,13 +50,15 @@ function humanMove(s: StateResponse): Record<string, unknown> | null {
       const pos = me === d.a ? 0 : me === d.b ? 1 : -1;
       return pos >= 0 && !d.revealed[pos] ? { type: "duelFlip" } : null;
     }
-    case "quiz":
-      if (g.quiz!.playerIdx !== meIdx) return null;
-      if (g.quiz!.status === "asking") return { type: "quizAnswer", answer: "Paris" };
-      if (g.quiz!.status === "distributing") return { type: "quizDistribute", targets: [{ slug: pickOther(s, me), amount: 2 }] };
+    case "qcm": {
+      const q = g.qcm!;
+      if (q.stage === "ask" && !q.answers[me]) return { type: "qcmAnswer", choice: Math.floor(Math.random() * 4) };
+      if (q.stage === "champion" && q.champion === me) return { type: "qcmGive", targetSlug: pickOther(s, me) };
       return null;
+    }
     case "vote":
-      return g.vote!.responded.includes(me) ? null : { type: "vote", choice: Math.random() < 0.5 ? "A" : "B" };
+      if (g.vote!.responded.includes(me)) return null;
+      return { type: "vote", choice: g.vote!.mode === "qui" ? pickOther(s, me) : Math.random() < 0.5 ? "A" : "B" };
     case "memeCaption":
       return g.meme!.captionResponded.includes(me) ? null : { type: "memeCaption", caption: `Légende de ${s.myName}` };
     case "memeVote": {

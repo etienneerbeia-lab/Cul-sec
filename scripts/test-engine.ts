@@ -56,8 +56,6 @@ function playNight(room: Room, label: string): void {
     } else if (g.phase === "showdown" || g.phase === "quizRecap") {
       check(g.lastResults || g.phase === "quizRecap", `${label}: résultats manquants (${g.roundTypeId})`);
       performAction(room, host, { type: "nextRound" }, now, seen);
-    } else if (g.phase === "quiz" && g.quiz?.status === "result") {
-      performAction(room, host, { type: "quizNext" }, now, seen);
     } else {
       tick(room, now, seen);
     }

@@ -104,6 +104,9 @@ export interface LastResults {
   voteEntries?: { name: string; choice: VoteChoice }[];
   voteNonVoters?: string[];
   voteTie?: boolean;
+  voteMode?: "tp" | "qui";
+  votePrompt?: string;
+  voteTally?: { slug: string; name: string; votes: number }[];
   // "meme" (Légende de mème)
   memeUrl?: string;
   memeTallies?: MemeVoteTally[];
@@ -216,25 +219,21 @@ export interface VoteQuestionState {
 }
 
 export interface VoteRoundState {
+  // "tp" = Tu préfères (A/B) ; "qui" = Qui de nous (vote pour un joueur).
+  mode?: "tp" | "qui";
   question: VoteQuestionState;
+  prompt?: string;
   askedAt: number;
-  // slug -> choice, real votes only (a timeout never adds an entry here).
-  // Kept private server-side while the round is live — the state API
-  // strips this to a bare count so no one can see who's voted for what
-  // before the reveal. Once resolved, the round moves straight to phase
-  // "showdown" with the full breakdown in lastResults, same as every
-  // other mini-game's result.
-  votes: Record<string, VoteChoice>;
-  // Every slug that has been accounted for so far, whether they voted or
-  // timed out — separate from `votes` because a timeout must still close
-  // out that player's turn without counting toward either camp.
+  // slug -> choix (A/B ou slug visé). Caché aux clients jusqu'au résultat.
+  votes: Record<string, string>;
   responded: string[];
 }
 
 // Legends of Memes — same 60s-to-write, private-until-resolved shape as
 // the other timed mini-games, just a longer clock since writing a caption
 // takes more than picking A or B.
-export const MEME_CAPTION_MS = 60000;
+export const MEME_CAPTION_MS = 45000;
+export const MEME_VOTE_MS = 25000;
 
 export interface MemeTemplateRef {
   id: string;
