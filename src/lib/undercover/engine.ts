@@ -1,3 +1,4 @@
+import { drink, pickFresh } from "../game/module";
 import { checkAnswer } from "../quiz/match";
 import type { GameState, UndercoverOutcome } from "../game/types";
 import { CLUE_REVEAL_MS } from "../game/types";
@@ -16,8 +17,15 @@ function tableOrder(g: GameState, slugs: string[]): string[] {
   return order;
 }
 
+// Règle du vrai jeu : Mister White ne parle jamais en premier (il n'a
+// aucun indice sur lequel s'appuyer).
+function misterWhiteNotFirst(order: string[], impostor: string, isMisterWhite: boolean): string[] {
+  if (!isMisterWhite || order[0] !== impostor || order.length < 2) return order;
+  return [...order.slice(1), order[0]];
+}
+
 export function startUndercoverRound(g: GameState): void {
-  const pair = WORD_PAIRS[Math.floor(Math.random() * WORD_PAIRS.length)];
+  const pair = pickFresh(g, WORD_PAIRS);
   const impostorSlug = g.playersPublic[Math.floor(Math.random() * g.playersPublic.length)].slug;
   const isMisterWhite = g.playersPublic.length >= 5;
   const remainingSlugs = g.playersPublic.map((p) => p.slug);
@@ -30,7 +38,7 @@ export function startUndercoverRound(g: GameState): void {
     remainingSlugs,
     eliminatedSlugs: [],
     cycle: 0,
-    clueOrder: tableOrder(g, remainingSlugs),
+    clueOrder: misterWhiteNotFirst(tableOrder(g, remainingSlugs), impostorSlug, isMisterWhite),
     cluePointer: 0,
     clues: [],
     votes: {},
@@ -68,9 +76,9 @@ export function advanceClueReveal(g: GameState): void {
 // Called once per remaining player as they cast their vote. Self-votes and
 // votes for eliminated/out-of-scope players are rejected by the route
 // layer before this is ever called.
-export function applyUndercoverVote(g: GameState, voterSlug: string, targetSlug: string): void {
+export function applyUndercoverVote(g: GameState, voterSlug: string, targetSlug: string | null): void {
   const u = g.undercover!;
-  u.votes[voterSlug] = targetSlug;
+  if (targetSlug) u.votes[voterSlug] = targetSlug;
   if (!u.voteResponded.includes(voterSlug)) u.voteResponded.push(voterSlug);
   if (u.voteResponded.length >= u.remainingSlugs.length) resolveUndercoverVote(g);
 }
@@ -127,7 +135,7 @@ function applyOutcomeFor(g: GameState, targetSlug: string, byLottery: boolean): 
   }
 
   u.cycle += 1;
-  u.clueOrder = tableOrder(g, u.remainingSlugs);
+  u.clueOrder = misterWhiteNotFirst(tableOrder(g, u.remainingSlugs), u.impostorSlug!, u.isMisterWhite);
   u.cluePointer = 0;
   u.votes = {};
   u.voteResponded = [];
@@ -153,15 +161,15 @@ function resolveUndercoverFinal(g: GameState, outcome: UndercoverOutcome, guessT
   const u = g.undercover!;
   const impostor = g.playersPublic.find((p) => p.slug === u.impostorSlug)!;
 
+  const others = g.playersPublic.filter((p) => p.slug !== u.impostorSlug);
   if (outcome === "caught_wrong_guess" || outcome === "caught_direct") {
-    impostor.gulpsTotal += 2;
+    drink(g, impostor.slug, 3, "Imposteur démasqué");
   } else if (outcome === "survived") {
-    g.playersPublic.forEach((p) => {
-      if (p.slug !== u.impostorSlug) p.gulpsTotal += 2;
-    });
+    others.forEach((p) => drink(g, p.slug, 2, "L'imposteur a survécu"));
+  } else {
+    // Mister White démasqué mais il trouve le mot : il gagne quand même.
+    others.forEach((p) => drink(g, p.slug, 1, "Mister White a trouvé le mot"));
   }
-  // "caught_correct_guess": nobody drinks — the table caught him, he
-  // wriggled out of it, close enough to a wash.
 
   g.lastResults = {
     type: "undercover",

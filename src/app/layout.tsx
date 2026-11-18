@@ -1,19 +1,22 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Space_Grotesk } from "next/font/google";
+import localFont from "next/font/local";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import "./globals.css";
 
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
-  subsets: ["latin"],
-  weight: ["400", "600", "700"],
-  style: ["normal", "italic"],
+// Polices hébergées dans le projet (SIL OFL) : le build ne dépend plus de
+// Google Fonts et la PWA les a toujours en cache.
+const display = localFont({
+  src: "./fonts/bricolage.woff2",
+  variable: "--font-bricolage",
+  weight: "200 800",
+  display: "swap",
 });
 
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-space-grotesk",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+const sans = localFont({
+  src: "./fonts/inter.woff2",
+  variable: "--font-inter",
+  weight: "100 900",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -40,12 +43,12 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
-  themeColor: "#241a44",
+  themeColor: "#0b0614",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="fr" className={`${fraunces.variable} ${spaceGrotesk.variable}`}>
+    <html lang="fr" className={`${display.variable} ${sans.variable}`}>
       <body>
         {children}
         <ServiceWorkerRegister />

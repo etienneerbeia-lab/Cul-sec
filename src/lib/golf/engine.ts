@@ -1,5 +1,8 @@
 import type { GameState, GolfPoint, GolfRankingEntry, GolfShotRecord, GolfStruckBallResult } from "../game/types";
 import { GOLF_COURSES } from "./courses";
+import { drink } from "../game/module";
+
+export const GOLF_MAX_STROKES = 6;
 
 function orderAllPlayers(g: GameState): number[] {
   const n = g.playersPublic.length;
@@ -110,6 +113,12 @@ export function applyGolfShot(
 
   if (sunk) {
     gl.finishedSlugs = [...gl.finishedSlugs, slug];
+  } else if (strokeNumber >= GOLF_MAX_STROKES) {
+    // Limite de coups atteinte sans rentrer la balle : le trou est fini,
+    // compté un coup de pénalité au-dessus de la limite (comme au vrai
+    // mini-golf, où l'on ramasse sa balle au bout de N coups).
+    gl.strokeCounts[slug] = GOLF_MAX_STROKES + 1;
+    gl.finishedSlugs = [...gl.finishedSlugs, slug];
   }
 
   // A ball knocked into motion by this shot's collisions never costs its
@@ -178,11 +187,16 @@ function resolveGolfRound(g: GameState): void {
     ranking.push({ slug: entry.slug, name: entry.name, strokes: entry.strokes, rank, gulps: rank - 1 });
   });
 
+  // On boit l'écart de coups avec le meilleur (5 max). Un trou en un fait
+  // boire 2 gorgées à tous les autres.
+  const best = sorted[0]?.strokes ?? 0;
   ranking.forEach((entry) => {
-    if (entry.gulps > 0) {
-      g.playersPublic.find((p) => p.slug === entry.slug)!.gulpsTotal += entry.gulps;
-    }
+    entry.gulps = Math.min(5, entry.strokes - best);
+    drink(g, entry.slug, entry.gulps, entry.gulps === 1 ? "1 coup de plus que le meilleur" : `${entry.gulps} coups de plus que le meilleur`);
   });
+  gl.shots
+    .filter((s) => s.sunk && s.strokeNumber === 1)
+    .forEach((s) => g.playersPublic.forEach((p) => p.slug !== s.slug && drink(g, p.slug, 2, `Trou en un de ${s.name}`)));
 
   g.lastResults = { type: "golf", golfRanking: ranking };
   g.phase = "showdown";

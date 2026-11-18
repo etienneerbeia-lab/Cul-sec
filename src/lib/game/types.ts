@@ -29,6 +29,8 @@ export interface RoundType {
   tagline: string;
   icon: string;
   cards: number;
+  // Minimum de joueurs à table (humains + bots) pour que le jeu soit tiré.
+  minPlayers: number;
 }
 
 // The host must keep at least this many mini-games active in the lobby's
@@ -39,6 +41,7 @@ export const MIN_ENABLED_ROUND_TYPES = 2;
 export interface PlayerPublic {
   name: string;
   slug: string;
+  bot?: boolean;
   gulpsTotal: number;
   folded: boolean;
   bet: number;
@@ -50,19 +53,19 @@ export type GamePhase =
   | "roundIntro"
   | "betting"
   | "showdown"
-  | "quiz"
-  | "quizRecap"
-  | "duelReveal"
   | "vote"
   | "memeCaption"
   | "memeVote"
-  | "dice"
   | "undercoverClue"
   | "undercoverVote"
   | "undercoverGuess"
   | "blackjack"
   | "golf"
   | "archery"
+  | "highlow"
+  | "duel"
+  | "qcm"
+  | "dice421"
   | "final";
 
 export type Street = "single" | "preflop" | "flop" | "turn" | "river";
@@ -97,13 +100,15 @@ export interface LastResults {
   voteEntries?: { name: string; choice: VoteChoice }[];
   voteNonVoters?: string[];
   voteTie?: boolean;
+  voteMode?: "tp" | "qui";
+  votePrompt?: string;
+  voteTally?: { slug: string; name: string; votes: number }[];
   // "meme" (Légende de mème)
   memeUrl?: string;
   memeTallies?: MemeVoteTally[];
   memeLeastFunny?: string[];
   memeNoCaptioners?: string[];
   // "dice" (Dés qui tremblent)
-  diceRolls?: DiceRoll[];
   diceLowest?: string[];
   // Gulps the sole loser named in diceLowest actually drinks — the base
   // 2, or double that per tie-break level it took to separate them (4,
@@ -113,7 +118,6 @@ export interface LastResults {
   // Empty/absent if the round settled without a tie. One entry per
   // tie-break level that occurred, in order, for the recap to show the
   // whole chain rather than just the final result.
-  diceTieBreaks?: DiceTieBreakRound[];
   // "undercover"
   undercoverWord?: string;
   undercoverImpostorWord?: string;
@@ -138,66 +142,10 @@ export interface LastResults {
   // ranked, ties share a rank), keyed on total points across 3 arrows —
   // sorted descending (higher score wins), unlike golf's ascending strokes.
   archeryRanking?: ArcheryRankingEntry[];
+  handLabels?: Record<string, string>;
 }
 
-export type QuizQuestionType = "capital" | "flag" | "date";
-export type QuizAnswerKind = "year" | "text";
-export type QuizTurnStatus = "asking" | "distributing" | "result";
 
-export interface QuizQuestionState {
-  id: string;
-  type: QuizQuestionType;
-  difficulty: number;
-  prompt: string;
-  flagEmoji?: string;
-  answerKind: QuizAnswerKind;
-  // Present in server-side state at all times, but the API route strips
-  // these two fields from the response while status === "asking" so no
-  // client ever receives the answer before it's actually resolved.
-  answer?: string;
-  acceptableAnswers?: string[];
-}
-
-export interface QuizDistributionEntry {
-  slug: string;
-  name: string;
-  amount: number;
-}
-
-export interface QuizHistoryEntry {
-  playerName: string;
-  type: QuizQuestionType;
-  prompt: string;
-  givenAnswer: string;
-  correct: boolean;
-  correctAnswer: string;
-}
-
-export interface QuizRoundState {
-  turnOrder: number[];
-  turnPointer: number;
-  playerIdx: number;
-  status: QuizTurnStatus;
-  question: QuizQuestionState;
-  askedAt: number;
-  lastAnswerGiven?: string;
-  correct?: boolean;
-  distribution?: QuizDistributionEntry[];
-  history?: QuizHistoryEntry[];
-}
-
-// Shared 15s-to-answer countdown, reused as-is by every timed mini-game
-// (Culture G and Tu préfères) so their pace feels consistent.
-export const TIMED_ANSWER_MS = 15000;
-
-export interface DuelRevealState {
-  revealed: [boolean, boolean];
-  // Populated the instant each duelist reveals (not just once both have) —
-  // that's the whole point of the button: publishing that one card to the
-  // table. Null until its slot's `revealed` flips true, at which point
-  // it's plain public data like anything else in this object.
-  revealedCards: [Card | null, Card | null];
-}
 
 export type VoteChoice = "A" | "B";
 
@@ -208,25 +156,21 @@ export interface VoteQuestionState {
 }
 
 export interface VoteRoundState {
+  // "tp" = Tu préfères (A/B) ; "qui" = Qui de nous (vote pour un joueur).
+  mode?: "tp" | "qui";
   question: VoteQuestionState;
+  prompt?: string;
   askedAt: number;
-  // slug -> choice, real votes only (a timeout never adds an entry here).
-  // Kept private server-side while the round is live — the state API
-  // strips this to a bare count so no one can see who's voted for what
-  // before the reveal. Once resolved, the round moves straight to phase
-  // "showdown" with the full breakdown in lastResults, same as every
-  // other mini-game's result.
-  votes: Record<string, VoteChoice>;
-  // Every slug that has been accounted for so far, whether they voted or
-  // timed out — separate from `votes` because a timeout must still close
-  // out that player's turn without counting toward either camp.
+  // slug -> choix (A/B ou slug visé). Caché aux clients jusqu'au résultat.
+  votes: Record<string, string>;
   responded: string[];
 }
 
 // Legends of Memes — same 60s-to-write, private-until-resolved shape as
 // the other timed mini-games, just a longer clock since writing a caption
 // takes more than picking A or B.
-export const MEME_CAPTION_MS = 60000;
+export const MEME_CAPTION_MS = 45000;
+export const MEME_VOTE_MS = 25000;
 
 export interface MemeTemplateRef {
   id: string;
@@ -259,58 +203,6 @@ export interface MemeRoundState {
   // voter slug -> author slug they voted for.
   votes: Record<string, string>;
   voteResponded: string[];
-}
-
-// Dés qui tremblent — turn-based like Culture G (one player acts at a
-// time, in table order), but every roll is public the instant it happens
-// (there's nothing to hide — no redaction needed anywhere for this one).
-export interface DiceRoll {
-  slug: string;
-  name: string;
-  d1: number;
-  d2: number;
-  sum: number;
-}
-
-// A completed tie-break level, once every tied player has rolled again —
-// either it settled (one sole lowest sum) or it's about to be superseded
-// by the next level. Kept both as history (see DiceRoundState below) and
-// as the shape LastResults.diceTieBreaks reuses for the final recap.
-export interface DiceTieBreakRound {
-  level: number; // 1 for the first departage, 2 for the next if it also ties, etc.
-  amount: number; // gulps the sole loser of THIS level drinks — base*2^level
-  tiedSum: number; // the sum that was tied, which triggered this level
-  participantSlugs: string[]; // who's contesting, in the same relative order as the main round
-  participantNames: string[];
-  rolls: DiceRoll[];
-}
-
-// The currently in-progress tie-break level — same shape as a finished
-// DiceTieBreakRound plus its own live turn pointer, since it's rolled
-// through exactly like the main round (rollDice() just routes to this
-// instead once it's set).
-export interface DiceTieBreakState extends DiceTieBreakRound {
-  turnOrder: number[]; // playersPublic indices, parallel to participantSlugs/Names
-  turnPointer: number;
-  playerIdx: number;
-}
-
-export interface DiceRoundState {
-  turnOrder: number[];
-  turnPointer: number;
-  playerIdx: number;
-  // Completed rolls so far, in the order they happened — doubles as the
-  // live "who's rolled what" table every client renders while it fills up.
-  rolls: DiceRoll[];
-  // Set the moment the main round (or a previous tie-break level) ends
-  // in a tie for lowest sum — only the tied players re-roll here. Stays
-  // within phase "dice" the whole time, same as the main round; nothing
-  // moves to "showdown" until a level finally produces a sole loser.
-  tieBreak?: DiceTieBreakState;
-  // Every tie-break level once it's been resolved (superseded by the
-  // next level, or the one that finally decided the round) — lets the
-  // live "Lancers" table and the final recap show the whole chain.
-  tieBreakHistory?: DiceTieBreakRound[];
 }
 
 // Undercover: everyone gets the same secret word except one impostor —
@@ -764,7 +656,6 @@ export interface GameState {
   needsToAct?: number[];
   turnIdx?: number;
   lastResults?: LastResults;
-  quiz?: QuizRoundState;
   usedQuestionIds?: string[];
   totalRounds?: number;
   // Which mini-games the host opted into at launch — setupRoundType only
@@ -774,17 +665,136 @@ export interface GameState {
   enabledRoundTypeIds?: RoundTypeId[];
   culSecRule?: CulSecRule;
   culSecTargetSlug?: string;
-  duelReveal?: DuelRevealState;
   vote?: VoteRoundState;
   meme?: MemeRoundState;
-  dice?: DiceRoundState;
   undercover?: UndercoverRoundState;
   blackjack?: BlackjackRoundState;
   golf?: GolfRoundState;
   archery?: ArcheryRoundState;
+  // ---- v2 ----
+  // Mains privées (cartes) de la manche — jamais envoyées telles quelles,
+  // chaque joueur ne reçoit que la sienne (voir lib/game/view.ts).
+  hands?: Record<string, Card[]>;
+  timer?: WaitTimer;
+  botPlan?: BotPlan;
+  // Gorgées données pendant la manche en cours (affichées en fin de manche).
+  drinks?: DrinkEntry[];
+  highlow?: HighLowState;
+  duel?: DuelState;
+  qcm?: QcmState;
+  dice421?: Dice421State;
+  // Incrémenté à chaque action acceptée : sert de clé d'attente aux jeux
+  // tour par tour (chaque coup ouvre une nouvelle attente).
+  seq?: number;
 }
 
 export interface Player {
   name: string;
   slug: string;
+  // Joueur virtuel géré par le serveur (mode solo / table incomplète).
+  bot?: boolean;
+  // A quitté la partie : ses tours sont joués automatiquement.
+  left?: boolean;
+}
+
+// Timer générique d'une attente (tour d'un joueur, vote simultané...) —
+// posé par le serveur (lib/game/tick.ts) dès que l'attente commence.
+export interface WaitTimer {
+  key: string;
+  deadlineAt: number | null;
+}
+
+// Heures (serveur) auxquelles chaque bot concerné jouera son coup pour
+// l'attente identifiée par `key`.
+export interface BotPlan {
+  key: string;
+  at: Record<string, number>;
+}
+
+// ---------- v2 : journal des gorgées ----------
+export interface DrinkEntry {
+  slug: string;
+  name: string;
+  n: number;
+  why: string;
+}
+
+// ---------- Plus ou Moins ----------
+export type HighLowGuess = "plus" | "moins";
+export interface HighLowTurn {
+  slug: string;
+  name: string;
+  guess: HighLowGuess;
+  from: Card;
+  card: Card;
+  correct: boolean;
+  drank: number;
+}
+export interface HighLowState {
+  deck: Card[]; // secret
+  current: Card;
+  pile: number; // cartes accumulées depuis la dernière erreur
+  order: string[]; // slugs, un tour par entrée
+  pointer: number;
+  turns: HighLowTurn[];
+}
+
+// ---------- Bataille ----------
+export interface DuelFlip {
+  a: Card;
+  b: Card;
+}
+export interface DuelState {
+  a: string;
+  b: string;
+  stage: "bets" | "flip" | "done";
+  bets: Record<string, "a" | "b">;
+  betResponded: string[];
+  revealed: [boolean, boolean];
+  flips: DuelFlip[]; // retournements terminés (égalités puis le décisif)
+  pendingA?: Card; // carte retournée par A en attendant B
+  pendingB?: Card;
+  deck: Card[]; // secret
+  winner?: "a" | "b";
+}
+
+// ---------- Culture G (QCM) ----------
+export interface QcmQuestion {
+  id: string;
+  category: string;
+  prompt: string;
+  flagEmoji?: string;
+  choices: string[];
+  answerIdx?: number; // caché pendant la question
+  difficulty: number;
+}
+export interface QcmAnswer {
+  choice: number;
+  ms: number; // temps de réponse
+}
+export interface QcmState {
+  questions: QcmQuestion[];
+  index: number;
+  stage: "ask" | "reveal" | "champion" | "done";
+  askedAt: number;
+  answers: Record<string, QcmAnswer | null>; // réponses à la question en cours
+  history: { correct: Record<string, boolean>; fastest?: string }[];
+  scores: Record<string, { correct: number; ms: number }>;
+  champion?: string;
+  championTarget?: string;
+}
+
+// ---------- 421 ----------
+export interface Dice421Roll {
+  slug: string;
+  name: string;
+  dice: number[]; // 3 dés
+  throws: number; // nombre de lancers utilisés (1-3)
+  held?: boolean[];
+}
+export interface Dice421State {
+  order: string[];
+  pointer: number;
+  current: Dice421Roll | null; // lancer du joueur actif
+  finished: Dice421Roll[];
 }

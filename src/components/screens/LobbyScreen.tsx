@@ -3,9 +3,16 @@
 import { useState } from "react";
 import { ROUND_TYPES } from "@/lib/game/roundTypes";
 import { MIN_ENABLED_ROUND_TYPES, type CulSecRule, type Player, type RoundTypeId } from "@/lib/game/types";
+import { haptic } from "@/lib/haptics";
+import { Button } from "../ui/Button";
+import { Chips, Stepper, TextField } from "../ui/Form";
+import { Waiting } from "../ui/Feedback";
+import { Card, Kicker, Note, Screen, Section } from "../ui/Layout";
+import { PlayerRow } from "../ui/Players";
 
-const ROUND_OPTIONS = [5, 10, 20];
+const ROUND_OPTIONS = [5, 10, 15, 20];
 const ALL_ROUND_TYPE_IDS = ROUND_TYPES.map((t) => t.id);
+const MAX_BOTS = 6;
 
 export default function LobbyScreen({
   roomCode,
@@ -24,12 +31,8 @@ export default function LobbyScreen({
   isHost: boolean;
   busy: boolean;
   error: string;
-  // Set from the game's last launch (e.g. after "Rejouer" sends everyone
-  // back here) so the host doesn't have to re-tick every mini-game by
-  // hand — undefined/empty for a brand-new room, which falls back to
-  // "everything on" like before.
   previousEnabledRoundTypeIds?: RoundTypeId[];
-  onLaunch: (totalRounds: number, culSecRule: CulSecRule, enabledRoundTypeIds: RoundTypeId[]) => void;
+  onLaunch: (totalRounds: number, culSecRule: CulSecRule, enabledRoundTypeIds: RoundTypeId[], bots: number) => void;
   onRename: (name: string) => void;
 }) {
   const [totalRounds, setTotalRounds] = useState(10);
@@ -37,8 +40,25 @@ export default function LobbyScreen({
   const [enabledIds, setEnabledIds] = useState<Set<RoundTypeId>>(
     () => new Set(previousEnabledRoundTypeIds?.length ? previousEnabledRoundTypeIds : ALL_ROUND_TYPE_IDS)
   );
+  const [extraBots, setExtraBots] = useState(0);
+  const [editing, setEditing] = useState(false);
+  const [copied, setCopied] = useState(false);
 
-  function toggleRoundType(id: RoundTypeId) {
+  const humans = players.filter((p) => !p.bot);
+  const solo = humans.length === 1;
+  // En solo, le serveur ajoute assez de bots pour que chaque jeu choisi soit
+  // jouable ; à plusieurs, l'hôte en ajoute s'il le souhaite.
+  const autoBots = solo
+    ? Math.max(0, ...ROUND_TYPES.filter((t) => enabledIds.has(t.id)).map((t) => t.minPlayers)) - 1
+    : 0;
+  const botCount = Math.min(MAX_BOTS, Math.max(autoBots, extraBots));
+  const tableSize = humans.length + botCount;
+  const enoughGames = enabledIds.size >= MIN_ENABLED_ROUND_TYPES;
+  const playable = ROUND_TYPES.filter((t) => enabledIds.has(t.id) && t.minPlayers <= tableSize).length;
+  const canLaunch = enoughGames && playable > 0 && !busy;
+
+  function toggle(id: RoundTypeId) {
+    haptic("select");
     setEnabledIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -47,179 +67,169 @@ export default function LobbyScreen({
     });
   }
 
-  const enoughPlayers = players.length >= 3;
-  const enoughGames = enabledIds.size >= MIN_ENABLED_ROUND_TYPES;
-  const enough = enoughPlayers && enoughGames;
+  async function share() {
+    const url = `${window.location.origin}/?code=${roomCode}`;
+    haptic("tap");
+    try {
+      if (navigator.share) await navigator.share({ title: "Cul-Sec", text: `Rejoins la partie ${roomCode} !`, url });
+      else {
+        await navigator.clipboard.writeText(url);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
+    } catch {
+      // partage annulé
+    }
+  }
 
   return (
-    <>
-      <label className="field-label">Code de la partie</label>
-      <div className="pass-name">{roomCode}</div>
-      <div className="hint">
-        Donne ce code à tes amis pour qu&apos;ils rejoignent depuis leur téléphone.
-      </div>
+    <Screen
+      actions={
+        isHost ? (
+          <>
+            {error && <Note tone="danger">{error}</Note>}
+            {enoughGames && playable === 0 && <Note>Aucun jeu choisi n&apos;est jouable à {tableSize} : ajoute des bots.</Note>}
+            <Button
+              disabled={!canLaunch}
+              haptics="success"
+              onClick={() => onLaunch(totalRounds, culSecRule, Array.from(enabledIds), botCount)}
+            >
+              {solo ? `Jouer contre ${botCount} bot${botCount > 1 ? "s" : ""}` : `Lancer la partie · ${tableSize} joueurs`}
+            </Button>
+          </>
+        ) : (
+          <Waiting>L&apos;hôte prépare la partie…</Waiting>
+        )
+      }
+    >
+      <Card className="relative overflow-hidden text-center">
+        <div className="pointer-events-none absolute -top-16 left-1/2 h-40 w-64 -translate-x-1/2 rounded-full bg-neon/25 blur-3xl" />
+        <Kicker>Code de la partie</Kicker>
+        <div className="cs-neon-text my-1 font-display text-[3.4rem] font-extrabold leading-none tracking-[0.18em]">
+          {roomCode}
+        </div>
+        <button type="button" onClick={share} className="mt-1 text-sm font-semibold text-ink-2 underline decoration-white/30 underline-offset-4">
+          {copied ? "Lien copié ✓" : "Partager le lien d'invitation"}
+        </button>
+      </Card>
 
-      <h3>Joueurs connectés</h3>
-      <div className="players-list">
-        {players.map((p) =>
-          p.slug === mySlug ? (
-            <OwnNameRow key={p.slug} name={p.name} busy={busy} onRename={onRename} />
-          ) : (
-            <div className="player-chip" key={p.slug}>
-              <span className="pname">{p.name}</span>
+      <Section title={`À table · ${humans.length} joueur${humans.length > 1 ? "s" : ""}`}>
+        <div className="stagger flex flex-col gap-2">
+          {humans.map((p) =>
+            p.slug === mySlug && editing ? (
+              <RenameRow
+                key={p.slug}
+                name={p.name}
+                onDone={(n) => {
+                  setEditing(false);
+                  if (n && n !== p.name) onRename(n);
+                }}
+              />
+            ) : (
+              <PlayerRow
+                key={p.slug}
+                name={p.name}
+                slug={p.slug}
+                me={p.slug === mySlug}
+                detail={p.slug === mySlug ? "Touchez pour changer de prénom" : undefined}
+                onClick={p.slug === mySlug ? () => setEditing(true) : undefined}
+              />
+            )
+          )}
+          {botCount > 0 && (
+            <div className="cs-row" data-dim="true">
+              <span className="cs-avatar h-10 w-10 bg-violet/40 text-lg">🤖</span>
+              <span className="flex-1 font-semibold text-ink-2">
+                + {botCount} bot{botCount > 1 ? "s" : ""} ajouté{botCount > 1 ? "s" : ""} au lancement
+              </span>
             </div>
-          )
-        )}
-      </div>
+          )}
+        </div>
+      </Section>
 
-      {isHost && (
+      {isHost ? (
         <>
-          <label className="field-label" style={{ marginTop: 14 }}>
-            Nombre de manches
-          </label>
-          <div className="chip-row">
-            {ROUND_OPTIONS.map((n) => (
-              <button
-                key={n}
-                className={n === totalRounds ? "chip chip-selected" : "chip"}
-                onClick={() => setTotalRounds(n)}
-                type="button"
-              >
-                {n}
-              </button>
-            ))}
-          </div>
+          <Section title="Nombre de manches">
+            <Chips options={ROUND_OPTIONS.map((n) => ({ value: n, label: n }))} value={totalRounds} onChange={setTotalRounds} />
+          </Section>
 
-          <label className="field-label" style={{ marginTop: 14 }}>
-            Cul sec final
-          </label>
-          <div className="rule-options">
-            <button
-              className={culSecRule === "last" ? "rule-option rule-option-selected" : "rule-option"}
-              onClick={() => setCulSecRule("last")}
-              type="button"
-            >
-              Le dernier boit un cul sec
-            </button>
-            <button
-              className={culSecRule === "first" ? "rule-option rule-option-selected" : "rule-option"}
-              onClick={() => setCulSecRule("first")}
-              type="button"
-            >
-              Le premier distribue un cul sec
-            </button>
-          </div>
+          <Section title="Cul sec final">
+            <Chips
+              options={[
+                { value: "last" as CulSecRule, label: "Le plus arrosé le boit" },
+                { value: "first" as CulSecRule, label: "Le plus sobre le donne" },
+              ]}
+              value={culSecRule}
+              onChange={setCulSecRule}
+            />
+          </Section>
 
-          <div style={{ marginBottom: 24 }}>
-            <label className="field-label" style={{ marginTop: 14 }}>
-              Mini-jeux actifs
-            </label>
-            <div className="minigame-toggle-list">
+          <Section title={`Mini-jeux · ${enabledIds.size} actifs`}>
+            <div className="grid grid-cols-2 gap-2">
               {ROUND_TYPES.map((t) => {
-                const active = enabledIds.has(t.id);
+                const on = enabledIds.has(t.id);
+                const tooFew = t.minPlayers > tableSize;
                 return (
                   <button
                     key={t.id}
                     type="button"
-                    className={active ? "minigame-toggle active" : "minigame-toggle"}
-                    onClick={() => toggleRoundType(t.id)}
+                    onClick={() => toggle(t.id)}
+                    aria-pressed={on}
+                    className={`cs-card flex min-h-[84px] flex-col items-start justify-between gap-1 p-3 text-left transition active:scale-[0.97] ${
+                      on ? "border-neon/60! bg-neon/10!" : "opacity-55"
+                    }`}
                   >
-                    <span className="mt-icon">{t.icon}</span>
-                    <span className="mt-label">{t.label}</span>
-                    <span className="mt-check">{active ? "✓" : ""}</span>
+                    <span className="flex w-full items-center justify-between">
+                      <span className="text-2xl">{t.icon}</span>
+                      <span
+                        className={`grid h-6 w-6 place-items-center rounded-full text-xs font-black ${on ? "bg-neon text-white" : "border border-white/25"}`}
+                      >
+                        {on ? "✓" : ""}
+                      </span>
+                    </span>
+                    <span className="font-display text-[0.98rem] font-bold leading-tight">{t.label}</span>
+                    <span className={`text-[0.72rem] ${tooFew && on ? "text-amber" : "text-mute"}`}>
+                      {tooFew ? `${t.minPlayers} joueurs min · sauté` : t.minPlayers > 1 ? `${t.minPlayers}+ joueurs` : "Dès 1 joueur"}
+                    </span>
                   </button>
                 );
               })}
             </div>
-            {!enoughGames && <div className="hint error-text">Choisis au moins 2 mini-jeux.</div>}
-          </div>
-        </>
-      )}
+            {!enoughGames && <Note tone="danger">Choisis au moins {MIN_ENABLED_ROUND_TYPES} mini-jeux.</Note>}
+          </Section>
 
-      <div className="spacer" />
-      {error && <div className="hint error-text">{error}</div>}
-      {isHost ? (
-        <>
-          <button
-            className="btn-primary"
-            disabled={!enough || busy}
-            onClick={() => onLaunch(totalRounds, culSecRule, Array.from(enabledIds))}
-          >
-            Lancer la partie
-          </button>
-          {!enoughPlayers && <div className="hint">Il faut au moins 3 joueurs pour commencer.</div>}
+          <Section title="Bots 🤖">
+            <Card className="flex items-center justify-between gap-3">
+              <p className="text-[0.9rem] leading-snug text-ink-2">
+                {solo ? "Mode solo : les bots jouent contre toi." : "Complète la table avec des joueurs virtuels."}
+              </p>
+              <Stepper value={botCount} min={autoBots} max={MAX_BOTS} onChange={setExtraBots} />
+            </Card>
+          </Section>
         </>
       ) : (
-        <div className="hint">En attente que l&apos;hôte lance la partie...</div>
+        <Section title="Comment ça marche">
+          <Card className="text-[0.95rem] leading-relaxed text-ink-2">
+            À chaque manche, un mini-jeu est tiré au hasard. Les règles s&apos;affichent avant chaque jeu, et l&apos;appli
+            compte les gorgées de chacun. Garde ton téléphone allumé !
+          </Card>
+        </Section>
       )}
-    </>
+    </Screen>
   );
 }
 
-// Own entry in the lobby's player list, editable in place — click the
-// name (or the pencil) to turn it into a text field, same "click to
-// edit" pattern used nowhere else yet in this codebase but simple enough
-// not to need a shared component for it.
-function OwnNameRow({
-  name,
-  busy,
-  onRename,
-}: {
-  name: string;
-  busy: boolean;
-  onRename: (name: string) => void;
-}) {
-  const [editing, setEditing] = useState(false);
+function RenameRow({ name, onDone }: { name: string; onDone: (name: string) => void }) {
   const [value, setValue] = useState(name);
-
-  function startEditing() {
-    setValue(name);
-    setEditing(true);
-  }
-
-  function submit() {
-    const trimmed = value.trim();
-    if (!trimmed || trimmed === name) {
-      setEditing(false);
-      return;
-    }
-    onRename(trimmed);
-    setEditing(false);
-  }
-
-  if (editing) {
-    return (
-      <div className="player-chip">
-        <input
-          type="text"
-          autoFocus
-          value={value}
-          maxLength={40}
-          disabled={busy}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") submit();
-            if (e.key === "Escape") setEditing(false);
-          }}
-          onBlur={submit}
-          style={{ flex: 1, marginRight: 8 }}
-        />
-      </div>
-    );
-  }
-
   return (
-    <div className="player-chip">
-      <span className="pname">{name} (toi)</span>
-      <button
-        type="button"
-        className="btn-ghost"
-        style={{ padding: "4px 10px" }}
-        disabled={busy}
-        onClick={startEditing}
-      >
-        Modifier
-      </button>
-    </div>
+    <form
+      className="flex gap-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        onDone(value.trim());
+      }}
+    >
+      <TextField autoFocus value={value} maxLength={24} onChange={(e) => setValue(e.target.value)} onBlur={() => onDone(value.trim())} />
+    </form>
   );
 }

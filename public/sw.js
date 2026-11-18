@@ -1,7 +1,7 @@
 // Bumped so any existing install's cache (which may hold a now-broken "/"
 // from before it was removed below) gets dropped by the activate handler
 // instead of lingering forever.
-const CACHE_NAME = "maa-shell-v2";
+const CACHE_NAME = "cs-shell-v3";
 // Deliberately NOT caching "/" — it's the one URL that changes on every
 // deploy (its HTML references that build's hashed JS/CSS files), so a
 // precached copy goes stale the moment the next deploy ships. Once stale,

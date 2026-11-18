@@ -1,36 +1,74 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Cul-Sec
 
-## Getting Started
+Jeux de soirée à boire, multijoueur : chacun joue sur son téléphone.
+Next.js 16 · React 19 · Tailwind 4 · Upstash Redis · PWA.
 
-First, run the development server:
+À consommer avec modération.
+
+## Les mini-jeux
+
+| Jeu | Joueurs | En bref |
+|---|---|---|
+| Plus ou Moins 🃏 | 1+ | Plus haute ou plus basse ? Une erreur et on boit toute la série. |
+| Poker ♠️ | 2+ | Texas Hold'em ; se coucher = boire le pot (sans les mises refusées). |
+| Bataille ⚔️ | 2+ | Duel de cartes, « bataille ! » en cas d'égalité, paris des spectateurs. |
+| Culture G 🧠 | 1+ | 5 QCM chronométrés pour tout le monde en même temps. |
+| Tu préfères / Qui de nous 🗳️ | 3+ | Vote secret ; la minorité ou le désigné boit. |
+| Mèmes 😂 | 3+ | Légende la plus drôle, vote, la moins drôle boit. |
+| 421 🎲 | 2+ | 3 dés, 3 lancers, on garde ce qu'on veut. |
+| Undercover 🕵️ | 4+ | Un imposteur, des indices, un vote. |
+| Blackjack 🎰 | 1+ | Contre la banque, on mise ses gorgées. |
+| Mini-golf ⛳ | 1+ | 6 coups max, on boit l'écart avec le meilleur. |
+| Tir à l'arc 🏹 | 1+ | 3 flèches, vent, vraie cible à 10 anneaux. |
+
+Les règles complètes s'affichent avant chaque manche (`src/lib/game/rules.ts`).
+
+On peut lancer une partie seul : des bots (🤖) gérés par le serveur
+complètent la table. À plusieurs, un jeu sans assez de joueurs est sauté
+(l'hôte peut ajouter des bots).
+
+## Architecture
+
+- `src/lib/store.ts` : un salon = un document Redis versionné ; toute
+  écriture est conditionnelle (script Lua) et rejouée en cas de conflit.
+- `src/lib/games/*` : un module par mini-jeu (`start`, `act`, `pending`,
+  `auto`). `src/lib/game/room.ts` applique les actions et fait avancer la
+  partie (bots, délais, hôte absent) à chaque requête.
+- `src/lib/game/view.ts` : ce que chaque joueur a le droit de voir.
+- `src/components/ui/*` : design system ; `src/components/games/*` : un
+  écran par mini-jeu.
+
+## Variables d'environnement
+
+- `KV_REST_API_URL` / `KV_REST_API_TOKEN` : base Upstash Redis (injectées par Vercel).
+
+## Développement local
+
+Sans compte Upstash, on peut utiliser un `redis-server` local derrière un petit
+proxy REST compatible Upstash :
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+redis-server --daemonize yes
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+```bash
+node scripts/dev-redis-proxy.mjs
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+KV_REST_API_URL=http://localhost:8079 KV_REST_API_TOKEN=dev npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Tests
 
-## Learn More
+```bash
+npm run test:engine
+```
 
-To learn more about Next.js, take a look at the following resources:
+Simule des soirées complètes avec des bots, pour chaque mini-jeu et de 1 à 8 joueurs.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+HUMANS=4 ROUNDS=10 npm run test:api
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Joue une soirée de bout en bout via l'API HTTP (serveur local lancé).
