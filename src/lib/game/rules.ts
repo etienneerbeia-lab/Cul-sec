@@ -9,16 +9,29 @@ export interface GameRules {
 
 export const RULES: Record<RoundTypeId, GameRules> = {
   high: {
-    how: ["Chacun reçoit une carte cachée.", "À ton tour : suis la mise, relance de 1 ou couche-toi."],
-    gulps: ["Te coucher : 1 gorgée.", "Perdants à l'abattage : la mise finale."],
+    how: [
+      "Une carte est retournée. À ton tour, parie : la suivante sera plus haute ou plus basse ?",
+      "Chaque bon pari fait grossir la série (jusqu'à 6) et passe la main.",
+    ],
+    gulps: ["Tu te trompes (ou carte égale) : tu bois toute la série.", "La série repart ensuite à 1."],
   },
   holdem: {
-    how: ["2 cartes chacun, puis flop, turn et river.", "Checke, mise, suis, relance ou couche-toi."],
-    gulps: ["Te coucher : le pot.", "Perdants à l'abattage : se partagent le pot."],
+    how: [
+      "2 cartes chacun, puis le flop, le turn et la river. Le pot démarre à 2.",
+      "Checke ou mise 1 ; face à une mise : suis, relance de 1 (2 fois max) ou couche-toi.",
+    ],
+    gulps: [
+      "Te coucher : tu bois le pot, sans les mises que tu refuses de suivre.",
+      "Abattage : chaque perdant boit le pot (10 max = cul sec).",
+    ],
   },
   duel: {
-    how: ["Deux joueurs tirés au sort retournent chacun une carte.", "La plus forte gagne."],
-    gulps: ["Le perdant : 2 gorgées.", "Égalité : 1 chacun."],
+    how: [
+      "Deux joueurs tirés au sort retournent une carte chacun : la plus forte gagne.",
+      "Égalité ? Bataille ! On retourne une nouvelle carte.",
+      "Les autres parient avant sur le vainqueur.",
+    ],
+    gulps: ["Le perdant : 2 gorgées, +2 par bataille.", "Mauvais pari (ou pas de pari) : 1 gorgée."],
   },
   quiz: {
     how: ["Chacun son tour, une question.", "15 secondes pour répondre."],

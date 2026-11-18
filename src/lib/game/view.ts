@@ -44,6 +44,26 @@ export function viewFor(game: GameState, slug: string | null): PlayerView {
     g = { ...g, undercover: { ...u, secretWord: undefined, impostorSlug: undefined, impostorWord: undefined, votes: {} } };
   }
 
+  if (g.highlow) g = { ...g, highlow: { ...g.highlow, deck: [] } };
+  if (g.duel) g = { ...g, duel: { ...g.duel, deck: [] } };
+  if (g.qcm && g.qcm.stage === "ask") {
+    const q = g.qcm;
+    // Pendant la question : ni la bonne réponse, ni ce qu'ont choisi les
+    // autres (seulement qui a déjà répondu).
+    const answers: Record<string, null> = {};
+    Object.keys(q.answers).forEach((s) => (answers[s] = null));
+    g = {
+      ...g,
+      qcm: {
+        ...q,
+        questions: q.questions.map((qq, i) => (i >= q.index ? { ...qq, answerIdx: undefined } : qq)),
+        answers: slug && q.answers[slug] ? { ...answers, [slug]: q.answers[slug] } : answers,
+      },
+    };
+  } else if (g.qcm) {
+    g = { ...g, qcm: { ...g.qcm, questions: g.qcm.questions.map((qq, i) => (i > g.qcm!.index ? { ...qq, answerIdx: undefined } : qq)) } };
+  }
+
   if (g.blackjack) {
     g = { ...g, blackjack: { ...g.blackjack, deck: [], dealer: { ...g.blackjack.dealer, hiddenCard: null } } };
   }

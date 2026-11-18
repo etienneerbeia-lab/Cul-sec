@@ -1,5 +1,5 @@
 import { ROUND_TYPES, roundTypeById } from "./roundTypes";
-import { pickDuelists } from "../games/cards";
+import { pickDuelists } from "../games/duel";
 import { MODULES } from "../games/registry";
 import type { Ctx, GameModule } from "./module";
 import type { CulSecRule, GameState, Player, PlayerPublic, RoundTypeId } from "./types";
@@ -79,6 +79,7 @@ export function launchGame(
 }
 
 export function confirmRoundIntro(g: GameState, ctx: Ctx): void {
+  g.drinks = [];
   moduleFor(g)!.start(g, ctx);
 }
 
@@ -92,6 +93,11 @@ function resetRoundFields(g: GameState): void {
   g.community = undefined;
   g.communityRevealed = undefined;
   g.lastResults = undefined;
+  g.drinks = [];
+  g.highlow = undefined;
+  g.duel = undefined;
+  g.qcm = undefined;
+  g.dice421 = undefined;
   g.timer = undefined;
   g.botPlan = undefined;
 }

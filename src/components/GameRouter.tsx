@@ -1,15 +1,16 @@
 "use client";
 
 import type { ArcheryPoint, GolfPoint } from "@/lib/game/types";
-import type { BetAction, BlackjackAction } from "@/lib/api-client";
+import type { BlackjackAction } from "@/lib/api-client";
 import { useGame } from "./GameContext";
+import HighLowScreen from "./games/HighLowScreen";
+import PokerScreen from "./games/PokerScreen";
+import DuelScreen from "./games/DuelScreen";
 import RoundIntroScreen from "./screens/RoundIntroScreen";
-import BettingScreen from "./screens/BettingScreen";
 import ShowdownScreen from "./screens/ShowdownScreen";
 import FinalScreen from "./screens/FinalScreen";
 import QuizScreen from "./screens/QuizScreen";
 import QuizRecapScreen from "./screens/QuizRecapScreen";
-import DuelRevealScreen from "./screens/DuelRevealScreen";
 import VoteScreen from "./screens/VoteScreen";
 import MemeCaptionScreen from "./screens/MemeCaptionScreen";
 import MemeVoteScreen from "./screens/MemeVoteScreen";
@@ -23,37 +24,23 @@ import ArcheryScreen from "./screens/ArcheryScreen";
 
 // Choisit l'écran du mini-jeu en cours (en dehors du salon).
 export default function GameRouter({ onQuit }: { onQuit: () => void }) {
-  const { game, mySlug, isHost, busy, myHand, myVoteChoice, myUndercoverWord, act } = useGame();
+  const { game, mySlug, isHost, busy, myVoteChoice, myUndercoverWord, act } = useGame();
   const phase = game.phase;
   const runAction = (fn: () => void) => fn();
   return (
     <>
-      {phase === "roundIntro" ? (
+      {phase === "betting" || (phase === "showdown" && game.lastResults?.type === "holdem") ? (
+        <PokerScreen />
+      ) : phase === "duel" || (phase === "showdown" && game.lastResults?.type === "duel") ? (
+        <DuelScreen />
+      ) : phase === "highlow" || (phase === "showdown" && game.lastResults?.type === "high") ? (
+        <HighLowScreen />
+      ) : phase === "roundIntro" ? (
         <RoundIntroScreen
           game={game}
           isHost={isHost}
           busy={busy}
           onConfirm={() => runAction(() => act({ type: "confirmIntro" }))}
-        />
-      ) : phase === "betting" ? (
-        <BettingScreen
-          game={game}
-          myHand={myHand}
-          mySlug={mySlug}
-          busy={busy}
-          onAct={(action: BetAction) =>
-            runAction(() => act({ type: "bet", action }))
-          }
-        />
-      ) : phase === "duelReveal" || (phase === "showdown" && game.lastResults?.type === "duel") ? (
-        <DuelRevealScreen
-          game={game}
-          mySlug={mySlug}
-          isHost={isHost}
-          busy={busy}
-          onReveal={() => runAction(() => act({ type: "duelReveal" }))}
-          onNextRound={() => runAction(() => act({ type: "nextRound" }))}
-          onEndNight={() => runAction(() => act({ type: "endNight" }))}
         />
       ) : phase === "dice" || (phase === "showdown" && game.lastResults?.type === "dice") ? (
         <DiceScreen

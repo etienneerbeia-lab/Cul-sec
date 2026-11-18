@@ -40,12 +40,16 @@ function humanMove(s: StateResponse): Record<string, unknown> | null {
     if (g.phase === "quiz" && g.quiz!.status === "result") return { type: "quizNext" };
   }
   switch (g.phase) {
+    case "highlow":
+      return g.highlow!.order[g.highlow!.pointer] === me ? { type: "hlGuess", guess: g.highlow!.current.value < 8 ? "plus" : "moins" } : null;
     case "betting":
       if (g.turnIdx !== meIdx) return null;
-      return { type: "bet", action: g.bettingOpts!.mode === "check-or-bet" && g.currentBet === 0 ? "check" : "call" };
-    case "duelReveal": {
-      const pos = g.duelists!.indexOf(meIdx);
-      return pos >= 0 && !g.duelReveal!.revealed[pos] ? { type: "duelReveal" } : null;
+      return { type: "bet", action: g.currentBet === 0 ? "check" : "call" };
+    case "duel": {
+      const d = g.duel!;
+      if (d.stage === "bets") return d.a !== me && d.b !== me && !d.betResponded.includes(me) ? { type: "duelBet", side: "a" } : null;
+      const pos = me === d.a ? 0 : me === d.b ? 1 : -1;
+      return pos >= 0 && !d.revealed[pos] ? { type: "duelFlip" } : null;
     }
     case "quiz":
       if (g.quiz!.playerIdx !== meIdx) return null;

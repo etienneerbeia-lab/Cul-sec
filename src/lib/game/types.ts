@@ -66,6 +66,10 @@ export type GamePhase =
   | "blackjack"
   | "golf"
   | "archery"
+  | "highlow"
+  | "duel"
+  | "qcm"
+  | "dice421"
   | "final";
 
 export type Street = "single" | "preflop" | "flop" | "turn" | "river";
@@ -141,6 +145,7 @@ export interface LastResults {
   // ranked, ties share a rank), keyed on total points across 3 arrows —
   // sorted descending (higher score wins), unlike golf's ascending strokes.
   archeryRanking?: ArcheryRankingEntry[];
+  handLabels?: Record<string, string>;
 }
 
 export type QuizQuestionType = "capital" | "flag" | "date";
@@ -791,6 +796,12 @@ export interface GameState {
   hands?: Record<string, Card[]>;
   timer?: WaitTimer;
   botPlan?: BotPlan;
+  // Gorgées données pendant la manche en cours (affichées en fin de manche).
+  drinks?: DrinkEntry[];
+  highlow?: HighLowState;
+  duel?: DuelState;
+  qcm?: QcmState;
+  dice421?: Dice421State;
   // Incrémenté à chaque action acceptée : sert de clé d'attente aux jeux
   // tour par tour (chaque coup ouvre une nouvelle attente).
   seq?: number;
@@ -817,4 +828,92 @@ export interface WaitTimer {
 export interface BotPlan {
   key: string;
   at: Record<string, number>;
+}
+
+// ---------- v2 : journal des gorgées ----------
+export interface DrinkEntry {
+  slug: string;
+  name: string;
+  n: number;
+  why: string;
+}
+
+// ---------- Plus ou Moins ----------
+export type HighLowGuess = "plus" | "moins";
+export interface HighLowTurn {
+  slug: string;
+  name: string;
+  guess: HighLowGuess;
+  from: Card;
+  card: Card;
+  correct: boolean;
+  drank: number;
+}
+export interface HighLowState {
+  deck: Card[]; // secret
+  current: Card;
+  pile: number; // cartes accumulées depuis la dernière erreur
+  order: string[]; // slugs, un tour par entrée
+  pointer: number;
+  turns: HighLowTurn[];
+}
+
+// ---------- Bataille ----------
+export interface DuelFlip {
+  a: Card;
+  b: Card;
+}
+export interface DuelState {
+  a: string;
+  b: string;
+  stage: "bets" | "flip" | "done";
+  bets: Record<string, "a" | "b">;
+  betResponded: string[];
+  revealed: [boolean, boolean];
+  flips: DuelFlip[]; // retournements terminés (égalités puis le décisif)
+  pendingA?: Card; // carte retournée par A en attendant B
+  pendingB?: Card;
+  deck: Card[]; // secret
+  winner?: "a" | "b";
+}
+
+// ---------- Culture G (QCM) ----------
+export interface QcmQuestion {
+  id: string;
+  category: string;
+  prompt: string;
+  flagEmoji?: string;
+  choices: string[];
+  answerIdx?: number; // caché pendant la question
+  difficulty: number;
+}
+export interface QcmAnswer {
+  choice: number;
+  ms: number; // temps de réponse
+}
+export interface QcmState {
+  questions: QcmQuestion[];
+  index: number;
+  stage: "ask" | "reveal" | "champion" | "done";
+  askedAt: number;
+  answers: Record<string, QcmAnswer | null>; // réponses à la question en cours
+  history: { correct: Record<string, boolean>; fastest?: string }[];
+  scores: Record<string, { correct: number; ms: number }>;
+  champion?: string;
+  championTarget?: string;
+}
+
+// ---------- 421 ----------
+export interface Dice421Roll {
+  slug: string;
+  name: string;
+  dice: number[]; // 3 dés
+  throws: number; // nombre de lancers utilisés (1-3)
+  held?: boolean[];
+}
+export interface Dice421State {
+  order: string[];
+  pointer: number;
+  current: Dice421Roll | null; // lancer du joueur actif
+  finished: Dice421Roll[];
 }

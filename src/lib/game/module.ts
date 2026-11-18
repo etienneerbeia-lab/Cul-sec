@@ -82,3 +82,24 @@ export function pickFresh<T extends { id: string }>(g: GameState, list: T[]): T 
   g.usedQuestionIds = [...(g.usedQuestionIds ?? []), chosen.id];
   return chosen;
 }
+
+// Une gorgée « événement » ne dépasse jamais ce plafond : au-delà, c'est
+// un cul sec (affiché comme tel).
+export const MAX_GULPS = 10;
+
+// Fait boire `n` gorgées à un joueur et l'inscrit au journal de la manche.
+export function drink(g: GameState, slug: string, n: number, why: string): void {
+  const amount = Math.max(0, Math.min(MAX_GULPS, Math.round(n)));
+  const p = g.playersPublic.find((pl) => pl.slug === slug);
+  if (!p || amount <= 0) return;
+  p.gulpsTotal += amount;
+  g.drinks = [...(g.drinks ?? []), { slug, name: p.name, n: amount, why }];
+}
+
+export function nameOf(g: GameState, slug: string): string {
+  return g.playersPublic.find((p) => p.slug === slug)?.name ?? slug;
+}
+
+export function slugsInOrder(g: GameState): string[] {
+  return tableOrder(g).map((i) => g.playersPublic[i].slug);
+}
