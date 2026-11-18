@@ -30,8 +30,12 @@ export function Die({
   const body = (
     <div
       key={held ? "held" : rollKey}
-      className="grid grid-cols-3 grid-rows-3 gap-[6%] p-[14%]"
       style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(3, 1fr)",
+        gridTemplateRows: "repeat(3, 1fr)",
+        gap: size * 0.06,
+        padding: size * 0.15,
         width: size,
         height: size,
         borderRadius: size * 0.2,
@@ -45,7 +49,7 @@ export function Die({
       {Array.from({ length: 9 }, (_, i) => (
         <span
           key={i}
-          className="rounded-full"
+          className="block h-full w-full rounded-full"
           style={{ background: pips.includes(i) ? (red && value === 1 ? "#e0335a" : "#1a1030") : "transparent" }}
         />
       ))}

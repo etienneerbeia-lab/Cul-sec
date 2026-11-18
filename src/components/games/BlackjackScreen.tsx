@@ -200,7 +200,9 @@ export default function BlackjackScreen() {
                       <div className={`font-display text-lg font-extrabold ${total > 21 ? "text-danger" : ""}`}>{cards.length ? total : ""}</div>
                       <div className="text-xs text-mute">
                         {r && caughtUp
-                          ? OUTCOME_LABEL[r.outcome]
+                          ? h.status === "bust"
+                            ? "Sauté"
+                            : OUTCOME_LABEL[r.outcome]
                           : h.status === "bust"
                             ? "Sauté"
                             : h.status === "blackjack"
