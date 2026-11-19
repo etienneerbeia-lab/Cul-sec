@@ -7,7 +7,6 @@ import ArcheryScreen from "./games/ArcheryScreen";
 import BlackjackScreen from "./games/BlackjackScreen";
 import Dice421Screen from "./games/Dice421Screen";
 import DuelScreen from "./games/DuelScreen";
-import GolfScreen from "./games/GolfScreen";
 import HighLowScreen from "./games/HighLowScreen";
 import MemeScreen from "./games/MemeScreen";
 import PokerScreen from "./games/PokerScreen";
@@ -29,16 +28,23 @@ const SCREENS: Record<RoundTypeId, { phases: GamePhase[]; Screen: ComponentType 
   dice: { phases: ["dice421"], Screen: Dice421Screen },
   undercover: { phases: ["undercoverClue", "undercoverVote", "undercoverGuess"], Screen: UndercoverScreen },
   blackjack: { phases: ["blackjack"], Screen: BlackjackScreen },
-  golf: { phases: ["golf"], Screen: GolfScreen },
   archery: { phases: ["archery"], Screen: ArcheryScreen },
 };
 
 export default function GameRouter({ onQuit }: { onQuit: () => void }) {
-  const { game, mySlug, isHost, busy, act } = useGame();
+  const { game, mySlug, isHost, busy, act, openMenu } = useGame();
   const phase = game.phase;
 
   if (phase === "roundIntro")
-    return <RoundIntroScreen game={game} isHost={isHost} busy={busy} onConfirm={() => act({ type: "confirmIntro" })} />;
+    return (
+      <RoundIntroScreen
+        game={game}
+        isHost={isHost}
+        busy={busy}
+        onConfirm={() => act({ type: "confirmIntro" })}
+        onShowRules={openMenu}
+      />
+    );
 
   if (phase === "final")
     return (

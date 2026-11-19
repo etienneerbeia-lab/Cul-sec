@@ -1,27 +1,29 @@
 "use client";
 
 import { roundTypeById } from "@/lib/game/roundTypes";
-import { RULES } from "@/lib/game/rules";
 import type { GameState } from "@/lib/game/types";
 import { Button } from "../ui/Button";
 import { Waiting } from "../ui/Feedback";
-import { Card, Hero, Kicker, Screen } from "../ui/Layout";
+import { Screen } from "../ui/Layout";
 import { Avatar, PlayerName } from "../ui/Players";
 
-// Écran de règles court avant chaque mini-jeu.
+// Écran d'ouverture de chaque manche, commun à tous les mini-jeux : icône,
+// numéro de manche, nom du jeu et une phrase d'accroche. Les règles
+// détaillées vivent dans le menu (bottom sheet), ouvert par « Voir les règles ».
 export default function RoundIntroScreen({
   game,
   isHost,
   busy,
   onConfirm,
+  onShowRules,
 }: {
   game: GameState;
   isHost: boolean;
   busy: boolean;
   onConfirm: () => void;
+  onShowRules: () => void;
 }) {
   const rt = roundTypeById(game.roundTypeId as string);
-  const rules = RULES[rt.id];
   const duelists = rt.id === "duel" && game.duelists ? game.duelists.map((i) => game.playersPublic[i]) : null;
   return (
     <Screen
@@ -35,47 +37,37 @@ export default function RoundIntroScreen({
         )
       }
     >
-      <Hero icon={rt.icon} kicker={`Manche ${game.round}${game.totalRounds ? ` sur ${game.totalRounds}` : ""}`} title={rt.label}>
-        {rt.tagline}
-      </Hero>
+      <div className="cs-intro">
+        <div className="cs-intro-icon" aria-hidden="true">
+          <span>{rt.icon}</span>
+        </div>
 
-      {duelists && (
-        <Card className="animate-rise mb-3 flex items-center justify-around gap-2">
-          {duelists.map((p, i) => (
-            <div key={p.slug} className="contents">
-              {i === 1 && <span className="font-display text-2xl font-extrabold text-neon">VS</span>}
-              <div className="flex flex-col items-center gap-1.5">
-                <Avatar name={p.name} slug={p.slug} size={56} />
-                <PlayerName name={p.name} />
+        <div className="cs-intro-round">
+          Manche {game.round}
+          {game.totalRounds ? <span className="text-mute"> / {game.totalRounds}</span> : null}
+        </div>
+
+        <h1 className="cs-intro-title">{rt.label}</h1>
+
+        <p className="cs-intro-hook">{rt.tagline}</p>
+
+        {duelists && (
+          <div className="cs-intro-duel">
+            {duelists.map((p, i) => (
+              <div key={p.slug} className="contents">
+                {i === 1 && <span className="font-display text-xl font-extrabold text-neon">VS</span>}
+                <div className="flex min-w-0 flex-col items-center gap-1.5">
+                  <Avatar name={p.name} slug={p.slug} size={52} />
+                  <PlayerName name={p.name} />
+                </div>
               </div>
-            </div>
-          ))}
-        </Card>
-      )}
+            ))}
+          </div>
+        )}
 
-      <div className="stagger flex flex-col gap-3">
-        <Card>
-          <Kicker className="mb-2">Comment on joue</Kicker>
-          <ul className="flex flex-col gap-2">
-            {rules.how.map((line) => (
-              <li key={line} className="flex gap-2.5 leading-snug">
-                <span className="mt-[0.45em] h-1.5 w-1.5 shrink-0 rounded-full bg-cyan" />
-                {line}
-              </li>
-            ))}
-          </ul>
-        </Card>
-        <Card className="border-beer/30!">
-          <Kicker className="mb-2 text-beer!">Qui boit ?</Kicker>
-          <ul className="flex flex-col gap-2">
-            {rules.gulps.map((line) => (
-              <li key={line} className="flex gap-2.5 leading-snug">
-                <span className="shrink-0">🍺</span>
-                {line}
-              </li>
-            ))}
-          </ul>
-        </Card>
+        <button type="button" className="cs-intro-rules" onClick={onShowRules}>
+          Voir les règles
+        </button>
       </div>
     </Screen>
   );

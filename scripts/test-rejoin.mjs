@@ -18,7 +18,7 @@ const { data } = await host("POST", "/api/rooms", { name: "Hôte" });
 const code = data.code;
 console.log("join Ana", (await ana("POST", `/api/rooms/${code}/join`, { name: "Ana" })).data);
 console.log("join ANA dup (lobby)", (await ana2("POST", `/api/rooms/${code}/join`, { name: "ana" })).status);
-console.log("launch", (await host("POST", `/api/rooms/${code}/launch`, { totalRounds: 5, culSecRule: "last", enabledRoundTypeIds: ["dice", "golf"], bots: 0 })).data);
+console.log("launch", (await host("POST", `/api/rooms/${code}/launch`, { totalRounds: 5, culSecRule: "last", enabledRoundTypeIds: ["dice", "archery"], bots: 0 })).data);
 await ana("GET", `/api/rooms/${code}/state?beat=1`);
 console.log("rejoin while present ->", (await ana2("POST", `/api/rooms/${code}/join`, { name: "Ana" })).status, "(409 attendu)");
 console.log("Ana quitte", (await ana("POST", `/api/rooms/${code}/leave`)).data);
@@ -38,8 +38,8 @@ for (let i = 0; i < 200; i++) {
   else if (g.phase === "showdown") await host("POST", `/api/rooms/${code}/action`, { type: "nextRound" });
   else if (g.phase === "dice") {
     for (const c of [host, ana2]) await c("POST", `/api/rooms/${code}/action`, { type: "diceRoll" });
-  } else if (g.phase === "golf") {
-    for (const c of [host, ana2]) await c("POST", `/api/rooms/${code}/action`, { type: "golfShot", velocity: { x: 50, y: -300 } });
+  } else if (g.phase === "archery") {
+    for (const c of [host, ana2]) await c("POST", `/api/rooms/${code}/action`, { type: "archeryShot", aim: { x: 170, y: 170 }, power: 1 });
   }
   await new Promise((r) => setTimeout(r, 200));
 }

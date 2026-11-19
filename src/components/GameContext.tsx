@@ -17,6 +17,8 @@ export interface GameCtx {
   myUndercoverWord: string | null;
   // Envoie une action au serveur (avec gestion d'erreur et rafraîchissement).
   act: ActFn;
+  // Ouvre le menu (règles du jeu en cours, classement, quitter).
+  openMenu: () => void;
 }
 
 export const GameContext = createContext<GameCtx | null>(null);

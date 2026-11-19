@@ -38,7 +38,10 @@ export default function LobbyScreen({
   const [totalRounds, setTotalRounds] = useState(10);
   const [culSecRule, setCulSecRule] = useState<CulSecRule>("last");
   const [enabledIds, setEnabledIds] = useState<Set<RoundTypeId>>(
-    () => new Set(previousEnabledRoundTypeIds?.length ? previousEnabledRoundTypeIds : ALL_ROUND_TYPE_IDS)
+    () => {
+      const prev = previousEnabledRoundTypeIds?.filter((id) => ALL_ROUND_TYPE_IDS.includes(id));
+      return new Set(prev?.length ? prev : ALL_ROUND_TYPE_IDS);
+    }
   );
   const [extraBots, setExtraBots] = useState(0);
   const [editing, setEditing] = useState(false);

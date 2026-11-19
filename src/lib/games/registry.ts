@@ -5,7 +5,7 @@ import { holdemModule } from "./poker";
 import { highlowModule } from "./highlow";
 import { memeModule, undercoverModule, voteModule } from "./party";
 import { qcmModule } from "./qcm";
-import { archeryModule, blackjackModule, golfModule } from "./skill";
+import { archeryModule, blackjackModule } from "./skill";
 import { dice421Module } from "./dice421";
 
 export const MODULES: Record<RoundTypeId, GameModule> = {
@@ -18,6 +18,5 @@ export const MODULES: Record<RoundTypeId, GameModule> = {
   dice: dice421Module,
   undercover: undercoverModule,
   blackjack: blackjackModule,
-  golf: golfModule,
   archery: archeryModule,
 };

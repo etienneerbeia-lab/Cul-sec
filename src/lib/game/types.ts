@@ -20,12 +20,13 @@ export type RoundTypeId =
   | "dice"
   | "undercover"
   | "blackjack"
-  | "golf"
   | "archery";
 
 export interface RoundType {
   id: RoundTypeId;
   label: string;
+  // Phrase d'accroche de l'écran d'intro (10 mots max) ; les règles
+  // détaillées sont dans lib/game/rules.ts (menu pendant la partie).
   tagline: string;
   icon: string;
   cards: number;
@@ -60,7 +61,6 @@ export type GamePhase =
   | "undercoverVote"
   | "undercoverGuess"
   | "blackjack"
-  | "golf"
   | "archery"
   | "highlow"
   | "duel"
@@ -133,14 +133,9 @@ export interface LastResults {
   blackjackDealerCards?: Card[];
   blackjackDealerTotal?: number;
   blackjackDealerBust?: boolean;
-  // "golf" (Mini-golf) — everyone plays out their own hole, so the result
-  // is a full ranked leaderboard by strokes (ties share a rank) rather
-  // than the generic single winner/losers shape every other mini-game
-  // uses.
-  golfRanking?: GolfRankingEntry[];
-  // "archery" (Tir à l'arc) — same shape as golf's leaderboard (everyone
-  // ranked, ties share a rank), keyed on total points across 3 arrows —
-  // sorted descending (higher score wins), unlike golf's ascending strokes.
+  // "archery" (Tir à l'arc) — full leaderboard (everyone ranked, ties
+  // share a rank), keyed on total points across 3 arrows, sorted
+  // descending (higher score wins).
   archeryRanking?: ArcheryRankingEntry[];
   handLabels?: Record<string, string>;
 }
@@ -324,7 +319,9 @@ export interface BlackjackDealerState {
 // public data, see BlackjackRoundState's own comment), this just says
 // "reveal the next one for this target now".
 export interface BlackjackDealEvent {
-  target: "player" | "dealer-up" | "dealer-hidden" | "dealer-hit";
+  // "dealer-reveal" : la banque retourne sa carte cachée (début de son tour),
+  // avant ses "dealer-hit" éventuels.
+  target: "player" | "dealer-up" | "dealer-hidden" | "dealer-reveal" | "dealer-hit";
   slug?: string; // only for "player"
   handId?: number; // only for "player" — BlackjackHand.id, not an array index
 }
@@ -366,214 +363,6 @@ export interface BlackjackRoundState {
   results?: BlackjackResultEntry[];
 }
 
-// Mini-golf — turn-based like Culture G/dice (one player acts per turn,
-// in table order), but each player's ball keeps whatever position it
-// stopped at between their own turns instead of a shared value, and turns
-// keep cycling around the table (turnPointer only ever increases, wraps
-// via modulo) until someone sinks their ball — there's no "everyone gets
-// one shot and we're done" like the other turn-based mini-games.
-export interface GolfPoint {
-  x: number;
-  y: number;
-}
-
-// A straight-line obstacle or boundary segment the ball bounces off.
-export interface GolfWall {
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
-}
-
-// A solid round obstacle — circular, like a wall but round. `kind` picks
-// both the physics (see simulateShot) and how it's drawn:
-// - "tree": the ball stops dead on contact, no bounce.
-// - "bumper": bounces with partial energy kept, pinball-style.
-// - "roulette": a visually distinct bumper (spinning multicolour wheel) —
-//   physics-wise it's identical to "bumper" (simulateShot only special-
-//   cases "tree"), purely a skin for course variety.
-export type GolfObstacleKind = "tree" | "bumper" | "roulette";
-export interface GolfObstacle {
-  kind: GolfObstacleKind;
-  x: number;
-  y: number;
-  radius: number;
-}
-
-// Not solid — the ball rolls straight through, but physics.ts applies
-// much stronger friction while its center is inside, so it loses speed
-// fast (a real bunker) instead of bouncing off anything.
-export interface GolfSandZone {
-  x: number;
-  y: number;
-  radius: number;
-}
-
-// Not solid either, but instead of slowing the ball down, falling in
-// undoes the whole shot: physics.ts stops simulating the instant the
-// ball's center enters one, and lib/golf/engine.ts restores the
-// player's position to wherever it was BEFORE this shot — a real "back
-// to where you were" penalty, not just a teleport to the water's edge.
-export interface GolfWaterZone {
-  x: number;
-  y: number;
-  radius: number;
-}
-
-// Entering the circle at (x, y) relocates the ball to (targetX, targetY)
-// — velocity carries over unchanged, simulation continues from there. A
-// two-way pair is just two of these pointing at each other. At most one
-// teleport happens per shot (see physics.ts) so a pair facing each other
-// can't loop forever.
-export interface GolfTeleporter {
-  x: number;
-  y: number;
-  radius: number;
-  targetX: number;
-  targetY: number;
-}
-
-// A rectangular gust — while the ball's center is inside, physics.ts adds
-// a push in (dirX, dirY)'s direction on top of whatever the ball was
-// already doing (never replaces its trajectory). The push's strength is
-// captured once, from the ball's speed at the moment it first enters this
-// zone this shot, and reused for as long as it stays inside — a ball
-// already flying fast gets shoved hard, a slow one barely nudged.
-export interface GolfWindZone {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  dirX: number;
-  dirY: number;
-  // Purely cosmetic arrow layout — physics only ever reads (x, y, width,
-  // height, dirX, dirY) above, so this never changes how the push behaves,
-  // only how GolfScreen draws it: "corridor" (the default) tiles arrows in
-  // a plain grid across the zone's full footprint, "diamond" arranges them
-  // in a rotated-square cluster meant to sit centered on a point (e.g. the
-  // hole) so the target stays visible in the middle.
-  shape?: "corridor" | "diamond";
-}
-
-// Purely cosmetic scenery scattered on a course — never read by physics,
-// only by GolfScreen's renderer. Free-floating on the grass, so overlap
-// with real obstacles is fine as long as it doesn't visually confuse the
-// play area (kept sparse and off the direct tee-to-hole line in practice).
-export type GolfDecorKind = "cow" | "truck" | "tent" | "house" | "bush" | "sparkle";
-export interface GolfDecor {
-  kind: GolfDecorKind;
-  x: number;
-  y: number;
-  // 0-360, only meaningful for kinds that aren't rotationally symmetric
-  // (truck, house) — omitted/0 elsewhere.
-  rotation?: number;
-}
-
-// Picks which grass/water/border skin GolfScreen renders — a course's
-// gameplay (walls, obstacles, zones) is defined the same way regardless
-// of theme; this only ever changes appearance.
-export type GolfCourseTheme = "prairie" | "labyrinthe";
-
-export interface GolfCourse {
-  id: string;
-  label: string;
-  width: number;
-  height: number;
-  start: GolfPoint;
-  hole: GolfPoint;
-  holeRadius: number;
-  ballRadius: number;
-  theme: GolfCourseTheme;
-  decor: GolfDecor[];
-  // Interior obstacles only — the four boundary edges are implicit from
-  // width/height (see simulateShot in lib/golf/physics.ts) so a course
-  // definition never has to spell those out.
-  walls: GolfWall[];
-  obstacles: GolfObstacle[];
-  sandZones: GolfSandZone[];
-  waterZones: GolfWaterZone[];
-  teleporters: GolfTeleporter[];
-  windZones: GolfWindZone[];
-}
-
-// Another player's ball, knocked into motion by a ball-to-ball collision
-// during someone else's shot (see simulateShot's own comment) — carries
-// its own full sampled path so the replay can animate it alongside the
-// shooter's ball instead of just snapping it to wherever it ended up.
-export interface GolfStruckBallResult {
-  slug: string;
-  path: GolfPoint[];
-  finalPos: GolfPoint;
-  sunk: boolean;
-  wentInWater: boolean;
-}
-
-// One full shot, computed client-side (deterministic physics — see
-// simulateShot) then published as-is so every other client can replay the
-// exact same animation instead of just snapping to the final position.
-export interface GolfShotRecord {
-  slug: string;
-  name: string;
-  strokeNumber: number; // this player's Nth stroke, 1-based
-  path: GolfPoint[]; // sampled at physics.STEP_DT, first entry is the shot's start position
-  finalPos: GolfPoint;
-  sunk: boolean;
-  // True when the ball fell into water this shot — finalPos is still
-  // where it happened (for the path/animation), but the player's actual
-  // position reverts to wherever they were before this shot (see
-  // applyGolfShot).
-  wentInWater: boolean;
-  // Index into course.obstacles of the tree this shot smashed into, if
-  // any — undefined for every shot that didn't destroy a tree. The ball
-  // still hard-stops on contact same as always; this only marks the tree
-  // itself as gone (see GolfRoundState.destroyedObstacles).
-  destroyedObstacle?: number;
-  // Every OTHER player's ball this shot's chain of collisions knocked into
-  // motion — absent/empty on the (common) case where nothing got hit.
-  // Their strokeCounts never change from this, only their position (and
-  // possibly finishedSlugs, if the knock sinks them) — see applyGolfShot.
-  struckBalls?: GolfStruckBallResult[];
-}
-
-export interface GolfRoundState {
-  courseId: string;
-  turnOrder: number[]; // playersPublic indices, table order — cycled via modulo, never mutated
-  turnPointer: number; // ever-increasing; whose turn is turnOrder[turnPointer % turnOrder.length]
-  playerIdx: number;
-  // Current resting position for every player's ball, seeded at
-  // course.start for everyone when the round begins and updated to each
-  // shot's finalPos as it lands — this is what makes a shot start from
-  // wherever that player's ball stopped last time instead of the tee.
-  positions: Record<string, GolfPoint>;
-  strokeCounts: Record<string, number>;
-  // Full shot history in the order they happened — same "replay one at a
-  // time" mechanism as dice's rolls, driven by the client's own shownCount.
-  shots: GolfShotRecord[];
-  // Slugs that have sunk their ball, in the order they finished — skipped
-  // when the turn cycles round (see nextTurnIdx in lib/golf/engine.ts).
-  // The round only resolves once every player is in here; finishing first
-  // doesn't end it, only strokeCounts at that point does (see
-  // GolfRankingEntry) — order of finishing has no bearing on the result.
-  finishedSlugs: string[];
-  // Indices into course.obstacles of every tree destroyed so far this
-  // hole — shared across the whole room (one course instance per round,
-  // not per player), so once a tree is gone it's gone for everyone for
-  // the rest of the hole. Bumpers never appear here, only "tree" kind
-  // obstacles can be destroyed.
-  destroyedObstacles: number[];
-}
-
-export interface GolfRankingEntry {
-  slug: string;
-  name: string;
-  strokes: number;
-  // Dense rank (1 = best); tied stroke counts share a rank and the next
-  // rank isn't skipped, e.g. two players tied for 2nd are both rank 2 and
-  // whoever's next is rank 3, not 4.
-  rank: number;
-  gulps: number; // rank - 1, so a sole 1st place drinks nothing
-}
-
 // Tir à l'arc — turn-based, single pass around the table (nobody gets a
 // second turn), but each turn is 3 arrows shot back to back rather than
 // one action: the active player fires, watches it land, then immediately
@@ -596,7 +385,7 @@ export interface ArcheryWind {
 
 // Computed entirely server-side from (aim, wind, power) — see
 // applyArcheryShot's own comment for why this one isn't trusted from the
-// client the way golf's shot physics are.
+// client on purpose.
 export interface ArcheryShotRecord {
   slug: string;
   name: string;
@@ -615,7 +404,7 @@ export interface ArcheryRoundState {
   playerIdx: number;
   arrowNumber: number; // 1..ARCHERY_ARROWS_PER_TURN — which arrow the active player is about to shoot
   wind: ArcheryWind; // current wind, regenerated before every single arrow
-  shots: ArcheryShotRecord[]; // in the order they happened — drives the "replay one at a time" UI, same as dice/golf
+  shots: ArcheryShotRecord[]; // in the order they happened — drives the "replay one at a time" UI, same as dice
 }
 
 export interface ArcheryRankingEntry {
@@ -669,7 +458,6 @@ export interface GameState {
   meme?: MemeRoundState;
   undercover?: UndercoverRoundState;
   blackjack?: BlackjackRoundState;
-  golf?: GolfRoundState;
   archery?: ArcheryRoundState;
   // ---- v2 ----
   // Mains privées (cartes) de la manche — jamais envoyées telles quelles,

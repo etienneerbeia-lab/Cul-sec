@@ -1,7 +1,7 @@
 import type { ArcheryPoint, ArcheryWind, ArcheryWindDirection } from "../game/types";
 
 // Coordinate space is arbitrary target units, not pixels — the screen
-// scales the whole board to fit, same convention as lib/golf/physics.ts.
+// scales the whole board to fit.
 // The board is a square target area with a short "runway" below it where
 // the flight animation starts, off the visible rings, so an incoming
 // arrow reads as flying in from the archer rather than popping into place.

@@ -1,7 +1,7 @@
 import type { RoundTypeId } from "./types";
 
-// Règles courtes affichées avant chaque mini-jeu : comment on joue, puis
-// qui boit combien. Une ligne = une idée, lisible en 10 secondes.
+// Règles de chaque mini-jeu, affichées dans le menu (bottom sheet) pendant
+// la partie : comment on joue, puis qui boit combien. Une ligne = une idée.
 export interface GameRules {
   how: string[];
   gulps: string[];
@@ -78,10 +78,6 @@ export const RULES: Record<RoundTypeId, GameRules> = {
       "La banque tire jusqu'à 17 ; avec un As ou un 10 visible, elle vérifie son blackjack.",
     ],
     gulps: ["Perdu ou sauté : tu bois ta mise.", "Gagné : tu fais boire ta mise à qui tu veux (blackjack : ×1,5)."],
-  },
-  golf: {
-    how: ["Tire en arrière depuis ta balle pour viser, relâche pour frapper.", "Chacun joue son trou, 6 coups maximum."],
-    gulps: ["Tu bois l'écart de coups avec le meilleur (5 max).", "Trou en un : tous les autres boivent 2."],
   },
   archery: {
     how: [

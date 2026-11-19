@@ -16,6 +16,16 @@ import type {
 // entries are always appended in the same order the underlying cards[]
 // array itself was built in. Shared between server (push order) and
 // client (render order) so the two can never drift apart.
+// Rythme du rejeu côté client : distribution rapide, puis la banque joue
+// lentement (retourne sa carte cachée, puis tire une carte à la fois).
+export const BJ_DEAL_MS = 450;
+export const BJ_DEALER_MS = 850;
+
+// Délai avant d'afficher l'événement du journal.
+export function dealEventDelay(e: BlackjackDealEvent): number {
+  return e.target === "dealer-reveal" || e.target === "dealer-hit" ? BJ_DEALER_MS : BJ_DEAL_MS;
+}
+
 export function revealedCount(
   log: BlackjackDealEvent[],
   target: BlackjackDealEvent["target"],
@@ -247,6 +257,7 @@ function startDealerTurn(g: GameState): void {
   bj.stage = "dealerTurn";
   bj.dealer.cards.push(bj.dealer.hiddenCard!);
   bj.dealer.hiddenCard = null;
+  bj.dealLog.push({ target: "dealer-reveal" });
   while (handValue(bj.dealer.cards) < 17) {
     bj.dealer.cards.push(bj.deck.shift()!);
     bj.dealLog.push({ target: "dealer-hit" });

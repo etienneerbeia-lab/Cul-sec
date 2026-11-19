@@ -8,18 +8,16 @@ import {
   blackjackHit,
   blackjackSplit,
   blackjackStand,
+  dealEventDelay,
   handValue,
   startBlackjackRound,
 } from "../blackjack/engine";
-import { applyGolfShot, golfActiveSlug, startGolfRound } from "../golf/engine";
-import { golfCourseById } from "../golf/courses";
-import { GOLF_MAX_SPEED, GOLF_STEP_DT, simulateShot } from "../golf/physics";
 import { applyArcheryShot, archeryActiveSlug, startArcheryRound } from "../archery/engine";
 import { ARCHERY_CENTER, ARCHERY_LAUNCH_POINT, ARCHERY_MAX_DEVIATION, WIND_VECTORS } from "../archery/physics";
-import type { Card, GameState, GolfPoint } from "../game/types";
+import type { ArcheryPoint, Card, GameState } from "../game/types";
 
-function isPoint(v: unknown): v is GolfPoint {
-  const p = v as GolfPoint;
+function isPoint(v: unknown): v is ArcheryPoint {
+  const p = v as ArcheryPoint;
   return !!p && typeof p === "object" && Number.isFinite(p.x) && Number.isFinite(p.y);
 }
 
@@ -129,70 +127,15 @@ export const blackjackModule: GameModule = {
   botDelay(g) {
     const bj = g.blackjack!;
     // Laisse le temps aux cartes de la distribution initiale d'apparaître
-    // (500 ms chacune côté client) avant que le premier bot ne joue.
+    // côté client avant que le premier bot ne joue…
     const firstTurn = bj.stage === "playerTurns" && bj.players.every((p) => p.hands.every((h) => h.cards.length <= 2));
-    const extra = firstTurn ? bj.dealLog.length * 500 : 0;
+    let extra = firstTurn ? bj.dealLog.reduce((t, e) => t + dealEventDelay(e), 0) : 0;
+    // …et à la banque de finir de jouer avant la première distribution.
+    if (bj.stage === "distributing" && !bj.results?.some((r) => r.distributedTo)) {
+      const i = bj.dealLog.findIndex((e) => e.target === "dealer-reveal");
+      if (i >= 0) extra = bj.dealLog.slice(i).reduce((t, e) => t + dealEventDelay(e), 0);
+    }
     return [1500 + extra, 3200 + extra];
-  },
-};
-
-// ---------- Mini-golf ----------
-function golfShotFor(g: GameState, slug: string, velocity: GolfPoint) {
-  const gl = g.golf!;
-  const course = golfCourseById(gl.courseId);
-  const otherBalls = g.playersPublic
-    .filter((p) => p.slug !== slug && !gl.finishedSlugs.includes(p.slug))
-    .map((p) => ({ slug: p.slug, pos: gl.positions[p.slug] ?? course.start }));
-  return simulateShot(course, gl.positions[slug] ?? course.start, velocity, gl.destroyedObstacles, otherBalls);
-}
-
-function golfBotVelocity(g: GameState, slug: string, skilled: boolean): GolfPoint {
-  const gl = g.golf!;
-  const course = golfCourseById(gl.courseId);
-  const pos = gl.positions[slug] ?? course.start;
-  const base = Math.atan2(course.hole.y - pos.y, course.hole.x - pos.x);
-  // Cherche parmi des coups au hasard celui qui finit le plus près du
-  // trou, puis l'exécute avec une petite imprécision humaine.
-  let best: { v: GolfPoint; d: number } | null = null;
-  const tries = skilled ? 70 : 12;
-  for (let i = 0; i < tries; i++) {
-    const angle = i < tries / 2 ? base + rand(-0.5, 0.5) : rand(-Math.PI, Math.PI);
-    const speed = rand(0.25, 1) * GOLF_MAX_SPEED;
-    const v = { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed };
-    const r = golfShotFor(g, slug, v);
-    const d = r.sunk ? 0 : r.wentInWater ? 1e6 : Math.hypot(r.finalPos.x - course.hole.x, r.finalPos.y - course.hole.y);
-    if (!best || d < best.d) best = { v, d };
-  }
-  const v = best!.v;
-  const a = Math.atan2(v.y, v.x) + rand(-0.05, 0.05);
-  const s = Math.hypot(v.x, v.y) * rand(0.93, 1.07);
-  return { x: Math.cos(a) * s, y: Math.sin(a) * s };
-}
-
-export const golfModule: GameModule = {
-  id: "golf",
-  minPlayers: roundTypeById("golf").minPlayers,
-  start: (g) => startGolfRound(g),
-  act(g, slug, a) {
-    if (g.phase !== "golf" || !g.golf || a.type !== "golfShot") notNow();
-    if (golfActiveSlug(g) !== slug) fail(403, "Ce n'est pas ton tour.");
-    if (!isPoint(a.velocity)) fail(400, "Coup invalide.");
-    const v = a.velocity as GolfPoint;
-    const speed = Math.hypot(v.x, v.y);
-    const k = speed > GOLF_MAX_SPEED ? GOLF_MAX_SPEED / speed : 1;
-    const r = golfShotFor(g, slug, { x: v.x * k, y: v.y * k });
-    applyGolfShot(g, slug, r.path, r.finalPos, r.sunk, r.wentInWater, r.destroyedObstacle, r.struckBalls);
-  },
-  pending(g) {
-    if (g.phase !== "golf" || !g.golf) return null;
-    return { key: `golf:${g.golf.shots.length}`, actors: [golfActiveSlug(g)], timeoutMs: 45000 };
-  },
-  auto: (g, slug, _ctx, { bot }) => ({ type: "golfShot", velocity: golfBotVelocity(g, slug, bot) }),
-  botDelay(g) {
-    // Attend la fin du replay du coup précédent chez les joueurs.
-    const last = g.golf!.shots[g.golf!.shots.length - 1];
-    const anim = last ? last.path.length * GOLF_STEP_DT * 1000 + 1500 : 0;
-    return [anim + 1200, anim + 2800];
   },
 };
 
@@ -205,7 +148,7 @@ export const archeryModule: GameModule = {
     if (g.phase !== "archery" || !g.archery || a.type !== "archeryShot") notNow();
     if (archeryActiveSlug(g) !== slug) fail(403, "Ce n'est pas ton tour.");
     if (!isPoint(a.aim) || typeof a.power !== "number" || !Number.isFinite(a.power)) fail(400, "Tir invalide.");
-    applyArcheryShot(g, slug, a.aim as GolfPoint, a.power as number);
+    applyArcheryShot(g, slug, a.aim as ArcheryPoint, a.power as number);
   },
   pending(g) {
     if (g.phase !== "archery" || !g.archery) return null;
