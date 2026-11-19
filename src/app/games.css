@@ -214,11 +214,16 @@
   fill: var(--muted);
   opacity: 0.5;
 }
-.archery-arrow {
-  opacity: 0.95;
+/* Flèches plantées : la dernière tirée est pleine et légèrement
+   soulignée ; les anciennes sont atténuées pour laisser lire la nouvelle. */
+.archery-arrow-latest {
+  filter: drop-shadow(0 0 1.6px rgba(255, 255, 255, 0.55));
 }
-.archery-arrow-moving {
-  filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.5));
+.archery-arrow-old {
+  opacity: 0.72;
+}
+.archery-arrow-flight {
+  filter: drop-shadow(1.5px 3px 2px rgba(0, 0, 0, 0.35));
 }
 /* Reticle: a static track ring plus a ring drawn via stroke-dashoffset
    that fills clockwise as the hold-to-charge power climbs (see
@@ -243,11 +248,15 @@
   stroke-width: 1.5;
 }
 .archery-score-pop {
-  font-size: 42px;
+  pointer-events: none;
+}
+.archery-score-pill {
+  fill: rgba(16, 10, 24, 0.88);
+  stroke: var(--gold);
+  stroke-width: 0.8;
+}
+.archery-score-text {
+  font-size: 9.5px;
   font-weight: 800;
   fill: var(--gold);
-  paint-order: stroke;
-  stroke: rgba(0, 0, 0, 0.65);
-  stroke-width: 5px;
-  stroke-linejoin: round;
 }

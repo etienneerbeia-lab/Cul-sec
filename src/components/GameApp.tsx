@@ -294,9 +294,10 @@ export default function GameApp() {
           busy={busy}
           error={error}
           previousEnabledRoundTypeIds={game?.enabledRoundTypeIds}
-          onLaunch={(totalRounds: number, culSecRule: CulSecRule, enabledRoundTypeIds: RoundTypeId[], bots: number) =>
+          previousAdultMode={game?.adultMode}
+          onLaunch={(totalRounds: number, culSecRule: CulSecRule, enabledRoundTypeIds: RoundTypeId[], bots: number, adultMode: boolean) =>
             runAction(() =>
-              apiPost(`/api/rooms/${roomCode}/launch`, { totalRounds, culSecRule, enabledRoundTypeIds, bots })
+              apiPost(`/api/rooms/${roomCode}/launch`, { totalRounds, culSecRule, enabledRoundTypeIds, bots, adultMode })
             )
           }
           onRename={(name: string) => runAction(() => apiPost(`/api/rooms/${roomCode}/rename`, { name }))}

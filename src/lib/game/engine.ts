@@ -54,7 +54,8 @@ export function launchGame(
   players: Player[],
   totalRounds: number,
   culSecRule: CulSecRule,
-  enabledRoundTypeIds: RoundTypeId[]
+  enabledRoundTypeIds: RoundTypeId[],
+  adultMode = false
 ): GameState {
   const playersPublic: PlayerPublic[] = players.map((p) => ({
     name: p.name,
@@ -74,6 +75,7 @@ export function launchGame(
     totalRounds,
     enabledRoundTypeIds,
     culSecRule,
+    adultMode,
     seq: 0,
   };
   setupRoundType(g);

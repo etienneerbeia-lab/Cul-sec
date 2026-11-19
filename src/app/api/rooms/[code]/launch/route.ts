@@ -17,6 +17,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cod
     const body = await readBody(req);
     const totalRounds = Number(body.totalRounds);
     const culSecRule: CulSecRule = body.culSecRule === "first" ? "first" : "last";
+    const adultMode = body.adultMode === true;
     if (!VALID_ROUND_COUNTS.has(totalRounds)) fail(400, "Nombre de manches invalide.");
     const enabled: RoundTypeId[] = Array.isArray(body.enabledRoundTypeIds)
       ? (body.enabledRoundTypeIds as unknown[]).filter(
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cod
         if (playableTypes(enabled, table.length).length === 0)
           fail(400, "Aucun des mini-jeux choisis n'est jouable avec si peu de joueurs : ajoute des bots.");
         room.players = table;
-        room.game = launchGame(table, totalRounds, culSecRule, enabled);
+        room.game = launchGame(table, totalRounds, culSecRule, enabled, adultMode);
         tick(room, Date.now(), snap.seen);
         return true;
       },

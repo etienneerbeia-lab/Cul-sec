@@ -13,7 +13,7 @@ Next.js 16 · React 19 · Tailwind 4 · Upstash Redis · PWA.
 | Poker ♠️ | 2+ | Texas Hold'em ; se coucher = boire le pot (sans les mises refusées). |
 | Bataille ⚔️ | 2+ | Duel de cartes, « bataille ! » en cas d'égalité, paris des spectateurs. |
 | Culture G 🧠 | 1+ | 5 QCM chronométrés pour tout le monde en même temps. |
-| Tu préfères / Qui de nous 🗳️ | 3+ | Vote secret ; la minorité ou le désigné boit. |
+| Tu préfères / Qui de nous 🗳️ | 3+ | Vote secret ; la minorité ou le désigné boit. Mode 18+ 🌶️ optionnel dans le salon. |
 | Mèmes 😂 | 3+ | Légende la plus drôle, vote, la moins drôle boit. |
 | 421 🎲 | 2+ | 3 dés, 3 lancers, on garde ce qu'on veut. |
 | Undercover 🕵️ | 4+ | Un imposteur, des indices, un vote. |
