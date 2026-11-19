@@ -20,7 +20,8 @@ export type RoundTypeId =
   | "dice"
   | "undercover"
   | "blackjack"
-  | "archery";
+  | "archery"
+  | "reflex";
 
 export interface RoundType {
   id: RoundTypeId;
@@ -66,6 +67,7 @@ export type GamePhase =
   | "duel"
   | "qcm"
   | "dice421"
+  | "reflex"
   | "final";
 
 export type Street = "single" | "preflop" | "flop" | "turn" | "river";
@@ -155,6 +157,8 @@ export interface VoteRoundState {
   mode?: "tp" | "qui";
   // Question tirée du pool 18+.
   spicy?: boolean;
+  // Question écrite par un joueur de la table.
+  custom?: boolean;
   question: VoteQuestionState;
   prompt?: string;
   askedAt: number;
@@ -185,6 +189,8 @@ export interface MemeVoteTally {
 
 export interface MemeRoundState {
   template: MemeTemplateRef;
+  // Mode 18+ : thème imposé pour la légende.
+  theme?: string;
   askedAt: number;
   // slug -> caption text. Stripped entirely from the state API while
   // phase is "memeCaption" (nobody, not even the author, needs the
@@ -458,6 +464,9 @@ export interface GameState {
   // Mode 18+ activé par l'hôte (avec confirmation) : « Tu préfères » et
   // « Qui de nous » piochent surtout dans les pools adultes.
   adultMode?: boolean;
+  // Questions de la table, copiées du salon au lancement. Jamais envoyées
+  // aux clients (voir view.ts) : la surprise fait tout.
+  customQuestions?: CustomQuestion[];
   culSecTargetSlug?: string;
   vote?: VoteRoundState;
   meme?: MemeRoundState;
@@ -475,11 +484,27 @@ export interface GameState {
   highlow?: HighLowState;
   duel?: DuelState;
   qcm?: QcmState;
+  reflex?: ReflexState;
   dice421?: Dice421State;
   // Incrémenté à chaque action acceptée : sert de clé d'attente aux jeux
   // tour par tour (chaque coup ouvre une nouvelle attente).
   seq?: number;
 }
+
+// Question écrite par un joueur dans le salon (« Questions de la table »),
+// mélangée aux pools de « Tu préfères » / « Qui de nous ». Anonyme à
+// l'affichage.
+export interface CustomQuestion {
+  id: string;
+  authorSlug: string;
+  mode: "tp" | "qui";
+  promptA?: string;
+  promptB?: string;
+  // « Qui de nous » : la suite de la phrase, sans « Qui de nous ».
+  prompt?: string;
+}
+
+export const MAX_CUSTOM_QUESTIONS_PER_PLAYER = 2;
 
 export interface Player {
   name: string;
@@ -590,4 +615,28 @@ export interface Dice421State {
   pointer: number;
   current: Dice421Roll | null; // lancer du joueur actif
   finished: Dice421Roll[];
+}
+
+// Réflexe : l'écran passe au vert à un instant aléatoire (heure serveur
+// goAt), chacun tape le plus vite possible. Le temps de réaction est
+// mesuré sur le téléphone (pas de latence réseau), en ms. "early" = tapé
+// avant le vert ; null = pas tapé dans le temps imparti.
+export type ReflexTap = number | "early" | null;
+
+export interface ReflexCoup {
+  taps: Record<string, ReflexTap>;
+  slowest: string[];
+  early: string[];
+  fastest?: string;
+}
+
+export interface ReflexState {
+  coup: number; // 0-based
+  coups: number;
+  stage: "wait" | "reveal";
+  goAt: number;
+  // Délai entre le début du coup et le vert (pour les chronos du serveur).
+  delayMs: number;
+  taps: Record<string, ReflexTap>;
+  history: ReflexCoup[];
 }

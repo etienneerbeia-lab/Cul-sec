@@ -81,6 +81,14 @@ export const ROUND_TYPES: RoundType[] = [
     icon: "🏹",
     cards: 0,
   },
+  {
+    id: "reflex",
+    minPlayers: 2,
+    label: "Réflexe",
+    tagline: "Attends le vert. Tape. Le plus lent boit.",
+    icon: "⚡",
+    cards: 0,
+  },
 ];
 
 export function roundTypeById(id: string): RoundType {

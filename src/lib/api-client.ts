@@ -1,4 +1,4 @@
-import type { Card, GameState, Player } from "./game/types";
+import type { Card, CustomQuestion, GameState, Player } from "./game/types";
 
 async function unwrap<T>(res: Response): Promise<T> {
   const data = await res.json().catch(() => ({}));
@@ -51,6 +51,8 @@ export interface StateResponse {
   mySlug: string | null;
   myName: string | null;
   isHost: boolean;
+  myQuestions?: CustomQuestion[];
+  tableQuestionCount?: number;
 }
 
 export type BetAction = "fold" | "call" | "raise" | "check" | "bet";

@@ -87,4 +87,14 @@ export const RULES: Record<RoundTypeId, GameRules> = {
     ],
     gulps: ["1 gorgée par tranche de 6 points de retard sur le meilleur (5 max)."],
   },
+  reflex: {
+    how: [
+      "L'écran est rouge : ne touche à rien. Il passe au vert à un moment au hasard.",
+      "Dès qu'il est vert, tape n'importe où, le plus vite possible. 3 coups par manche.",
+    ],
+    gulps: [
+      "À chaque coup, le plus lent (ou celui qui n'a pas tapé) boit 1 gorgée.",
+      "Taper avant le vert : faux départ, 2 gorgées.",
+    ],
+  },
 };

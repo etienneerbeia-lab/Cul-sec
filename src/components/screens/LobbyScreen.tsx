@@ -2,7 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ROUND_TYPES } from "@/lib/game/roundTypes";
-import { MIN_ENABLED_ROUND_TYPES, type CulSecRule, type Player, type RoundTypeId } from "@/lib/game/types";
+import {
+  MAX_CUSTOM_QUESTIONS_PER_PLAYER,
+  MIN_ENABLED_ROUND_TYPES,
+  type CulSecRule,
+  type CustomQuestion,
+  type Player,
+  type RoundTypeId,
+} from "@/lib/game/types";
 import { haptic } from "@/lib/haptics";
 import { Button } from "../ui/Button";
 import { Chips, Stepper, TextField } from "../ui/Form";
@@ -23,6 +30,10 @@ export default function LobbyScreen({
   error,
   previousEnabledRoundTypeIds,
   previousAdultMode,
+  myQuestions = [],
+  tableQuestionCount = 0,
+  onAddQuestion,
+  onRemoveQuestion,
   onLaunch,
   onRename,
 }: {
@@ -34,6 +45,10 @@ export default function LobbyScreen({
   error: string;
   previousEnabledRoundTypeIds?: RoundTypeId[];
   previousAdultMode?: boolean;
+  myQuestions?: CustomQuestion[];
+  tableQuestionCount?: number;
+  onAddQuestion: (q: NewQuestion) => Promise<void>;
+  onRemoveQuestion: (id: string) => Promise<void>;
   onLaunch: (totalRounds: number, culSecRule: CulSecRule, enabledRoundTypeIds: RoundTypeId[], bots: number, adultMode: boolean) => void;
   onRename: (name: string) => void;
 }) {
@@ -156,6 +171,15 @@ export default function LobbyScreen({
         </div>
       </Section>
 
+      <TableQuestions
+        mine={myQuestions}
+        total={tableQuestionCount}
+        busy={busy}
+        error={isHost ? "" : error}
+        onAdd={onAddQuestion}
+        onRemove={onRemoveQuestion}
+      />
+
       {isHost ? (
         <>
           <Section title="Nombre de manches">
@@ -246,6 +270,110 @@ export default function LobbyScreen({
   );
 }
 
+export type NewQuestion = { mode: "tp"; promptA: string; promptB: string } | { mode: "qui"; prompt: string };
+
+// « Questions de la table » : en attendant le lancement, chacun écrit
+// jusqu'à 2 questions (Tu préfères ou Qui de nous), anonymes, mélangées
+// aux pools pendant la partie. Chacun ne voit que les siennes.
+function TableQuestions({
+  mine,
+  total,
+  busy,
+  error,
+  onAdd,
+  onRemove,
+}: {
+  mine: CustomQuestion[];
+  total: number;
+  busy: boolean;
+  error: string;
+  onAdd: (q: NewQuestion) => Promise<void>;
+  onRemove: (id: string) => Promise<void>;
+}) {
+  const [mode, setMode] = useState<"tp" | "qui">("tp");
+  const [a, setA] = useState("");
+  const [b, setB] = useState("");
+  const [qui, setQui] = useState("");
+  const full = mine.length >= MAX_CUSTOM_QUESTIONS_PER_PLAYER;
+  const valid = mode === "tp" ? a.trim().length >= 2 && b.trim().length >= 2 : qui.trim().length >= 2;
+  const others = total - mine.length;
+
+  async function submit() {
+    if (!valid || busy) return;
+    await onAdd(mode === "tp" ? { mode, promptA: a.trim(), promptB: b.trim() } : { mode, prompt: qui.trim() });
+    setA("");
+    setB("");
+    setQui("");
+  }
+
+  return (
+    <Section title={`Questions de la table ✍️${total ? ` · ${total}` : ""}`}>
+      <Card>
+        <p className="mb-3 text-[0.88rem] leading-snug text-ink-2">
+          En attendant le lancement, glisse jusqu&apos;à {MAX_CUSTOM_QUESTIONS_PER_PLAYER} questions sur les gens présents. Elles
+          sortiront en anonyme pendant les votes.
+          {others > 0 && ` ${others} déjà écrite${others > 1 ? "s" : ""} par les autres 👀`}
+        </p>
+        {mine.length > 0 && (
+          <div className="mb-3 flex flex-col gap-2">
+            {mine.map((q) => (
+              <div key={q.id} className="flex items-start gap-2 rounded-xl bg-white/5 px-3 py-2 text-[0.9rem] leading-snug">
+                <span className="flex-1">
+                  {q.mode === "qui" ? `Qui de nous ${q.prompt} ?` : `${q.promptA} — ou — ${q.promptB}`}
+                </span>
+                <button
+                  type="button"
+                  aria-label="Supprimer"
+                  disabled={busy}
+                  onClick={() => onRemove(q.id)}
+                  className="shrink-0 px-1 text-mute"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        {!full && (
+          <form
+            className="flex flex-col gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void submit();
+            }}
+          >
+            <Chips
+              options={[
+                { value: "tp" as const, label: "Tu préfères" },
+                { value: "qui" as const, label: "Qui de nous" },
+              ]}
+              value={mode}
+              onChange={setMode}
+            />
+            {mode === "tp" ? (
+              <>
+                <TextField placeholder="Option 1 (ex. Rouler une pelle à Jules)" maxLength={90} value={a} onChange={(e) => setA(e.target.value)} />
+                <TextField placeholder="Option 2 (ex. Lécher la barre du métro)" maxLength={90} value={b} onChange={(e) => setB(e.target.value)} />
+              </>
+            ) : (
+              <TextField
+                placeholder="Qui de nous… (ex. finit chez l'ex de Léa ?)"
+                maxLength={120}
+                value={qui}
+                onChange={(e) => setQui(e.target.value)}
+              />
+            )}
+            <Button type="submit" variant="secondary" size="sm" disabled={!valid || busy}>
+              Ajouter ma question
+            </Button>
+          </form>
+        )}
+        {error && <div className="mt-2"><Note tone="danger">{error}</Note></div>}
+      </Card>
+    </Section>
+  );
+}
+
 function AdultToggle({
   on,
   confirming,
@@ -275,7 +403,9 @@ function AdultToggle({
         <span className="min-w-0">
           <span className="block font-display text-[1.05rem] font-bold">Mode 18+ 🌶️</span>
           <span className="block text-[0.82rem] leading-snug text-ink-2">
-            {on ? "Tu préfères et Qui de nous version trash. Âmes sensibles s'abstenir." : "Questions crues pour Tu préfères et Qui de nous."}
+            {on
+              ? "Votes, Undercover et Mèmes version trash. Âmes sensibles s'abstenir."
+              : "Contenu cru pour Tu préfères, Qui de nous, Undercover et Mèmes."}
           </span>
         </span>
         <span className={`relative h-7 w-12 shrink-0 rounded-full transition ${on ? "bg-danger" : "bg-white/15"}`}>

@@ -11,7 +11,7 @@ export interface PlayerView {
 // est secret (mains des autres, cartes à venir, réponses, votes en cours,
 // identité de l'imposteur, sabot du blackjack, planning des bots).
 export function viewFor(game: GameState, slug: string | null): PlayerView {
-  let g: GameState = { ...game, hands: undefined, botPlan: undefined };
+  let g: GameState = { ...game, hands: undefined, botPlan: undefined, customQuestions: undefined };
   let myHand: Card[] | null = null;
   let myVoteChoice: string | null = null;
   let myUndercoverWord: string | null = null;

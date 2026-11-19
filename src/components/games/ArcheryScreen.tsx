@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { haptic } from "@/lib/haptics";
+import { playSound } from "@/lib/sound";
 import { useGame } from "../GameContext";
 import { TimerBar } from "../ui/Feedback";
 import { Kicker, Screen } from "../ui/Layout";
@@ -113,6 +114,7 @@ export default function ArcheryScreen() {
           players={game.playersPublic}
           pendingShot={pendingShot}
           onShotAnimDone={() => setShownCount((n) => n + 1)}
+          onImpact={() => playSound("impact")}
           interactive={isMeActive && !pendingShot}
           busy={busy}
           onFire={(aim, power) => {
@@ -206,6 +208,7 @@ function ArcheryBoard({
   players,
   pendingShot,
   onShotAnimDone,
+  onImpact,
   interactive,
   busy,
   onFire,
@@ -214,6 +217,7 @@ function ArcheryBoard({
   players: GameState["playersPublic"];
   pendingShot: ArcheryShotRecord | null;
   onShotAnimDone: () => void;
+  onImpact?: (points: number) => void;
   interactive: boolean;
   busy: boolean;
   onFire: (aim: ArcheryPoint, power: number) => void;
@@ -254,6 +258,7 @@ function ArcheryBoard({
     const impact = pendingShot.impact;
     const start = performance.now();
     let raf = 0;
+    let impacted = false;
     function tick(now: number) {
       // L'horodatage rAF peut précéder performance.now() pris au montage.
       const elapsed = Math.max(0, now - start);
@@ -276,6 +281,11 @@ function ArcheryBoard({
         return;
       }
       const sinceImpact = elapsed - ARCHERY_FLIGHT_MS;
+      if (!impacted) {
+        impacted = true;
+        haptic("impact");
+        onImpact?.(pendingShot!.points);
+      }
       const w = sinceImpact < ARCHERY_WOBBLE_MS ? sinceImpact / ARCHERY_WOBBLE_MS : 1;
       const wobble = w < 1 ? 7 * Math.exp(-4 * w) * Math.sin(w * Math.PI * 7) : 0;
       setFlight({ pos: impact, scale: 1, wobble, landed: true });

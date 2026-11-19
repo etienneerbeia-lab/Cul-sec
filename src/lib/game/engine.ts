@@ -101,6 +101,7 @@ function resetRoundFields(g: GameState): void {
   g.highlow = undefined;
   g.duel = undefined;
   g.qcm = undefined;
+  g.reflex = undefined;
   g.dice421 = undefined;
   g.timer = undefined;
   g.botPlan = undefined;

@@ -105,6 +105,12 @@ export default function MemeScreen() {
         <div className="mb-3">
           <TimerBar deadlineAt={game.timer?.deadlineAt} totalMs={MEME_CAPTION_MS} />
         </div>
+        {m.theme && (
+          <div className="mb-3 rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-center">
+            <span className="text-[0.7rem] font-bold uppercase tracking-wider text-danger">Thème 18+ 🌶️</span>
+            <div className="font-display text-[1.05rem] font-bold leading-snug">{m.theme}</div>
+          </div>
+        )}
         <Meme url={m.template.url} ratio={m.template.width / m.template.height} caption={sent ? undefined : draft} />
         <p className="mt-3 text-center text-sm text-mute">Le temps écoulé, ce que tu as tapé est envoyé tel quel.</p>
         <AutoSubmit draft={draft} />

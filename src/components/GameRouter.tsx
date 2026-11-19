@@ -11,6 +11,7 @@ import HighLowScreen from "./games/HighLowScreen";
 import MemeScreen from "./games/MemeScreen";
 import PokerScreen from "./games/PokerScreen";
 import QcmScreen from "./games/QcmScreen";
+import ReflexScreen from "./games/ReflexScreen";
 import UndercoverScreen from "./games/UndercoverScreen";
 import VoteScreen from "./games/VoteScreen";
 import FinalScreen from "./screens/FinalScreen";
@@ -29,6 +30,7 @@ const SCREENS: Record<RoundTypeId, { phases: GamePhase[]; Screen: ComponentType 
   undercover: { phases: ["undercoverClue", "undercoverVote", "undercoverGuess"], Screen: UndercoverScreen },
   blackjack: { phases: ["blackjack"], Screen: BlackjackScreen },
   archery: { phases: ["archery"], Screen: ArcheryScreen },
+  reflex: { phases: ["reflex"], Screen: ReflexScreen },
 };
 
 export default function GameRouter({ onQuit }: { onQuit: () => void }) {

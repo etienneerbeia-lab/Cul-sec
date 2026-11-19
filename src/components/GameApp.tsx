@@ -1,13 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { apiDelete, apiGet, apiPost, type RoomResponse, type SessionResponse, type StateResponse } from "@/lib/api-client";
 import { syncClock } from "@/lib/clock";
 import { haptic } from "@/lib/haptics";
+import { onSoundChange, playSound, setSoundEnabled, soundEnabled } from "@/lib/sound";
 import { useViewportHeight } from "@/lib/useViewportHeight";
 import { roundTypeById } from "@/lib/game/roundTypes";
 import { RULES } from "@/lib/game/rules";
-import type { Card, CulSecRule, GameState, Player, RoundTypeId } from "@/lib/game/types";
+import type { Card, CulSecRule, CustomQuestion, GameState, Player, RoundTypeId } from "@/lib/game/types";
 import { GameContext, type GameCtx } from "./GameContext";
 import { Button, IconButton } from "./ui/Button";
 import { CountUp, Sheet } from "./ui/Feedback";
@@ -26,6 +27,8 @@ export default function GameApp() {
   const [mySlug, setMySlug] = useState("");
   const [isHost, setIsHost] = useState(false);
   const [players, setPlayers] = useState<Player[]>([]);
+  const [myQuestions, setMyQuestions] = useState<CustomQuestion[]>([]);
+  const [tableQuestionCount, setTableQuestionCount] = useState(0);
   const [game, setGame] = useState<GameState | null>(null);
   const [myHand, setMyHand] = useState<Card[] | null>(null);
   const [myVoteChoice, setMyVoteChoice] = useState<string | null>(null);
@@ -78,6 +81,8 @@ export default function GameApp() {
         if (data.v < versionRef.current) return;
         versionRef.current = data.v;
         setPlayers(data.players);
+        setMyQuestions(data.myQuestions ?? []);
+        setTableQuestionCount(data.tableQuestionCount ?? 0);
         setGame(data.game);
         setMyHand(data.myHand);
         setMyVoteChoice(data.myVoteChoice);
@@ -295,6 +300,10 @@ export default function GameApp() {
           error={error}
           previousEnabledRoundTypeIds={game?.enabledRoundTypeIds}
           previousAdultMode={game?.adultMode}
+          myQuestions={myQuestions}
+          tableQuestionCount={tableQuestionCount}
+          onAddQuestion={(q) => runAction(() => apiPost(`/api/rooms/${roomCode}/questions`, { action: "add", ...q }))}
+          onRemoveQuestion={(id) => runAction(() => apiPost(`/api/rooms/${roomCode}/questions`, { action: "remove", id }))}
           onLaunch={(totalRounds: number, culSecRule: CulSecRule, enabledRoundTypeIds: RoundTypeId[], bots: number, adultMode: boolean) =>
             runAction(() =>
               apiPost(`/api/rooms/${roomCode}/launch`, { totalRounds, culSecRule, enabledRoundTypeIds, bots, adultMode })
@@ -377,6 +386,7 @@ export default function GameApp() {
             </div>
           </>
         )}
+        <SoundToggle />
         <div className="flex flex-col gap-2">
           {isHost && inGame && phase !== "final" && (
             <Button variant="secondary" onClick={() => setConfirm("lobby")}>
@@ -440,6 +450,7 @@ function useDrinkToast(game: GameState | null, myGulps: number, seated: boolean)
     last.current = myGulps;
     if (prev === null || myGulps <= prev) return;
     haptic("drink");
+    playSound("drink");
     const id = Date.now();
     const show = setTimeout(() => setToast({ n: myGulps - prev, id }), 0);
     const hide = setTimeout(() => setToast((t) => (t?.id === id ? null : t)), 2800);
@@ -449,4 +460,22 @@ function useDrinkToast(game: GameState | null, myGulps: number, seated: boolean)
     };
   }, [myGulps, active]);
   return toast;
+}
+
+function SoundToggle() {
+  const on = useSyncExternalStore(onSoundChange, soundEnabled, () => true);
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      onClick={() => setSoundEnabled(!on)}
+      className="cs-row mb-4 w-full text-left"
+    >
+      <span className="flex-1 font-semibold">{on ? "🔊 Sons activés" : "🔇 Sons coupés"}</span>
+      <span className={`relative h-6 w-11 shrink-0 rounded-full transition ${on ? "bg-neon" : "bg-white/15"}`}>
+        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${on ? "left-[1.4rem]" : "left-0.5"}`} />
+      </span>
+    </button>
+  );
 }
