@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { handValue, revealedCount } from "@/lib/blackjack/engine";
+import { dealEventDelay, handValue, revealedCount } from "@/lib/blackjack/engine";
 import type { BlackjackHand } from "@/lib/game/types";
 import { haptic } from "@/lib/haptics";
 import { useGame } from "../GameContext";
@@ -12,7 +12,6 @@ import { Kicker, Screen } from "../ui/Layout";
 import { Avatar, cleanName, PlayerName, PlayerRow } from "../ui/Players";
 import { GulpList, NextRoundActions, sumGulps } from "../ui/Results";
 
-const DEAL_MS = 450;
 const OUTCOME_LABEL = { win: "Gagné", lose: "Perdu", push: "Égalité", blackjack: "Blackjack !" } as const;
 
 export default function BlackjackScreen() {
@@ -21,29 +20,42 @@ export default function BlackjackScreen() {
   const done = game.phase === "showdown";
   const [bet, setBet] = useState(2);
 
-  // Les cartes arrivent une à une (rejoue le journal de distribution).
+  // Les cartes arrivent une à une (rejoue le journal de distribution), puis
+  // la banque retourne sa carte cachée et tire ses cartes une par une, plus
+  // lentement, chacune ajoutée à droite dans l'ordre réel du tirage.
+  // (Dépendances sur des valeurs, pas sur le tableau : chaque rafraîchissement
+  // renvoie un nouveau dealLog, qui ne doit pas relancer le minuteur.)
   const [shown, setShown] = useState(bj.dealLog.length);
+  const logLength = bj.dealLog.length;
+  const nextDelay = shown < logLength ? dealEventDelay(bj.dealLog[shown]) : 0;
   useEffect(() => {
-    if (shown >= bj.dealLog.length) return;
+    if (shown >= logLength) return;
     const t = setTimeout(() => {
       haptic("tap");
       setShown((n) => n + 1);
-    }, DEAL_MS);
+    }, nextDelay);
     return () => clearTimeout(t);
-  }, [shown, bj.dealLog.length]);
+  }, [shown, logLength, nextDelay]);
   const caughtUp = shown >= bj.dealLog.length;
   const log = useMemo(() => bj.dealLog.slice(0, shown), [bj.dealLog, shown]);
 
   const upShown = revealedCount(log, "dealer-up") > 0;
   const holeShown = revealedCount(log, "dealer-hidden") > 0;
+  // Ancien journal sans événement « dealer-reveal » : on retourne la carte
+  // à la fin du rejeu.
+  const hasRevealEvent = bj.dealLog.some((e) => e.target === "dealer-reveal");
+  const holeRevealed =
+    bj.dealer.cards.length > 1 && (hasRevealEvent ? revealedCount(log, "dealer-reveal") > 0 : caughtUp);
   const hits = revealedCount(log, "dealer-hit");
-  const holeRevealed = bj.dealer.cards.length > 1 && caughtUp;
-  const dealerCards = [
-    ...(upShown ? [bj.dealer.cards[0]] : []),
-    ...(holeShown && holeRevealed ? [bj.dealer.cards[1]] : []),
-    ...bj.dealer.cards.slice(2, 2 + hits),
+  // Toujours dans l'ordre du tirage : carte visible, carte cachée, puis tirages.
+  const dealerSlots = [
+    ...(upShown ? [{ key: "up", card: bj.dealer.cards[0] }] : []),
+    ...(holeShown ? [{ key: "hole", card: holeRevealed ? bj.dealer.cards[1] : null }] : []),
+    ...bj.dealer.cards.slice(2, 2 + hits).map((card, i) => ({ key: `hit-${i}`, card })),
   ];
+  const dealerCards = dealerSlots.flatMap((s) => (s.card ? [s.card] : []));
   const dealerTotal = handValue(dealerCards);
+  const dealerDone = caughtUp && holeRevealed;
 
   const turnPlayer = caughtUp && bj.stage === "playerTurns" ? bj.players[bj.turnPointer] : null;
   const myTurn = turnPlayer?.slug === mySlug;
@@ -109,7 +121,9 @@ export default function BlackjackScreen() {
     actions = (
       <Waiting>
         {!caughtUp
-          ? "Distribution…"
+          ? hasRevealEvent && shown >= bj.dealLog.findIndex((e) => e.target === "dealer-reveal")
+            ? "La banque joue…"
+            : "Distribution…"
           : turnPlayer
             ? `${cleanName(turnPlayer.name)} joue…`
             : pending
@@ -131,16 +145,22 @@ export default function BlackjackScreen() {
         <div className="mb-2 flex items-center justify-between">
           <Kicker className="text-white/70!">Banque</Kicker>
           {dealerCards.length > 0 && (
-            <span className={`font-display text-xl font-extrabold ${dealerTotal > 21 ? "text-danger" : "text-white"}`}>
-              {dealerTotal > 21 ? `${dealerTotal} · Sauté !` : dealerTotal}
+            <span
+              key={dealerCards.length}
+              className={`animate-pop font-display text-xl font-extrabold tabular-nums ${
+                dealerDone && dealerTotal > 21 ? "text-danger" : "text-white"
+              }`}
+            >
+              {dealerDone && dealerTotal > 21 ? `${dealerTotal} · Sauté !` : dealerTotal}
             </span>
           )}
         </div>
-        <div className="flex min-h-[90px] gap-1.5">
-          {dealerCards.map((c, i) => (
-            <PlayingCardV2 key={i} card={c} size="sm" />
+        <div className="flex min-h-[90px] flex-wrap gap-1.5">
+          {dealerSlots.map((s) => (
+            <div key={s.key} className={s.key.startsWith("hit") ? "bj-deal-in" : undefined}>
+              <PlayingCardV2 card={s.card} faceDown={!s.card} size="sm" />
+            </div>
           ))}
-          {holeShown && !holeRevealed && <PlayingCardV2 faceDown size="sm" />}
         </div>
         <p className="mt-2 text-center text-[0.7rem] font-semibold tracking-widest text-white/50 uppercase">
           La banque tire jusqu&apos;à 17 · Blackjack paie 3 pour 2

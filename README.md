@@ -18,10 +18,10 @@ Next.js 16 · React 19 · Tailwind 4 · Upstash Redis · PWA.
 | 421 🎲 | 2+ | 3 dés, 3 lancers, on garde ce qu'on veut. |
 | Undercover 🕵️ | 4+ | Un imposteur, des indices, un vote. |
 | Blackjack 🎰 | 1+ | Contre la banque, on mise ses gorgées. |
-| Mini-golf ⛳ | 1+ | 6 coups max, on boit l'écart avec le meilleur. |
 | Tir à l'arc 🏹 | 1+ | 3 flèches, vent, vraie cible à 10 anneaux. |
 
-Les règles complètes s'affichent avant chaque manche (`src/lib/game/rules.ts`).
+Les règles complètes sont dans le menu (☰) pendant la partie (`src/lib/game/rules.ts`) ;
+l'écran d'intro de chaque manche se limite à une phrase d'accroche.
 
 On peut lancer une partie seul : des bots (🤖) gérés par le serveur
 complètent la table. À plusieurs, un jeu sans assez de joueurs est sauté

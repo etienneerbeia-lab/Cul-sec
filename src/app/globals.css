@@ -250,6 +250,27 @@ h3,
     opacity: 0;
   }
 }
+@keyframes cs-intro-pulse {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: scale(0.94);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+@keyframes cs-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes cs-sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+}
 @keyframes cs-spin {
   to {
     transform: rotate(360deg);
@@ -523,33 +544,219 @@ h3,
     position: fixed;
     inset: 0;
     z-index: 60;
-    background: rgba(5, 2, 12, 0.66);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
     display: flex;
     align-items: flex-end;
     justify-content: center;
-    animation: cs-enter 0.25s ease both;
+  }
+  /* Le voile est un calque à part : pendant le glissé il s'estompe
+     (--sheet-dim) sans rendre la sheet elle-même transparente. */
+  .cs-sheet-backdrop::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(5, 2, 12, 0.66);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    opacity: var(--sheet-dim, 1);
+    transition: opacity var(--sheet-dim-t, 0s) ease;
+    animation: cs-fade-in 0.25s ease backwards;
   }
   .cs-sheet {
     width: 100%;
     max-width: 520px;
     max-height: calc(100% - var(--safe-top) - 24px);
     overflow-y: auto;
-    padding: 10px 20px calc(20px + var(--safe-bottom));
+    overscroll-behavior: contain;
+    padding: 0 20px calc(20px + var(--safe-bottom));
     border-radius: 28px 28px 0 0;
     background: linear-gradient(180deg, #24153f, #150c28);
     border: 1px solid var(--line);
     border-bottom: 0;
     box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.6);
-    animation: cs-rise 0.35s var(--ease-out) both;
+    position: relative;
+    will-change: transform;
+    /* « backwards » et pas « both » : une fois l'entrée finie, la
+       translation est pilotée en ligne par le glissé. */
+    animation: cs-sheet-up 0.38s cubic-bezier(0.32, 0.72, 0, 1) backwards;
+  }
+  /* Zone de saisie de la poignée : large et haute, collée en haut de la
+     sheet pendant le scroll. */
+  .cs-sheet-grip {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    margin: 0 -20px 6px;
+    padding: 10px 0 12px;
+    cursor: grab;
+    touch-action: none;
+    background: linear-gradient(180deg, #24153f 70%, rgba(36, 21, 63, 0));
+  }
+  .cs-sheet-grip:active {
+    cursor: grabbing;
   }
   .cs-sheet-handle {
     width: 44px;
     height: 5px;
     border-radius: 99px;
     background: var(--line-strong);
-    margin: 4px auto 14px;
+    margin: 0 auto;
+  }
+
+  /* Écran d'intro de manche (RoundIntroScreen), commun à tous les jeux. */
+  .cs-intro {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    /* margin auto (et pas justify-content: center) : centré quand il y a
+       de la place, défilable sans rien rogner quand il n'y en a pas. */
+    margin-block: auto;
+    padding: clamp(12px, 3dvh, 24px) 8px 12px;
+  }
+  .cs-intro > * {
+    animation: cs-rise 0.55s var(--ease-out) both;
+  }
+  .cs-intro > :nth-child(2) {
+    animation-delay: 0.12s;
+  }
+  .cs-intro > :nth-child(3) {
+    animation-delay: 0.18s;
+  }
+  .cs-intro > :nth-child(4) {
+    animation-delay: 0.26s;
+  }
+  .cs-intro > :nth-child(5) {
+    animation-delay: 0.34s;
+  }
+  .cs-intro > :nth-child(6) {
+    animation-delay: 0.42s;
+  }
+  .cs-intro-icon {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: clamp(104px, 19dvh, 148px);
+    height: clamp(104px, 19dvh, 148px);
+    margin-bottom: clamp(20px, 4.5dvh, 34px);
+    border-radius: 30%;
+    background:
+      radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.14), transparent 60%),
+      linear-gradient(160deg, rgba(155, 107, 255, 0.28), rgba(255, 61, 139, 0.18));
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow:
+      0 24px 60px -18px rgba(255, 61, 139, 0.65),
+      inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    animation: cs-pop 0.6s var(--ease-spring) both !important;
+  }
+  .cs-intro-icon::before {
+    content: "";
+    position: absolute;
+    inset: -28px;
+    z-index: -1;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 61, 139, 0.32), transparent 68%);
+    filter: blur(8px);
+    animation: cs-intro-pulse 3.2s ease-in-out infinite;
+  }
+  .cs-intro-icon > span {
+    font-size: clamp(3.4rem, 10.5dvh, 5rem);
+    line-height: 1;
+    filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.35));
+    animation: cs-float 3.6s ease-in-out 0.6s infinite;
+  }
+  .cs-intro-round {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    font-family: var(--font-display);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--color-ink-2);
+  }
+  .cs-intro-title {
+    margin-top: 14px;
+    font-family: var(--font-display);
+    font-size: clamp(2.3rem, 11vw, 3.1rem);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+  }
+  .cs-intro-hook {
+    margin-top: 14px;
+    max-width: 26ch;
+    font-size: 1.15rem;
+    line-height: 1.35;
+    color: var(--color-ink-2);
+    text-wrap: balance;
+  }
+  .cs-intro-duel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+    margin-top: clamp(16px, 3.5dvh, 26px);
+    padding: 12px 22px;
+    border-radius: var(--radius-card);
+    background: var(--surface);
+    border: 1px solid var(--line);
+  }
+  .cs-intro-rules {
+    margin-top: clamp(14px, 3.5dvh, 30px);
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--color-mute);
+    text-decoration: underline;
+    text-decoration-color: rgba(149, 133, 187, 0.45);
+    text-underline-offset: 4px;
+    transition: color 0.2s;
+  }
+  .cs-intro-rules:active,
+  .cs-intro-rules:hover {
+    color: var(--color-ink);
+  }
+  /* Petits écrans (iPhone SE…) : tout tient sans défiler, même avec les
+     duellistes de la Bataille. */
+  @media (max-height: 620px) {
+    .cs-intro-icon {
+      width: 84px;
+      height: 84px;
+      margin-bottom: 14px;
+    }
+    .cs-intro-icon > span {
+      font-size: 2.9rem;
+    }
+    .cs-intro-title {
+      margin-top: 10px;
+      font-size: 2.1rem;
+    }
+    .cs-intro-hook {
+      margin-top: 8px;
+      font-size: 1.02rem;
+    }
+    .cs-intro {
+      padding-top: 4px;
+    }
+    .cs-intro-duel {
+      margin-top: 12px;
+      padding: 8px 18px;
+    }
+    .cs-intro-duel .cs-avatar {
+      width: 42px !important;
+      height: 42px !important;
+      font-size: 1.05rem !important;
+    }
+    .cs-intro-rules {
+      margin-top: 6px;
+    }
   }
 
   .cs-avatar {
@@ -595,7 +802,7 @@ h3,
 
 /* ------------------------------------------------------------------ */
 /* Classes historiques encore utilisées par certains écrans de jeu     */
-/* (golf, arc, blackjack...) — restylées dans la nouvelle direction.   */
+/* (arc, blackjack...)      — restylées dans la nouvelle direction.   */
 /* ------------------------------------------------------------------ */
 .spacer {
   flex: 1;

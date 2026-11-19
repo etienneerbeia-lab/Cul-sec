@@ -28,7 +28,7 @@ const ARROW_COLORS = ["#e0568c", "#3ecf8e", "#f4c95d", "#6fb1f0", "#e0568c", "#3
 // reached, releasing later just holds at 1.
 const ARCHERY_CHARGE_MS = 1000;
 // Below this fraction of full charge, releasing cancels the shot instead
-// of firing it — same idea as golf's own release-to-cancel zone: a bare
+// of firing it: a bare
 // tap-and-release never counts as a real attempt.
 const ARCHERY_CANCEL_POWER = 0.08;
 
@@ -214,8 +214,7 @@ function ArcheryBoard({
   // reticle right where the finger landed and starts a time-based charge
   // (the ring fills over ARCHERY_CHARGE_MS regardless of where the finger
   // is); pointer-move afterwards just repositions the reticle — direction
-  // and charge are fully independent axes of the same gesture, unlike
-  // golf's pull-distance-is-power model. Releasing fires at the current
+  // and charge are fully independent axes of the same gesture. Releasing fires at the current
   // aim/power (or cancels below ARCHERY_CANCEL_POWER); the CANCEL button
   // does the same thing without needing to lift the aiming finger.
   const [rawAim, setAim] = useState<ArcheryPoint | null>(null);

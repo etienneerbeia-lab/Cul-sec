@@ -1,13 +1,12 @@
 // Test de bout en bout via l'API HTTP réelle (serveur Next + Redis) :
 // un ou plusieurs « humains » scriptés jouent une soirée contre des bots.
 // Usage : BASE=http://localhost:3000 HUMANS=1 ROUNDS=11 npx tsx scripts/test-api.ts
-import { golfCourseById } from "../src/lib/golf/courses";
 import type { StateResponse } from "../src/lib/api-client";
 
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const HUMANS = Number(process.env.HUMANS ?? 1);
 const ROUNDS = Number(process.env.ROUNDS ?? 10);
-const GAMES = (process.env.GAMES ?? "high,holdem,duel,quiz,vote,meme,dice,undercover,blackjack,golf,archery").split(",");
+const GAMES = (process.env.GAMES ?? "high,holdem,duel,quiz,vote,meme,dice,undercover,blackjack,archery").split(",");
 
 class Client {
   cookie = "";
@@ -91,17 +90,6 @@ function humanMove(s: StateResponse): Record<string, unknown> | null {
       if (bj.stage === "distributing" && bj.distributionQueue[0]?.slug === me)
         return { type: "bjDistribute", targetSlug: pickOther(s, me) };
       return null;
-    }
-    case "golf": {
-      const gl = g.golf!;
-      if (gl.playerIdx !== meIdx) return null;
-      const c = golfCourseById(gl.courseId);
-      const pos = gl.positions[me];
-      const dx = c.hole.x - pos.x;
-      const dy = c.hole.y - pos.y;
-      const d = Math.hypot(dx, dy);
-      const speed = Math.min(340, 60 + d * 1.2);
-      return { type: "golfShot", velocity: { x: (dx / d) * speed, y: (dy / d) * speed } };
     }
     case "archery":
       return g.archery!.playerIdx === meIdx ? { type: "archeryShot", aim: { x: 170, y: 170 }, power: 1 } : null;

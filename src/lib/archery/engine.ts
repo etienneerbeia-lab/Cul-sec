@@ -31,8 +31,7 @@ export function archeryActiveSlug(g: GameState): string {
 // The client only ever sends where it aimed and how long it charged the
 // shot — the wind that bends the shot and the resulting impact are both
 // computed here, from the wind already on record for this arrow, rather
-// than trusted from the client the way golf's full collision physics are
-// (see simulateShot's own comment). Archery's physics are cheap enough to
+// than trusted from the client. Archery's physics are cheap enough to
 // redo, and a self-reported score would be a direct incentive to cheat in
 // a game about who ends up drinking the most.
 //
@@ -72,8 +71,7 @@ export function applyArcheryShot(g: GameState, slug: string, rawAim: ArcheryPoin
 }
 
 // Ranked by total score (sum of a player's ARCHERY_ARROWS_PER_TURN arrows)
-// descending — unlike golf's ascending strokes, here the HIGHEST total
-// wins. Dense rank: exact-score ties share a rank and the next distinct
+// descending — the HIGHEST total wins. Dense rank: exact-score ties share a rank and the next distinct
 // value takes the very next rank, no gaps — scores are whole points so
 // ties are exact equality, no tolerance needed (unlike distance, which was
 // a continuous float). Gulps are rank - 1, so the top score(s) drink

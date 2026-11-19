@@ -199,10 +199,13 @@ export default function GameApp() {
   const myGulps = me?.gulpsTotal ?? 0;
   const drinkToast = useDrinkToast(game, myGulps, !!me);
 
+  const openMenu = useCallback(() => setMenuOpen(true), []);
   const ctx: GameCtx | null = useMemo(
     () =>
-      game ? { roomCode, game, players, mySlug, isHost, busy, myHand, myVoteChoice, myUndercoverWord, act } : null,
-    [roomCode, game, players, mySlug, isHost, busy, myHand, myVoteChoice, myUndercoverWord, act]
+      game
+        ? { roomCode, game, players, mySlug, isHost, busy, myHand, myVoteChoice, myUndercoverWord, act, openMenu }
+        : null,
+    [roomCode, game, players, mySlug, isHost, busy, myHand, myVoteChoice, myUndercoverWord, act, openMenu]
   );
 
   if (booting) {
@@ -239,7 +242,7 @@ export default function GameApp() {
   return (
     <div id="app" style={{ paddingTop: "calc(var(--safe-top) + 8px)" }}>
       <header className="flex shrink-0 items-center gap-3 pb-3">
-        {inGame && phase !== "final" && rt ? (
+        {inGame && phase !== "final" && phase !== "roundIntro" && rt ? (
           <div className="flex min-w-0 flex-1 items-center gap-2.5">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-white/10 bg-white/[0.06] text-2xl">
               {rt.icon}
@@ -324,15 +327,35 @@ export default function GameApp() {
 
       <Sheet open={menuOpen} onClose={() => setMenuOpen(false)}>
         {rt && inGame && phase !== "final" && (
-          <div className="mb-5">
-            <Kicker className="mb-2">
-              {rt.icon} Règles · {rt.label}
-            </Kicker>
-            <ul className="flex flex-col gap-1.5 text-[0.95rem] leading-snug text-ink-2">
-              {[...RULES[rt.id].how, ...RULES[rt.id].gulps.map((l) => `🍺 ${l}`)].map((l) => (
-                <li key={l}>{l}</li>
+          <div className="mb-6">
+            <div className="mb-3 flex items-center gap-3">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-white/10 bg-white/[0.06] text-2xl">
+                {rt.icon}
+              </span>
+              <div className="min-w-0">
+                <Kicker>Règles</Kicker>
+                <div className="truncate font-display text-xl font-extrabold leading-tight">{rt.label}</div>
+              </div>
+            </div>
+            <ul className="flex flex-col gap-2 text-[0.95rem] leading-snug text-ink-2">
+              {RULES[rt.id].how.map((l) => (
+                <li key={l} className="flex gap-2.5">
+                  <span className="mt-[0.5em] h-1.5 w-1.5 shrink-0 rounded-full bg-cyan" />
+                  {l}
+                </li>
               ))}
             </ul>
+            <div className="mt-3 rounded-2xl border border-beer/25 bg-beer/[0.06] px-3.5 py-3">
+              <Kicker className="mb-1.5 text-beer!">Qui boit ?</Kicker>
+              <ul className="flex flex-col gap-1.5 text-[0.95rem] leading-snug text-ink-2">
+                {RULES[rt.id].gulps.map((l) => (
+                  <li key={l} className="flex gap-2">
+                    <span className="shrink-0">🍺</span>
+                    {l}
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         )}
         {game && game.playersPublic.length > 0 && phase !== "lobby" && (

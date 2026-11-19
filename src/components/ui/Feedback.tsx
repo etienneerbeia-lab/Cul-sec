@@ -77,12 +77,139 @@ export function TimerBar({ deadlineAt, totalMs, label = true }: { deadlineAt: nu
   );
 }
 
+// Bottom sheet façon iOS : se ferme par le bouton, un tap sur le fond, ou en
+// la faisant glisser vers le bas. Le glissé part de la poignée, ou de
+// n'importe où dans la sheet tant que son contenu est scrollé tout en haut
+// (sinon c'est le scroll interne qui gagne).
+const DISMISS_DISTANCE = 0.28; // fraction de la hauteur de la sheet
+const DISMISS_MIN_PX = 110;
+const DISMISS_VELOCITY = 0.55; // px/ms, un « flick » vers le bas
+
 export function Sheet({ open, onClose, children }: { open: boolean; onClose?: () => void; children: ReactNode }) {
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef(onClose);
+  useEffect(() => {
+    closeRef.current = onClose;
+  });
+
+  useEffect(() => {
+    const sheet = sheetRef.current;
+    const backdrop = backdropRef.current;
+    if (!open || !sheet || !backdrop) return;
+
+    type Drag = { startY: number; offset: number; lastY: number; lastT: number; v: number; fromHandle: boolean; mode: "idle" | "drag" | "scroll" };
+    let d: Drag | null = null;
+    let closing = false;
+    let suppressClick = false;
+
+    const apply = (offset: number, animate: string | null) => {
+      sheet.style.transition = animate ?? "none";
+      sheet.style.transform = offset ? `translate3d(0, ${offset}px, 0)` : "";
+      const h = sheet.offsetHeight || 1;
+      backdrop.style.setProperty("--sheet-dim-t", animate ? (animate.match(/[\d.]+m?s/)?.[0] ?? "0s") : "0s");
+      backdrop.style.setProperty("--sheet-dim", String(Math.max(0, Math.min(1, 1 - offset / h))));
+    };
+
+    const begin = (y: number, target: EventTarget | null) => {
+      if (closing) return;
+      const fromHandle = !!(target instanceof Element && target.closest("[data-sheet-handle]"));
+      d = { startY: y, offset: 0, lastY: y, lastT: performance.now(), v: 0, fromHandle, mode: "idle" };
+    };
+
+    // Renvoie true si le geste est un glissé de la sheet (à ne pas laisser au navigateur).
+    const move = (y: number): boolean => {
+      if (!d) return false;
+      const dy = y - d.startY;
+      if (d.mode === "idle") {
+        if (Math.abs(dy) < 2) return false;
+        d.mode = dy > 0 && (d.fromHandle || sheet.scrollTop <= 0) ? "drag" : "scroll";
+        if (d.mode === "drag") d.startY = y; // pas de saut au démarrage
+      }
+      if (d.mode !== "drag") return false;
+      const now = performance.now();
+      const dt = Math.max(1, now - d.lastT);
+      d.v = 0.8 * ((y - d.lastY) / dt) + 0.2 * d.v;
+      d.lastY = y;
+      d.lastT = now;
+      const raw = y - d.startY;
+      // Vers le haut : légère résistance, la sheet ne monte presque pas.
+      d.offset = raw >= 0 ? raw : raw / 6;
+      apply(d.offset, null);
+      return true;
+    };
+
+    const end = () => {
+      if (!d) return;
+      const { mode, offset, v } = d;
+      d = null;
+      if (mode !== "drag") return;
+      suppressClick = true;
+      setTimeout(() => (suppressClick = false), 0);
+      const h = sheet.offsetHeight;
+      if (offset > Math.max(DISMISS_MIN_PX, h * DISMISS_DISTANCE) || (v > DISMISS_VELOCITY && offset > 12)) {
+        closing = true;
+        haptic("tap");
+        // Plus on lâche vite, plus la sortie est courte.
+        const ms = Math.round(Math.max(140, Math.min(280, (h - offset) / Math.max(v, 1.2))));
+        apply(h + 24, `transform ${ms}ms cubic-bezier(0.32, 0.72, 0, 1)`);
+        setTimeout(() => closeRef.current?.(), ms);
+      } else {
+        apply(0, "transform 0.36s cubic-bezier(0.34, 1.4, 0.64, 1)");
+      }
+    };
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 1) begin(e.touches[0].clientY, e.target);
+      else d = null;
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if (move(e.touches[0].clientY) && e.cancelable) e.preventDefault();
+    };
+    const onMouseDown = (e: MouseEvent) => {
+      if (e.button !== 0) return;
+      begin(e.clientY, e.target);
+      const mm = (ev: MouseEvent) => {
+        if (move(ev.clientY)) ev.preventDefault();
+      };
+      const mu = () => {
+        window.removeEventListener("mousemove", mm);
+        window.removeEventListener("mouseup", mu);
+        end();
+      };
+      window.addEventListener("mousemove", mm);
+      window.addEventListener("mouseup", mu);
+    };
+    const onClickCapture = (e: MouseEvent) => {
+      if (suppressClick) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
+    };
+
+    sheet.addEventListener("touchstart", onTouchStart, { passive: true });
+    sheet.addEventListener("touchmove", onTouchMove, { passive: false });
+    sheet.addEventListener("touchend", end);
+    sheet.addEventListener("touchcancel", end);
+    sheet.addEventListener("mousedown", onMouseDown);
+    backdrop.addEventListener("click", onClickCapture, true);
+    return () => {
+      sheet.removeEventListener("touchstart", onTouchStart);
+      sheet.removeEventListener("touchmove", onTouchMove);
+      sheet.removeEventListener("touchend", end);
+      sheet.removeEventListener("touchcancel", end);
+      sheet.removeEventListener("mousedown", onMouseDown);
+      backdrop.removeEventListener("click", onClickCapture, true);
+    };
+  }, [open]);
+
   if (!open) return null;
   return (
-    <div className="cs-sheet-backdrop" onClick={onClose}>
-      <div className="cs-sheet" onClick={(e) => e.stopPropagation()} role="dialog">
-        <div className="cs-sheet-handle" />
+    <div ref={backdropRef} className="cs-sheet-backdrop" onClick={onClose}>
+      <div ref={sheetRef} className="cs-sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+        <div className="cs-sheet-grip" data-sheet-handle aria-hidden="true">
+          <div className="cs-sheet-handle" />
+        </div>
         {children}
       </div>
     </div>

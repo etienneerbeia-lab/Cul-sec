@@ -25,7 +25,7 @@ export function uniqueSlug(name: string, taken: string[]): string {
 }
 
 export function moduleFor(g: GameState): GameModule | null {
-  return g.roundTypeId ? MODULES[g.roundTypeId] : null;
+  return g.roundTypeId ? (MODULES[g.roundTypeId] ?? null) : null;
 }
 
 export function minPlayersFor(id: RoundTypeId): number {
@@ -33,7 +33,9 @@ export function minPlayersFor(id: RoundTypeId): number {
 }
 
 export function playableTypes(enabled: RoundTypeId[], tableSize: number): RoundTypeId[] {
-  return enabled.filter((id) => minPlayersFor(id) <= tableSize);
+  // Ignore les jeux retirés de l'appli (ex. ancien « golf » dans un salon
+  // enregistré avant sa suppression).
+  return enabled.filter((id) => id in MODULES && minPlayersFor(id) <= tableSize);
 }
 
 export function setupRoundType(g: GameState): void {
