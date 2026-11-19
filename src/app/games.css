@@ -260,3 +260,47 @@
   font-weight: 800;
   fill: var(--gold);
 }
+
+/* ---- Réflexe ---- */
+.reflex-pad {
+  flex: 1;
+  min-height: 0;
+  margin: 4px 0 8px;
+  border-radius: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.reflex-pad-wait {
+  background: radial-gradient(circle at 50% 40%, #ff4d5e, #a3122a);
+  box-shadow: 0 20px 60px -20px rgba(255, 60, 80, 0.7);
+}
+.reflex-pad-go {
+  background: radial-gradient(circle at 50% 40%, #5dff9a, #10a64f);
+  box-shadow: 0 20px 70px -15px rgba(60, 255, 140, 0.8);
+  color: #062b14;
+}
+.reflex-pad-early {
+  background: repeating-linear-gradient(45deg, #3a0d18, #3a0d18 14px, #52121f 14px, #52121f 28px);
+}
+.reflex-pad-done {
+  background: rgba(255, 255, 255, 0.06);
+}
+.reflex-big {
+  font-family: var(--font-display, inherit);
+  font-size: clamp(2.6rem, 13vw, 4rem);
+  font-weight: 800;
+  line-height: 1;
+}
+.reflex-small {
+  font-size: 0.95rem;
+  font-weight: 600;
+  opacity: 0.85;
+}

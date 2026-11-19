@@ -41,6 +41,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cod
           fail(400, "Aucun des mini-jeux choisis n'est jouable avec si peu de joueurs : ajoute des bots.");
         room.players = table;
         room.game = launchGame(table, totalRounds, culSecRule, enabled, adultMode);
+        // Questions de la table : seulement celles de joueurs encore là.
+        const present = new Set(table.map((p) => p.slug));
+        room.game.customQuestions = (room.customQuestions ?? []).filter((q) => present.has(q.authorSlug));
         tick(room, Date.now(), snap.seen);
         return true;
       },

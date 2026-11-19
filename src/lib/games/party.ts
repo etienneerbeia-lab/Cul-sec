@@ -12,8 +12,8 @@ import {
   submitGuess,
 } from "../undercover/engine";
 import { CLUE_REVEAL_MS } from "../game/types";
-import { BOT_MEME_CAPTIONS } from "../bots/captions";
-import { botClueFor, randomWord, WORD_PAIRS } from "../undercover/words";
+import { BOT_MEME_CAPTIONS, BOT_MEME_CAPTIONS_ADULT } from "../bots/captions";
+import { ALL_WORD_PAIRS, botClueFor, randomWord } from "../undercover/words";
 
 const GRACE_MS = 1500;
 
@@ -122,7 +122,7 @@ export const memeModule: GameModule = {
   },
   auto(g, slug, _ctx, { bot }) {
     const m = g.meme!;
-    if (g.phase === "memeCaption") return { type: "memeCaption", caption: bot ? pick(BOT_MEME_CAPTIONS) : "" };
+    if (g.phase === "memeCaption") return { type: "memeCaption", caption: bot ? pick(g.meme?.theme ? BOT_MEME_CAPTIONS_ADULT : BOT_MEME_CAPTIONS) : "" };
     const options = m.voteOrder.filter((s) => s !== slug);
     return { type: "memeVote", authorSlug: bot && options.length ? pick(options) : null };
   },
@@ -203,7 +203,7 @@ export const undercoverModule: GameModule = {
       // Un bot civil repère (parfois) un indice qui colle mieux au mot
       // proche qu'au sien — comme un joueur attentif.
       if (slug !== u.impostorSlug && chance(0.6)) {
-        const pair = WORD_PAIRS.find((p) => p.word === u.secretWord);
+        const pair = ALL_WORD_PAIRS.find((p) => p.word === u.secretWord);
         const theirs = (pair?.closeHints ?? []).map((h) => h.toLowerCase());
         const suspects = pool.filter((s) => u.clues.some((c) => c.slug === s && theirs.includes(c.text.toLowerCase())));
         if (suspects.length) return { type: "ucVote", targetSlug: pick(suspects) };

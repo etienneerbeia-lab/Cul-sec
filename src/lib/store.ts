@@ -1,7 +1,7 @@
 import { randomBytes } from "crypto";
 import { ROOM_TTL_SECONDS, redis } from "./redis";
 import { ApiError } from "./errors";
-import type { GameState, Player } from "./game/types";
+import type { CustomQuestion, GameState, Player } from "./game/types";
 
 // Un salon = un seul document JSON (joueurs + hôte + partie), versionné.
 // Toute écriture passe par mutateRoom : lecture, modification, puis écriture
@@ -18,6 +18,9 @@ export interface Room {
   players: Player[];
   game: GameState;
   createdAt: number;
+  // Questions écrites par les joueurs dans le salon ; gardées d'une partie
+  // à l'autre dans le même salon.
+  customQuestions?: CustomQuestion[];
 }
 
 export interface SessionData {

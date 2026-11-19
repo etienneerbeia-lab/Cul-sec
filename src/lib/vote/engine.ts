@@ -11,7 +11,22 @@ export const VOTE_MS = 20000;
 // pool normal pour varier le rythme.
 export const ADULT_SHARE = 0.8;
 
+// Une question de la table pas encore posée sort une fois sur deux.
+export const CUSTOM_SHARE = 0.5;
+
 export function startVoteRound(g: GameState, now: number): void {
+  const used = new Set(g.usedQuestionIds ?? []);
+  const freshCustom = (g.customQuestions ?? []).filter((q) => !used.has(q.id));
+  if (freshCustom.length && chance(CUSTOM_SHARE)) {
+    const q = freshCustom[Math.floor(Math.random() * freshCustom.length)];
+    g.usedQuestionIds = [...(g.usedQuestionIds ?? []), q.id];
+    g.vote =
+      q.mode === "qui"
+        ? { mode: "qui", custom: true, question: { id: q.id, promptA: "", promptB: "" }, prompt: `Qui de nous ${q.prompt} ?`, askedAt: now, votes: {}, responded: [] }
+        : { mode: "tp", custom: true, question: { id: q.id, promptA: q.promptA!, promptB: q.promptB! }, askedAt: now, votes: {}, responded: [] };
+    g.phase = "vote";
+    return;
+  }
   const spicy = !!g.adultMode && chance(ADULT_SHARE);
   if (chance(0.5)) {
     const q = pickFresh(g, spicy ? WHO_OF_US_ADULT : WHO_OF_US);

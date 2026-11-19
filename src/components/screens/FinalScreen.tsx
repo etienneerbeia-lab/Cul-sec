@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
 import type { GameState } from "@/lib/game/types";
+import { playSound } from "@/lib/sound";
 import { Button } from "../ui/Button";
 import { CountUp, Waiting } from "../ui/Feedback";
 import { Card, Kicker, Screen, Section } from "../ui/Layout";
@@ -21,6 +23,8 @@ export default function FinalScreen({
   onRejouer: () => void;
   onNewRoom: () => void;
 }) {
+  // Fanfare du cul sec, une fois à l'arrivée sur le verdict.
+  useEffect(() => playSound("culsec"), []);
   const ranked = [...game.playersPublic].sort((a, b) => b.gulpsTotal - a.gulpsTotal);
   const rule = game.culSecRule ?? "last";
   const max = ranked[0]?.gulpsTotal ?? 0;

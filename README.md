@@ -19,6 +19,7 @@ Next.js 16 · React 19 · Tailwind 4 · Upstash Redis · PWA.
 | Undercover 🕵️ | 4+ | Un imposteur, des indices, un vote. |
 | Blackjack 🎰 | 1+ | Contre la banque, on mise ses gorgées. |
 | Tir à l'arc 🏹 | 1+ | 3 flèches, vent, vraie cible à 10 anneaux. |
+| Réflexe ⚡ | 2+ | Rouge… vert ! Le plus lent boit, le faux départ boit double. |
 
 Les règles complètes sont dans le menu (☰) pendant la partie (`src/lib/game/rules.ts`) ;
 l'écran d'intro de chaque manche se limite à une phrase d'accroche.

@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+import { playSound } from "@/lib/sound";
 import { VOTE_MS } from "@/lib/vote/engine";
 import { useGame } from "../GameContext";
 import { OptionCard } from "../ui/Form";
@@ -15,6 +17,12 @@ export default function VoteScreen() {
   const r = done ? game.lastResults! : null;
   const qui = (r?.voteMode ?? v.mode) === "qui";
   const responded = v.responded.includes(mySlug);
+  // Carillon quand le résultat tombe (pas si on arrive déjà sur le résultat).
+  const wasDone = useRef(done);
+  useEffect(() => {
+    if (done && !wasDone.current) playSound("vote");
+    wasDone.current = done;
+  }, [done]);
   const waitingOn = game.playersPublic.filter((p) => !v.responded.includes(p.slug)).map((p) => cleanName(p.name));
 
   return (
@@ -34,6 +42,7 @@ export default function VoteScreen() {
       <Kicker className="mb-2 text-center">
         {qui ? "Qui de nous…" : "Tu préfères…"}
         {v.spicy && <span className="ml-1.5 rounded-full bg-danger/25 px-2 py-0.5 text-danger">18+ 🌶️</span>}
+        {v.custom && <span className="ml-1.5 rounded-full bg-violet/25 px-2 py-0.5 text-violet">✍️ De la table</span>}
       </Kicker>
       {!done && (
         <div className="mb-4">
@@ -47,7 +56,7 @@ export default function VoteScreen() {
             <h2
               className={`font-display font-bold leading-snug text-balance ${(v.prompt?.length ?? 0) > 80 ? "text-[1.25rem]" : "text-[1.5rem]"}`}
             >
-              {v.prompt}
+              {quiBody(v.prompt)}
             </h2>
           </Card>
           {!done ? (
@@ -106,6 +115,12 @@ export default function VoteScreen() {
       )}
     </Screen>
   );
+}
+
+// Le titre affiche déjà « Qui de nous… » : la question commence par la suite.
+function quiBody(prompt?: string): string {
+  const body = (prompt ?? "").replace(/^Qui de nous\s+/, "");
+  return `…${body}`;
 }
 
 function TpResult() {

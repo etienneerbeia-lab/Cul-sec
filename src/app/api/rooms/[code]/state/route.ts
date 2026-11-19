@@ -40,6 +40,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ code
       myName: room.players.find((p) => p.slug === slug)?.name ?? null,
       isHost: !!slug && slug === room.hostSlug,
       hostSlug: room.hostSlug,
+      // Questions de la table : chacun ne voit que les siennes, et le total.
+      myQuestions: (room.customQuestions ?? []).filter((q) => q.authorSlug === slug),
+      tableQuestionCount: (room.customQuestions ?? []).length,
     });
   } catch (e) {
     return handleError(e);

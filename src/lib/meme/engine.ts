@@ -2,11 +2,13 @@ import { drink, pickFresh } from "../game/module";
 import { shuffleArr } from "../game/cards";
 import type { GameState, MemeVoteTally } from "../game/types";
 import { MEME_TEMPLATES } from "./templates";
+import { MEME_THEMES_ADULT } from "../bots/captions";
 
 export function startMemeRound(g: GameState): void {
   const template = pickFresh(g, MEME_TEMPLATES.map((t) => ({ ...t, id: `meme-${t.id}` })));
   g.meme = {
     template,
+    theme: g.adultMode && Math.random() < 0.8 ? MEME_THEMES_ADULT[Math.floor(Math.random() * MEME_THEMES_ADULT.length)] : undefined,
     askedAt: Date.now(),
     captions: {},
     captionResponded: [],

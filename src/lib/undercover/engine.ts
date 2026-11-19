@@ -2,7 +2,7 @@ import { drink, pickFresh } from "../game/module";
 import { checkAnswer } from "../quiz/match";
 import type { GameState, UndercoverOutcome } from "../game/types";
 import { CLUE_REVEAL_MS } from "../game/types";
-import { WORD_PAIRS } from "./words";
+import { WORD_PAIRS, WORD_PAIRS_ADULT } from "./words";
 
 const MAX_CLUE_LEN = 60;
 const MAX_GUESS_LEN = 60;
@@ -25,7 +25,8 @@ function misterWhiteNotFirst(order: string[], impostor: string, isMisterWhite: b
 }
 
 export function startUndercoverRound(g: GameState): void {
-  const pair = pickFresh(g, WORD_PAIRS);
+  // Mode 18+ : surtout des paires coquines, quelques classiques pour varier.
+  const pair = pickFresh(g, g.adultMode && Math.random() < 0.8 ? WORD_PAIRS_ADULT : WORD_PAIRS);
   const impostorSlug = g.playersPublic[Math.floor(Math.random() * g.playersPublic.length)].slug;
   const isMisterWhite = g.playersPublic.length >= 5;
   const remainingSlugs = g.playersPublic.map((p) => p.slug);

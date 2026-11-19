@@ -31,3 +31,43 @@ export const BOT_MEME_CAPTIONS = [
   "Moi qui cherche mon verre alors que je le tiens",
   "Quand tu chantes plus fort que la musique",
 ];
+
+// Mode 18+ : un thème imposé par manche de mèmes (affiché au-dessus de
+// l'image) et des légendes de bots assorties.
+export const MEME_THEMES_ADULT = [
+  "Ta pire expérience au lit",
+  "Ce que tu penses vraiment pendant l'acte",
+  "Le message que tu envoies à ton ex à 3 h du mat",
+  "Ton dernier date Tinder en une phrase",
+  "Ce que ta mère a trouvé dans ta table de nuit",
+  "Le lendemain d'un plan à trois",
+  "Ton body count, expliqué",
+  "Ce que tu cries au moment fatidique",
+  "Ton plan cul quand tu parles de sentiments",
+  "Ta dernière recherche en navigation privée",
+  "Ce que ton/ta coloc a entendu cette nuit",
+  "Ta technique de drague après 6 verres",
+  "Ton ex quand il/elle voit ta nouvelle conquête",
+  "Toi au moment de mettre la capote",
+];
+
+export const BOT_MEME_CAPTIONS_ADULT = [
+  "Moi qui fais semblant d'avoir pris mon pied",
+  "Quand il/elle dit « je suis pas comme ça d'habitude »",
+  "Mon plan cul quand je lui dis « bonne nuit » au lieu de « t'es dispo ? »",
+  "Moi en train de chercher la capote dans le noir",
+  "Quand t'entends tes parents à travers le mur en vacances",
+  "Moi le lendemain en voyant qui dort à côté",
+  "Ma tête quand on me demande mon body count",
+  "Quand la position du Kamasutra finit chez l'ostéo",
+  "Moi qui envoie un nude et vois « Vu » sans réponse",
+  "Quand le lit grince et que le coloc est réveillé",
+  "Mon historique de navigation privée quand la batterie lâche",
+  "Moi qui dis « juste un câlin » à minuit",
+  "Quand ton crush like ta story à 2 h du mat",
+  "Moi au troisième round, à bout de souffle",
+  "Quand il/elle crie le mauvais prénom",
+  "Ma tête quand ma mère trouve le vibromasseur",
+  "Le walk of shame avec les talons à la main",
+  "Moi qui lis mes sextos de la veille",
+];

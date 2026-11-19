@@ -78,13 +78,54 @@ const RAW: Raw[] = [
   ["Saucisson", "Jambon", ["Apéro", "Tranches", "Couteau", "Sec"], ["Sandwich", "Rose", "Blanc", "Cru"]],
 ];
 
-export const WORD_PAIRS: WordPair[] = RAW.map(([word, closeWord, hints, closeHints], i) => ({
-  id: `word-${String(i + 1).padStart(3, "0")}`,
-  word,
-  closeWord,
-  hints,
-  closeHints,
-}));
+const toPairs = (prefix: string, raw: Raw[]): WordPair[] =>
+  raw.map(([word, closeWord, hints, closeHints], i) => ({
+    id: `${prefix}-${String(i + 1).padStart(3, "0")}`,
+    word,
+    closeWord,
+    hints,
+    closeHints,
+  }));
+
+export const WORD_PAIRS: WordPair[] = toPairs("word", RAW);
+
+// Paires du mode 18+ : assez proches pour que l'Undercover se fonde dans
+// la masse, assez crues pour que les indices fassent rire.
+const RAW_ADULT: Raw[] = [
+  ["Menottes", "Bandeau", ["Métal", "Clé", "Police", "Attaché(e)"], ["Yeux", "Noir", "Surprise", "Soie"]],
+  ["Capote", "Lubrifiant", ["Latex", "Pharmacie", "Taille", "Protection"], ["Glisse", "Tube", "Froid", "Fraise"]],
+  ["Plan cul", "Coup d'un soir", ["Régulier", "Sans attaches", "SMS", "Mardi"], ["Bar", "Inconnu(e)", "Matin", "Taxi"]],
+  ["Nude", "Sexto", ["Photo", "Miroir", "Flou", "Supprimer"], ["Message", "Emoji", "Aubergine", "Tard"]],
+  ["Strip-tease", "Lap dance", ["Musique", "Vêtements", "Lent", "Chaise"], ["Genoux", "Billet", "Club", "Proche"]],
+  ["Tinder", "Bumble", ["Swipe", "Flamme", "Match", "Bio"], ["Jaune", "Abeille", "Premier message", "Appli"]],
+  ["Vibromasseur", "Plug", ["Piles", "Bruit", "Tiroir", "Bzzz"], ["Petit", "Silicone", "Derrière", "Bijou"]],
+  ["Levrette", "Missionnaire", ["Derrière", "Genoux", "Animal", "Fesses"], ["Classique", "Face à face", "Dimanche", "Lit"]],
+  ["Suçon", "Fessée", ["Cou", "Écharpe", "Violet", "Lycée"], ["Main", "Claque", "Rouge", "Coquin"]],
+  ["Lingerie", "Porte-jarretelles", ["Dentelle", "Soutien-gorge", "Cadeau", "Saint-Valentin"], ["Bas", "Pinces", "Cabaret", "Cuisses"]],
+  ["Plan à trois", "Échangisme", ["Trois", "Lit trop petit", "Fantasme", "Pote"], ["Couples", "Club", "Clés", "Libertin"]],
+  ["Préliminaires", "Massage", ["Avant", "Bisous", "Patience", "Échauffement"], ["Huile", "Dos", "Mains", "Détente"]],
+  ["Walk of shame", "Gueule de bois", ["Matin", "Robe de la veille", "Talons", "Rue"], ["Tête", "Eau", "Aspirine", "Lit"]],
+  ["Love hôtel", "Motel", ["Japon", "Heure", "Néons", "Discret"], ["Route", "Parking", "Américain", "Nuit"]],
+  ["Pornhub", "OnlyFans", ["Gratuit", "Navigation privée", "Catégories", "Orange"], ["Abonnement", "Créateur", "Bleu", "Payer"]],
+  ["Orgasme", "Fou rire", ["Cri", "Fin", "Frissons", "Simuler"], ["Larmes", "Ventre", "Incontrôlable", "Contagieux"]],
+  ["Jacuzzi", "Sauna", ["Bulles", "Chaud", "Hôtel", "Bikini"], ["Serviette", "Sueur", "Bois", "Finlande"]],
+  ["Kamasutra", "Cinquante nuances de Grey", ["Positions", "Inde", "Livre", "Souplesse"], ["Film", "Cravate", "Fouet", "Milliardaire"]],
+  ["Pelle", "Bisou dans le cou", ["Langue", "Boîte de nuit", "Longue", "Baveux"], ["Frissons", "Nuque", "Doux", "Oreille"]],
+  ["Booty call", "Premier date", ["2 h du mat", "Dispo ?", "Rapide", "Texto"], ["Restau", "Stress", "Parfum", "Addition"]],
+  ["Huile de massage", "Chantilly", ["Mains", "Glisse", "Odeur", "Bougies"], ["Bombe", "Sucré", "Lécher", "Fraises"]],
+  ["Fouet", "Plume", ["Cuir", "Clac", "Dominer", "Cheval"], ["Chatouilles", "Douce", "Oiseau", "Léger"]],
+  ["Cabine d'essayage", "Toilettes de boîte", ["Rideau", "Miroir", "Magasin", "Vendeur"], ["Queue", "Musique", "Collant", "Videur"]],
+  ["Cougar", "Sugar daddy", ["Expérience", "Jeune", "Chasseuse", "Mature"], ["Argent", "Cadeaux", "Riche", "Voyage"]],
+  ["Jeu de rôle", "Déguisement", ["Infirmière", "Scénario", "Personnage", "Imagination"], ["Costume", "Halloween", "Perruque", "Masque"]],
+  ["Strip poker", "Action ou vérité", ["Cartes", "Perdre", "Vêtements", "Bluff"], ["Défi", "Question", "Gage", "Ado"]],
+  ["String", "Boxer", ["Ficelle", "Fesses", "Dentelle", "Inconfortable"], ["Coton", "Large", "Caleçon", "Élastique"]],
+  ["Ghosting", "Râteau", ["Silence", "Disparu", "Vu", "Fantôme"], ["Non", "Vent", "Honte", "Bar"]],
+  ["Sex-friend", "Crush", ["Ami", "Avantages", "Régulier", "Sans prise de tête"], ["Cœur", "Timide", "Regard", "Secret"]],
+  ["Body count", "Liste d'ex", ["Nombre", "Mentir", "Compter", "Tabou"], ["Noms", "Prénoms", "Toxique", "Souvenirs"]],
+];
+
+export const WORD_PAIRS_ADULT: WordPair[] = toPairs("wordx", RAW_ADULT);
+export const ALL_WORD_PAIRS: WordPair[] = [...WORD_PAIRS, ...WORD_PAIRS_ADULT];
 
 // Indices vagues pour un Mister White (qui n'a pas de mot).
 const GENERIC_CLUES = [
@@ -102,7 +143,7 @@ const GENERIC_CLUES = [
 
 export function botClueFor(word: string | null, used: string[]): string {
   const fresh = (list: string[]) => list.filter((c) => !used.includes(c.toLowerCase()));
-  const pair = word ? WORD_PAIRS.find((p) => p.word === word || p.closeWord === word) : undefined;
+  const pair = word ? ALL_WORD_PAIRS.find((p) => p.word === word || p.closeWord === word) : undefined;
   const specific = pair ? (pair.word === word ? pair.hints : pair.closeHints) : undefined;
   // Mister White s'inspire des indices déjà donnés par les autres.
   const pool = specific?.length ? fresh(specific) : [...fresh(GENERIC_CLUES)];
@@ -111,6 +152,6 @@ export function botClueFor(word: string | null, used: string[]): string {
 }
 
 export function randomWord(): string {
-  const p = WORD_PAIRS[Math.floor(Math.random() * WORD_PAIRS.length)];
+  const p = ALL_WORD_PAIRS[Math.floor(Math.random() * ALL_WORD_PAIRS.length)];
   return Math.random() < 0.5 ? p.word : p.closeWord;
 }
