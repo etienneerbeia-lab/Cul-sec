@@ -21,7 +21,8 @@ import {
   windIntensityLabel,
 } from "@/lib/archery/physics";
 
-const ARROW_COLORS = ["#e0568c", "#3ecf8e", "#f4c95d", "#6fb1f0", "#e0568c", "#3ecf8e"];
+// Couleur d'empennage par joueur (ordre de la table) ; le fût reste neutre.
+const ARROW_COLORS = ["#e0568c", "#3ecf8e", "#f4c95d", "#6fb1f0", "#ff8a3d", "#b07cff", "#5ce1e6", "#f0f0f0"];
 
 // How long (ms) the player has to hold a tap before the charge ring reads
 // full power — releasing sooner fires (or cancels) at whatever fraction it
@@ -52,10 +53,9 @@ export default function ArcheryScreen() {
   const progressShots = ar.shots.filter((s) => s.slug === progressSlug && (!pendingShot || ar.shots.indexOf(s) <= ar.shots.indexOf(pendingShot)));
   const displayArrowNumber = pendingShot ? pendingShot.arrowNumber : ar.arrowNumber;
 
-  const impactBySlug: Record<string, ArcheryPoint> = {};
-  ar.shots.forEach((s, i) => {
-    if (i < shownCount) impactBySlug[`${s.slug}:${s.arrowNumber}`] = s.impact;
-  });
+  // Flèches déjà plantées, dans l'ordre de tir (la dernière est dessinée
+  // par-dessus et mise en avant).
+  const planted = ar.shots.slice(0, shownCount);
 
   if (resolved && r?.archeryRanking) {
     return (
@@ -109,7 +109,7 @@ export default function ArcheryScreen() {
       <div className="flex min-h-0 flex-1 flex-col justify-center">
         <ArcheryBoard
           key={pendingShot ? `${pendingShot.slug}:${pendingShot.arrowNumber}` : `turn-${ar.shots.length}`}
-          impacts={impactBySlug}
+          planted={planted}
           players={game.playersPublic}
           pendingShot={pendingShot}
           onShotAnimDone={() => setShownCount((n) => n + 1)}
@@ -171,17 +171,21 @@ function toBoardSpace(clientX: number, clientY: number, svg: SVGSVGElement): Arc
 }
 
 // How far the camera zooms in on the impact point once an arrow lands —
-// picked so the big score number and the exact ring it caught both read
-// clearly, without cropping so tight that the target's edges (and other
-// players' arrows) vanish entirely.
-const ARCHERY_ZOOM_SCALE = 2.3;
-const ARCHERY_FLIGHT_MS = 550;
+// enough to see the arrow quiver and read its score, not so tight that
+// the neighbouring arrows vanish.
+const ARCHERY_ZOOM_SCALE = 2;
+const ARCHERY_FLIGHT_MS = 600;
+const ARCHERY_WOBBLE_MS = 320;
 const ARCHERY_ZOOM_MS = 350;
-const ARCHERY_SCORE_FADE_IN_MS = 220;
-const ARCHERY_SCORE_HOLD_MS = 1050;
-const ARCHERY_SCORE_FADE_OUT_MS = 280;
+const ARCHERY_SCORE_DELAY_MS = 180;
+const ARCHERY_SCORE_FADE_IN_MS = 180;
+const ARCHERY_SCORE_HOLD_MS = 1000;
+const ARCHERY_SCORE_FADE_OUT_MS = 260;
 const ARCHERY_HOLD_AFTER_IMPACT_MS =
-  ARCHERY_ZOOM_MS + ARCHERY_SCORE_FADE_IN_MS + ARCHERY_SCORE_HOLD_MS + ARCHERY_SCORE_FADE_OUT_MS;
+  ARCHERY_SCORE_DELAY_MS + ARCHERY_SCORE_FADE_IN_MS + ARCHERY_SCORE_HOLD_MS + ARCHERY_SCORE_FADE_OUT_MS;
+// Taille apparente de la flèche au départ du vol : elle part « près de
+// l'œil » et rétrécit jusqu'à sa taille plantée en atteignant la cible.
+const ARCHERY_FLIGHT_START_SCALE = 2.6;
 
 interface CameraState {
   cx: number;
@@ -190,8 +194,15 @@ interface CameraState {
 }
 const NEUTRAL_CAMERA: CameraState = { cx: ARCHERY_CENTER.x, cy: ARCHERY_CENTER.y, scale: 1 };
 
+interface FlightState {
+  pos: ArcheryPoint;
+  scale: number; // > 1 en vol, 1 une fois plantée
+  wobble: number; // degrés, oscillation amortie de l'empennage après l'impact
+  landed: boolean;
+}
+
 function ArcheryBoard({
-  impacts,
+  planted,
   players,
   pendingShot,
   onShotAnimDone,
@@ -199,7 +210,7 @@ function ArcheryBoard({
   busy,
   onFire,
 }: {
-  impacts: Record<string, ArcheryPoint>;
+  planted: ArcheryShotRecord[];
   players: GameState["playersPublic"];
   pendingShot: ArcheryShotRecord | null;
   onShotAnimDone: () => void;
@@ -225,18 +236,18 @@ function ArcheryBoard({
   const chargeStartRef = useRef(0);
   const chargeRafRef = useRef(0);
 
-  const [animPos, setAnimPos] = useState<ArcheryPoint | null>(() => pendingShot?.path[0] ?? null);
+  const [flight, setFlight] = useState<FlightState | null>(() =>
+    pendingShot ? { pos: pendingShot.path[0], scale: ARCHERY_FLIGHT_START_SCALE, wobble: 0, landed: false } : null
+  );
   const [camera, setCamera] = useState<CameraState>(NEUTRAL_CAMERA);
   const [scoreOpacity, setScoreOpacity] = useState(0);
 
-  // Plays pendingShot.path back in real time, then — once the arrow's
-  // landed — eases the camera in on the impact point and fades a big
-  // score number in over it, holds long enough to read, fades it back
-  // out, then hands off to the next arrow/player. One elapsed-time-driven
-  // rAF loop drives the whole sequence instead of several separate
-  // timers. Runs once per mount — the per-arrow key on ArcheryBoard above
-  // is what gives every single arrow (even the same player's 2nd and 3rd)
-  // its own fresh run of this.
+  // Rejoue pendingShot : vol le long de path (la flèche rétrécit en
+  // s'éloignant vers la cible), impact + vibration amortie de l'empennage,
+  // zoom doux sur l'impact, puis le score apparaît brièvement à côté avant
+  // de passer à la flèche suivante. Une seule boucle rAF pilotée par le
+  // temps écoulé. Tourne une fois par montage — la clé par flèche posée
+  // sur ArcheryBoard plus haut donne à chaque flèche sa propre séquence.
   useEffect(() => {
     if (!pendingShot) return;
     const path = pendingShot.path;
@@ -244,16 +255,30 @@ function ArcheryBoard({
     const start = performance.now();
     let raf = 0;
     function tick(now: number) {
-      const elapsed = now - start;
+      // L'horodatage rAF peut précéder performance.now() pris au montage.
+      const elapsed = Math.max(0, now - start);
       if (elapsed < ARCHERY_FLIGHT_MS) {
         const t = elapsed / ARCHERY_FLIGHT_MS;
-        const idx = Math.min(path.length - 1, Math.floor(t * (path.length - 1)));
-        setAnimPos(path[idx]);
+        const f = t * (path.length - 1);
+        const i = Math.max(0, Math.min(path.length - 2, Math.floor(f)));
+        const k = f - i;
+        const a = path[i];
+        const b = path[i + 1] ?? a;
+        // Décélération légère : la flèche « s'enfonce » dans la profondeur.
+        const depth = 1 - Math.pow(1 - t, 1.6);
+        setFlight({
+          pos: { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k },
+          scale: ARCHERY_FLIGHT_START_SCALE + (1 - ARCHERY_FLIGHT_START_SCALE) * depth,
+          wobble: 0,
+          landed: false,
+        });
         raf = requestAnimationFrame(tick);
         return;
       }
-      setAnimPos(path[path.length - 1]);
       const sinceImpact = elapsed - ARCHERY_FLIGHT_MS;
+      const w = sinceImpact < ARCHERY_WOBBLE_MS ? sinceImpact / ARCHERY_WOBBLE_MS : 1;
+      const wobble = w < 1 ? 7 * Math.exp(-4 * w) * Math.sin(w * Math.PI * 7) : 0;
+      setFlight({ pos: impact, scale: 1, wobble, landed: true });
 
       const zt = Math.min(1, sinceImpact / ARCHERY_ZOOM_MS);
       const eased = 1 - (1 - zt) * (1 - zt); // ease-out
@@ -264,8 +289,8 @@ function ArcheryBoard({
       });
 
       let opacity = 0;
-      if (sinceImpact >= ARCHERY_ZOOM_MS) {
-        const s = sinceImpact - ARCHERY_ZOOM_MS;
+      const s = sinceImpact - ARCHERY_SCORE_DELAY_MS;
+      if (s >= 0) {
         if (s < ARCHERY_SCORE_FADE_IN_MS) opacity = s / ARCHERY_SCORE_FADE_IN_MS;
         else if (s < ARCHERY_SCORE_FADE_IN_MS + ARCHERY_SCORE_HOLD_MS) opacity = 1;
         else if (s < ARCHERY_SCORE_FADE_IN_MS + ARCHERY_SCORE_HOLD_MS + ARCHERY_SCORE_FADE_OUT_MS) {
@@ -342,6 +367,18 @@ function ArcheryBoard({
 
   const chargeCircumference = 2 * Math.PI * 18;
 
+  const colorOf = (slug: string) => {
+    const i = players.findIndex((p) => p.slug === slug);
+    return ARROW_COLORS[(i < 0 ? 0 : i) % ARROW_COLORS.length];
+  };
+  // Toutes les flèches visibles, dans l'ordre de tir. Celle en vol (ou
+  // plantée à l'instant) est la plus récente ; sinon, la dernière plantée.
+  const arrows: { shot: ArcheryShotRecord; flight?: FlightState }[] = planted.map((shot) => ({ shot }));
+  if (pendingShot && flight) arrows.push({ shot: pendingShot, flight });
+  const latestKey = arrows.length ? shotKey(arrows[arrows.length - 1].shot) : null;
+
+  const scoreSide = pendingShot && pendingShot.impact.x < 60 ? 1 : -1;
+
   return (
     <div className="archery-board-wrap">
       {aim && (
@@ -353,12 +390,28 @@ function ArcheryBoard({
         ref={svgRef}
         className="archery-board"
         viewBox={`${viewX} ${viewY} ${viewW} ${viewH}`}
+        shapeRendering="geometricPrecision"
         style={{ touchAction: "none" }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
       >
+        <defs>
+          <filter id="arrow-shadow-blur" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="1.4" />
+          </filter>
+          <radialGradient id="arrow-hole" cx="50%" cy="45%" r="50%">
+            <stop offset="0%" stopColor="#000" stopOpacity={0.95} />
+            <stop offset="55%" stopColor="#1b1210" stopOpacity={0.85} />
+            <stop offset="100%" stopColor="#000" stopOpacity={0} />
+          </radialGradient>
+          <linearGradient id="arrow-shaft" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#f6e3bf" />
+            <stop offset="55%" stopColor="#d6b07a" />
+            <stop offset="100%" stopColor="#9c7446" />
+          </linearGradient>
+        </defs>
         <rect x={0} y={0} width={ARCHERY_TARGET_SIZE} height={ARCHERY_BOARD_HEIGHT} className="archery-backdrop" />
         {ARCHERY_RINGS.map((ring) => (
           <circle
@@ -371,34 +424,41 @@ function ArcheryBoard({
         ))}
         <circle cx={ARCHERY_LAUNCH_POINT.x} cy={ARCHERY_LAUNCH_POINT.y} r={6} className="archery-archer" />
 
-        {players.map((p, i) =>
-          Array.from({ length: ARCHERY_ARROWS_PER_TURN }).map((_, arrowIdx) => {
-            const arrowNumber = arrowIdx + 1;
-            const pos = impacts[`${p.slug}:${arrowNumber}`];
-            if (!pos) return null;
-            return <ArrowMark key={`${p.slug}:${arrowNumber}`} pos={pos} color={ARROW_COLORS[i % ARROW_COLORS.length]} />;
-          })
+        {/* Couche 1 : trous et ombres portées, sous tous les fûts, pour
+            qu'aucune flèche voisine ne masque un point d'impact. */}
+        {arrows.map(({ shot, flight: f }) =>
+          !f || f.landed ? (
+            <ArrowGround key={`g-${shotKey(shot)}`} pos={shot.impact} angle={arrowAngle(shot)} dim={shotKey(shot) !== latestKey} />
+          ) : null
         )}
-
-        {pendingShot && animPos && (
-          <ArrowMark
-            pos={animPos}
-            color={ARROW_COLORS[players.findIndex((p) => p.slug === pendingShot.slug) % ARROW_COLORS.length]}
-            moving
-          />
-        )}
+        {/* Couche 2 : les flèches elles-mêmes, la plus récente au-dessus. */}
+        {arrows.map(({ shot, flight: f }) => {
+          const key = shotKey(shot);
+          return (
+            <ArrowBody
+              key={key}
+              pos={f ? f.pos : shot.impact}
+              angle={arrowAngle(shot)}
+              color={colorOf(shot.slug)}
+              scale={f ? f.scale : 1}
+              wobble={f ? f.wobble : 0}
+              inFlight={!!f && !f.landed}
+              state={key === latestKey ? "latest" : "old"}
+            />
+          );
+        })}
 
         {pendingShot && scoreOpacity > 0 && (
-          <text
-            x={pendingShot.impact.x}
-            y={pendingShot.impact.y}
-            textAnchor="middle"
-            dominantBaseline="central"
+          <g
+            transform={`translate(${pendingShot.impact.x + scoreSide * 9} ${pendingShot.impact.y + 9})`}
             className="archery-score-pop"
             style={{ opacity: scoreOpacity }}
           >
-            {pendingShot.points}
-          </text>
+            <rect x={scoreSide > 0 ? 0 : -24} y={-1} width={24} height={15} rx={7.5} className="archery-score-pill" />
+            <text x={scoreSide > 0 ? 12 : -12} y={7} textAnchor="middle" dominantBaseline="central" className="archery-score-text">
+              {pendingShot.points > 0 ? `+${pendingShot.points}` : "0"}
+            </text>
+          </g>
         )}
 
         {aim && (
@@ -419,12 +479,107 @@ function ArcheryBoard({
   );
 }
 
-function ArrowMark({ pos, color, moving }: { pos: ArcheryPoint; color: string; moving?: boolean }) {
+function shotKey(s: ArcheryShotRecord): string {
+  return `${s.slug}:${s.arrowNumber}`;
+}
+
+// Angle (degrés, repère SVG : négatif = vers le haut) du fût vu de 3/4.
+// Toujours « en haut à droite », avec une petite variation déterministe
+// par flèche : deux flèches proches ne sont jamais parfaitement
+// parallèles, donc leurs empennages se distinguent.
+function arrowAngle(s: ArcheryShotRecord): number {
+  let h = 0;
+  const k = shotKey(s);
+  for (let i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) | 0;
+  return -48 + ((Math.abs(h) % 21) - 10);
+}
+
+// Longueur visible du fût (raccourci par la perspective : la flèche
+// pointe à moitié vers nous) et dimensions de l'empennage, en unités
+// de la cible (une bande d'anneau = 15).
+const SHAFT_LEN = 34;
+const VANE_LEN = 12;
+
+function ArrowGround({ pos, angle, dim }: { pos: ArcheryPoint; angle: number; dim: boolean }) {
+  // Lumière en haut à gauche : l'ombre du fût part de l'impact vers le
+  // bas à droite, plus courte que la flèche, et s'élargit en s'éloignant.
+  const shadowAngle = angle + 62;
   return (
-    <g transform={`translate(${pos.x} ${pos.y})`} className={moving ? "archery-arrow archery-arrow-moving" : "archery-arrow"}>
-      <line x1={0} y1={2} x2={0} y2={22} stroke={color} strokeWidth={3} strokeLinecap="round" />
-      <path d="M-5,19 L0,26 L5,19" stroke={color} strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx={0} cy={0} r={3.5} fill={color} stroke="rgba(0,0,0,0.35)" strokeWidth={1} />
+    <g transform={`translate(${pos.x} ${pos.y})`} opacity={dim ? 0.75 : 1}>
+      <g transform={`rotate(${shadowAngle})`} filter="url(#arrow-shadow-blur)">
+        <path d={`M0,-0.8 L${SHAFT_LEN * 0.78},-2.4 L${SHAFT_LEN * 0.78},2.4 L0,0.8 Z`} fill="rgba(0,0,0,0.32)" />
+        <ellipse cx={SHAFT_LEN * 0.72} cy={0} rx={VANE_LEN * 0.5} ry={4.2} fill="rgba(0,0,0,0.22)" />
+      </g>
+      <circle r={4.2} fill="url(#arrow-hole)" />
+      <ellipse rx={2} ry={1.7} fill="#0b0706" />
+    </g>
+  );
+}
+
+function ArrowBody({
+  pos,
+  angle,
+  color,
+  scale,
+  wobble,
+  inFlight,
+  state,
+}: {
+  pos: ArcheryPoint;
+  angle: number;
+  color: string;
+  scale: number;
+  wobble: number;
+  inFlight: boolean;
+  state: "latest" | "old";
+}) {
+  const L = SHAFT_LEN;
+  const vx = L - VANE_LEN - 1;
+  return (
+    <g
+      transform={`translate(${pos.x} ${pos.y}) scale(${scale}) rotate(${angle + wobble})`}
+      className={`archery-arrow archery-arrow-${state}${inFlight ? " archery-arrow-flight" : ""}`}
+    >
+      {/* Pointe qui dépasse encore un peu, en vol seulement. */}
+      {inFlight && <path d="M0,0 L-4.5,-1.6 L-4.5,1.6 Z" fill="#9aa3ad" stroke="#3a3f45" strokeWidth={0.4} />}
+      {/* Fût : s'épaissit vers l'encoche (plus proche de l'œil). */}
+      <path
+        d={`M0,-0.75 L${L},-1.35 L${L},1.35 L0,0.75 Z`}
+        fill="url(#arrow-shaft)"
+        stroke="rgba(40,24,10,0.75)"
+        strokeWidth={0.45}
+        strokeLinejoin="round"
+      />
+      {/* Empennage : plume du dessus, plume du dessous (raccourcie par la
+          perspective) et la plume « coq » face à nous, plus sombre. */}
+      <path
+        d={`M${vx},-1.1 C${vx + 3},-3.2 ${vx + 7},-6.6 ${vx + VANE_LEN - 1},-6.8 L${vx + VANE_LEN},-1.3 Z`}
+        fill={color}
+        stroke="rgba(0,0,0,0.45)"
+        strokeWidth={0.45}
+        strokeLinejoin="round"
+      />
+      <path
+        d={`M${vx + 1},1.1 C${vx + 4},2.6 ${vx + 7.5},4.6 ${vx + VANE_LEN - 0.5},4.8 L${vx + VANE_LEN},1.3 Z`}
+        fill={color}
+        stroke="rgba(0,0,0,0.45)"
+        strokeWidth={0.45}
+        strokeLinejoin="round"
+      />
+      <path
+        d={`M${vx + 2},0 C${vx + 5},-0.6 ${vx + 8},-2.2 ${vx + VANE_LEN - 0.5},-2.6 L${vx + VANE_LEN},0.4 C${vx + 8},1.4 ${vx + 5},1 ${vx + 2},0 Z`}
+        fill={color}
+        stroke="rgba(0,0,0,0.5)"
+        strokeWidth={0.4}
+      />
+      <path
+        d={`M${vx + 2},0 C${vx + 5},-0.6 ${vx + 8},-2.2 ${vx + VANE_LEN - 0.5},-2.6 L${vx + VANE_LEN},0.4 C${vx + 8},1.4 ${vx + 5},1 ${vx + 2},0 Z`}
+        fill="rgba(0,0,0,0.28)"
+      />
+      {/* Reflet sur la plume du dessus. */}
+      <path d={`M${vx + 2},-1.8 C${vx + 5},-3.6 ${vx + 8},-5.4 ${vx + VANE_LEN - 1.5},-5.8`} stroke="rgba(255,255,255,0.55)" strokeWidth={0.5} fill="none" strokeLinecap="round" />
+      {/* Encoche. */}
+      <rect x={L - 0.2} y={-1.7} width={2.6} height={3.4} rx={0.8} fill="#f4efe6" stroke="rgba(0,0,0,0.5)" strokeWidth={0.4} />
     </g>
   );
 }

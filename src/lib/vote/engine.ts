@@ -1,19 +1,24 @@
 import { chance, drink, nameOf, pickFresh } from "../game/module";
 import type { GameState } from "../game/types";
-import { VOTE_QUESTIONS } from "./questions";
-import { WHO_OF_US } from "./whoOfUs";
+import { VOTE_QUESTIONS, VOTE_QUESTIONS_ADULT } from "./questions";
+import { WHO_OF_US, WHO_OF_US_ADULT } from "./whoOfUs";
 
 export const VOTE_MS = 20000;
 
 // Une manche de vote : « Tu préfères » (camp minoritaire boit) ou « Qui de
 // nous » (on boit une gorgée par voix reçue), tirés une fois sur deux.
+// En mode 18+, ~80 % des questions viennent du pool adulte, le reste du
+// pool normal pour varier le rythme.
+export const ADULT_SHARE = 0.8;
+
 export function startVoteRound(g: GameState, now: number): void {
+  const spicy = !!g.adultMode && chance(ADULT_SHARE);
   if (chance(0.5)) {
-    const q = pickFresh(g, WHO_OF_US);
-    g.vote = { mode: "qui", question: { id: q.id, promptA: "", promptB: "" }, prompt: q.prompt, askedAt: now, votes: {}, responded: [] };
+    const q = pickFresh(g, spicy ? WHO_OF_US_ADULT : WHO_OF_US);
+    g.vote = { mode: "qui", spicy, question: { id: q.id, promptA: "", promptB: "" }, prompt: q.prompt, askedAt: now, votes: {}, responded: [] };
   } else {
-    const q = pickFresh(g, VOTE_QUESTIONS);
-    g.vote = { mode: "tp", question: { id: q.id, promptA: q.promptA, promptB: q.promptB }, askedAt: now, votes: {}, responded: [] };
+    const q = pickFresh(g, spicy ? VOTE_QUESTIONS_ADULT : VOTE_QUESTIONS);
+    g.vote = { mode: "tp", spicy, question: { id: q.id, promptA: q.promptA, promptB: q.promptB }, askedAt: now, votes: {}, responded: [] };
   }
   g.phase = "vote";
 }

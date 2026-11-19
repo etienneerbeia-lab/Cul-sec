@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ROUND_TYPES } from "@/lib/game/roundTypes";
 import { MIN_ENABLED_ROUND_TYPES, type CulSecRule, type Player, type RoundTypeId } from "@/lib/game/types";
 import { haptic } from "@/lib/haptics";
@@ -22,6 +22,7 @@ export default function LobbyScreen({
   busy,
   error,
   previousEnabledRoundTypeIds,
+  previousAdultMode,
   onLaunch,
   onRename,
 }: {
@@ -32,7 +33,8 @@ export default function LobbyScreen({
   busy: boolean;
   error: string;
   previousEnabledRoundTypeIds?: RoundTypeId[];
-  onLaunch: (totalRounds: number, culSecRule: CulSecRule, enabledRoundTypeIds: RoundTypeId[], bots: number) => void;
+  previousAdultMode?: boolean;
+  onLaunch: (totalRounds: number, culSecRule: CulSecRule, enabledRoundTypeIds: RoundTypeId[], bots: number, adultMode: boolean) => void;
   onRename: (name: string) => void;
 }) {
   const [totalRounds, setTotalRounds] = useState(10);
@@ -44,6 +46,10 @@ export default function LobbyScreen({
     }
   );
   const [extraBots, setExtraBots] = useState(0);
+  // Mode 18+ : désactivé par défaut, activé seulement après confirmation ;
+  // repris de la partie précédente quand on rejoue dans le même salon.
+  const [adultMode, setAdultMode] = useState(!!previousAdultMode);
+  const [confirmingAdult, setConfirmingAdult] = useState(false);
   const [editing, setEditing] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -95,7 +101,7 @@ export default function LobbyScreen({
             <Button
               disabled={!canLaunch}
               haptics="success"
-              onClick={() => onLaunch(totalRounds, culSecRule, Array.from(enabledIds), botCount)}
+              onClick={() => onLaunch(totalRounds, culSecRule, Array.from(enabledIds), botCount, adultMode)}
             >
               {solo ? `Jouer contre ${botCount} bot${botCount > 1 ? "s" : ""}` : `Lancer la partie · ${tableSize} joueurs`}
             </Button>
@@ -201,6 +207,24 @@ export default function LobbyScreen({
             {!enoughGames && <Note tone="danger">Choisis au moins {MIN_ENABLED_ROUND_TYPES} mini-jeux.</Note>}
           </Section>
 
+          <Section title="Ambiance">
+            <AdultToggle
+              on={adultMode}
+              confirming={confirmingAdult}
+              onToggle={() => {
+                haptic("select");
+                if (adultMode) setAdultMode(false);
+                else setConfirmingAdult(true);
+              }}
+              onConfirm={() => {
+                haptic("success");
+                setAdultMode(true);
+                setConfirmingAdult(false);
+              }}
+              onCancel={() => setConfirmingAdult(false)}
+            />
+          </Section>
+
           <Section title="Bots 🤖">
             <Card className="flex items-center justify-between gap-3">
               <p className="text-[0.9rem] leading-snug text-ink-2">
@@ -219,6 +243,61 @@ export default function LobbyScreen({
         </Section>
       )}
     </Screen>
+  );
+}
+
+function AdultToggle({
+  on,
+  confirming,
+  onToggle,
+  onConfirm,
+  onCancel,
+}: {
+  on: boolean;
+  confirming: boolean;
+  onToggle: () => void;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const confirmRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (confirming) confirmRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [confirming]);
+  return (
+    <Card className={on ? "border-danger/60! bg-danger/10!" : ""}>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        onClick={onToggle}
+        className="flex w-full items-center justify-between gap-3 text-left"
+      >
+        <span className="min-w-0">
+          <span className="block font-display text-[1.05rem] font-bold">Mode 18+ 🌶️</span>
+          <span className="block text-[0.82rem] leading-snug text-ink-2">
+            {on ? "Tu préfères et Qui de nous version trash. Âmes sensibles s'abstenir." : "Questions crues pour Tu préfères et Qui de nous."}
+          </span>
+        </span>
+        <span className={`relative h-7 w-12 shrink-0 rounded-full transition ${on ? "bg-danger" : "bg-white/15"}`}>
+          <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${on ? "left-6" : "left-1"}`} />
+        </span>
+      </button>
+      {confirming && !on && (
+        <div ref={confirmRef} className="animate-pop mt-3 rounded-xl border border-danger/40 bg-danger/10 p-3">
+          <p className="text-[0.92rem] font-semibold leading-snug">
+            Tous les joueurs ont 18 ans ou plus et sont OK avec du contenu sexuel/trash ?
+          </p>
+          <div className="mt-3 flex gap-2">
+            <Button variant="secondary" size="sm" onClick={onCancel}>
+              Non, on reste sages
+            </Button>
+            <Button variant="danger" size="sm" haptics={false} onClick={onConfirm}>
+              Oui, on est tous OK
+            </Button>
+          </div>
+        </div>
+      )}
+    </Card>
   );
 }
 

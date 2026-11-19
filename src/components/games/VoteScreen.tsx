@@ -31,7 +31,10 @@ export default function VoteScreen() {
         )
       }
     >
-      <Kicker className="mb-2 text-center">{qui ? "Qui de nous…" : "Tu préfères…"}</Kicker>
+      <Kicker className="mb-2 text-center">
+        {qui ? "Qui de nous…" : "Tu préfères…"}
+        {v.spicy && <span className="ml-1.5 rounded-full bg-danger/25 px-2 py-0.5 text-danger">18+ 🌶️</span>}
+      </Kicker>
       {!done && (
         <div className="mb-4">
           <TimerBar deadlineAt={game.timer?.deadlineAt} totalMs={VOTE_MS} />
@@ -41,7 +44,11 @@ export default function VoteScreen() {
       {qui ? (
         <>
           <Card className="mb-4 text-center">
-            <h2 className="font-display text-[1.5rem] font-bold leading-snug text-balance">{v.prompt}</h2>
+            <h2
+              className={`font-display font-bold leading-snug text-balance ${(v.prompt?.length ?? 0) > 80 ? "text-[1.25rem]" : "text-[1.5rem]"}`}
+            >
+              {v.prompt}
+            </h2>
           </Card>
           {!done ? (
             <div className="flex flex-col gap-2">

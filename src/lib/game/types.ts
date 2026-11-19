@@ -153,6 +153,8 @@ export interface VoteQuestionState {
 export interface VoteRoundState {
   // "tp" = Tu préfères (A/B) ; "qui" = Qui de nous (vote pour un joueur).
   mode?: "tp" | "qui";
+  // Question tirée du pool 18+.
+  spicy?: boolean;
   question: VoteQuestionState;
   prompt?: string;
   askedAt: number;
@@ -453,6 +455,9 @@ export interface GameState {
   // sets it explicitly.
   enabledRoundTypeIds?: RoundTypeId[];
   culSecRule?: CulSecRule;
+  // Mode 18+ activé par l'hôte (avec confirmation) : « Tu préfères » et
+  // « Qui de nous » piochent surtout dans les pools adultes.
+  adultMode?: boolean;
   culSecTargetSlug?: string;
   vote?: VoteRoundState;
   meme?: MemeRoundState;
