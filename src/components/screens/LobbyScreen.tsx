@@ -16,6 +16,11 @@ import { Chips, Stepper, TextField } from "../ui/Form";
 import { Waiting } from "../ui/Feedback";
 import { Card, Kicker, Note, Screen, Section } from "../ui/Layout";
 import { PlayerRow } from "../ui/Players";
+import { casinoBotBounds, CasinoSettings, UniverseSwitch } from "../casino/CasinoLobby";
+import { casinoGameById } from "@/lib/casino/catalog";
+import type { CasinoGameId, CasinoOptions, Universe } from "@/lib/casino/types";
+
+export type LobbySetupPatch = { universe?: Universe; casinoGameId?: CasinoGameId; casinoOptions?: Partial<CasinoOptions> };
 
 const ROUND_OPTIONS = [5, 10, 15, 20];
 const ALL_ROUND_TYPE_IDS = ROUND_TYPES.map((t) => t.id);
@@ -36,6 +41,11 @@ export default function LobbyScreen({
   onRemoveQuestion,
   onLaunch,
   onRename,
+  universe = "party",
+  casinoGameId = "poker",
+  casinoOptions,
+  onSetup,
+  onLaunchCasino,
 }: {
   roomCode: string;
   players: Player[];
@@ -51,6 +61,11 @@ export default function LobbyScreen({
   onRemoveQuestion: (id: string) => Promise<void>;
   onLaunch: (totalRounds: number, culSecRule: CulSecRule, enabledRoundTypeIds: RoundTypeId[], bots: number, adultMode: boolean) => void;
   onRename: (name: string) => void;
+  universe?: Universe;
+  casinoGameId?: CasinoGameId;
+  casinoOptions?: CasinoOptions;
+  onSetup: (patch: LobbySetupPatch) => void;
+  onLaunchCasino: (bots: number) => void;
 }) {
   const [totalRounds, setTotalRounds] = useState(10);
   const [culSecRule, setCulSecRule] = useState<CulSecRule>("last");
@@ -81,6 +96,15 @@ export default function LobbyScreen({
   const playable = ROUND_TYPES.filter((t) => enabledIds.has(t.id) && t.minPlayers <= tableSize).length;
   const canLaunch = enoughGames && playable > 0 && !busy;
 
+  // ---- Univers Chill ----
+  const casino = universe === "casino";
+  const [casinoBots, setCasinoBots] = useState(0);
+  const casinoMeta = casinoGameById(casinoGameId);
+  const bounds = casinoBotBounds(humans.length, casinoGameId);
+  const casinoBotCount = Math.max(bounds.min, Math.min(bounds.max, casinoBots));
+  const casinoTable = Math.min(8, humans.length) + casinoBotCount;
+  const canLaunchCasino = casinoMeta.ready && casinoTable >= casinoMeta.minPlayers && !busy;
+
   function toggle(id: RoundTypeId) {
     haptic("select");
     setEnabledIds((prev) => {
@@ -109,7 +133,18 @@ export default function LobbyScreen({
   return (
     <Screen
       actions={
-        isHost ? (
+        casino ? (
+          isHost ? (
+            <>
+              {error && <Note tone="danger">{error}</Note>}
+              <Button disabled={!canLaunchCasino} haptics="success" onClick={() => onLaunchCasino(casinoBotCount)}>
+                {casinoMeta.ready ? `${casinoMeta.icon} Lancer ${casinoMeta.label} · ${casinoTable} joueurs` : "Bientôt disponible"}
+              </Button>
+            </>
+          ) : (
+            <Waiting>L&apos;hôte prépare la table…</Waiting>
+          )
+        ) : isHost ? (
           <>
             {error && <Note tone="danger">{error}</Note>}
             {enoughGames && playable === 0 && <Note>Aucun jeu choisi n&apos;est jouable à {tableSize} : ajoute des bots.</Note>}
@@ -137,6 +172,8 @@ export default function LobbyScreen({
         </button>
       </Card>
 
+      <UniverseSwitch value={universe} isHost={isHost} onChange={(u) => onSetup({ universe: u })} />
+
       <Section title={`À table · ${humans.length} joueur${humans.length > 1 ? "s" : ""}`}>
         <div className="stagger flex flex-col gap-2">
           {humans.map((p) =>
@@ -160,17 +197,32 @@ export default function LobbyScreen({
               />
             )
           )}
-          {botCount > 0 && (
+          {(casino ? casinoBotCount : botCount) > 0 && (
             <div className="cs-row" data-dim="true">
               <span className="cs-avatar h-10 w-10 bg-violet/40 text-lg">🤖</span>
               <span className="flex-1 font-semibold text-ink-2">
-                + {botCount} bot{botCount > 1 ? "s" : ""} ajouté{botCount > 1 ? "s" : ""} au lancement
+                {(() => {
+                  const n = casino ? casinoBotCount : botCount;
+                  return `+ ${n} bot${n > 1 ? "s" : ""} ajouté${n > 1 ? "s" : ""} au lancement`;
+                })()}
               </span>
             </div>
           )}
         </div>
       </Section>
 
+      {casino ? (
+        <CasinoSettings
+          isHost={isHost}
+          humans={humans.length}
+          gameId={casinoGameId}
+          options={casinoOptions}
+          bots={casinoBots}
+          onBots={setCasinoBots}
+          onSetup={onSetup}
+        />
+      ) : (
+      <>
       <TableQuestions
         mine={myQuestions}
         total={tableQuestionCount}
@@ -265,6 +317,8 @@ export default function LobbyScreen({
             compte les gorgées de chacun. Garde ton téléphone allumé !
           </Card>
         </Section>
+      )}
+      </>
       )}
     </Screen>
   );

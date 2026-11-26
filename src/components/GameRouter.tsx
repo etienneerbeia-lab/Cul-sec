@@ -16,6 +16,12 @@ import UndercoverScreen from "./games/UndercoverScreen";
 import VoteScreen from "./games/VoteScreen";
 import FinalScreen from "./screens/FinalScreen";
 import RoundIntroScreen from "./screens/RoundIntroScreen";
+import CasinoFinalScreen from "./casino/CasinoFinalScreen";
+import type { CasinoGameId } from "@/lib/casino/types";
+
+// Écrans des jeux casino : un seul écran par jeu, toutes phases confondues
+// (la fin de partie a son écran commun, CasinoFinalScreen).
+const CASINO_SCREENS: Partial<Record<CasinoGameId, ComponentType>> = {};
 
 // Écran de chaque mini-jeu : il couvre ses propres phases ET son écran de
 // résultats (phase « showdown »), pour que rien ne disparaisse entre les deux.
@@ -36,6 +42,22 @@ const SCREENS: Record<RoundTypeId, { phases: GamePhase[]; Screen: ComponentType 
 export default function GameRouter({ onQuit }: { onQuit: () => void }) {
   const { game, mySlug, isHost, busy, act, openMenu } = useGame();
   const phase = game.phase;
+
+  if (game.universe === "casino") {
+    if (phase === "final")
+      return (
+        <CasinoFinalScreen
+          game={game}
+          mySlug={mySlug}
+          isHost={isHost}
+          onReplay={() => act({ type: "casinoReplay" })}
+          onLobby={() => act({ type: "restart" })}
+          onQuit={onQuit}
+        />
+      );
+    const CasinoScreen = game.casinoGameId ? CASINO_SCREENS[game.casinoGameId] : undefined;
+    return CasinoScreen ? <CasinoScreen /> : null;
+  }
 
   if (phase === "roundIntro")
     return (

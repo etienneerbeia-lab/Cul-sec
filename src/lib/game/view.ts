@@ -1,3 +1,4 @@
+import { moduleFor } from "./engine";
 import type { Card, GameState } from "./types";
 
 export interface PlayerView {
@@ -11,6 +12,15 @@ export interface PlayerView {
 // est secret (mains des autres, cartes à venir, réponses, votes en cours,
 // identité de l'imposteur, sabot du blackjack, planning des bots).
 export function viewFor(game: GameState, slug: string | null): PlayerView {
+  // Univers casino : chaque jeu masque lui-même ses secrets (deck, sabot,
+  // cartes des autres). Par défaut, rien d'autre que le planning des bots
+  // ne sort ; un jeu sans `redact` ne doit donc rien stocker de secret.
+  if (game.universe === "casino") {
+    let g: GameState = { ...game, botPlan: undefined, customQuestions: undefined, hands: undefined };
+    const mod = moduleFor(game);
+    if (mod?.redact && game.phase !== "lobby") g = mod.redact(g, slug);
+    return { game: g, myHand: null, myVoteChoice: null, myUndercoverWord: null };
+  }
   let g: GameState = { ...game, hands: undefined, botPlan: undefined, customQuestions: undefined };
   let myHand: Card[] | null = null;
   let myVoteChoice: string | null = null;

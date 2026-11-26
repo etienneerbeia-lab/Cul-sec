@@ -17,6 +17,8 @@ import { PlayerRow } from "./ui/Players";
 import HomeScreen from "./screens/HomeScreen";
 import LobbyScreen from "./screens/LobbyScreen";
 import GameRouter from "./GameRouter";
+import { casinoGameById } from "@/lib/casino/catalog";
+import { formatChips } from "@/lib/chips/format";
 
 const POLL_MS = 1200;
 
@@ -33,6 +35,7 @@ export default function GameApp() {
   const [myHand, setMyHand] = useState<Card[] | null>(null);
   const [myVoteChoice, setMyVoteChoice] = useState<string | null>(null);
   const [myUndercoverWord, setMyUndercoverWord] = useState<string | null>(null);
+  const [away, setAway] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
@@ -65,9 +68,12 @@ export default function GameApp() {
   }, []);
 
   const refresh = useCallback(
-    async (code: string) => {
+    async (code: string, forceBeat = false) => {
       try {
-        const beat = pollCountRef.current++ % 3 === 0 ? "?beat=1" : "";
+        // ?beat=1 met à jour la présence : une fois sur trois, et tout de
+        // suite au retour au premier plan (un joueur « absent » qui revient
+        // reprend la main dès ce poll).
+        const beat = pollCountRef.current++ % 3 === 0 || forceBeat ? "?beat=1" : "";
         const startedAt = Date.now();
         const data = await apiGet<StateResponse>(`/api/rooms/${code}/state${beat}`);
         if (code !== roomCodeRef.current) return;
@@ -87,6 +93,7 @@ export default function GameApp() {
         setMyHand(data.myHand);
         setMyVoteChoice(data.myVoteChoice);
         setMyUndercoverWord(data.myUndercoverWord);
+        setAway(data.away ?? []);
         setIsHost(data.isHost);
         setMySlug(data.mySlug);
       } catch (e) {
@@ -116,7 +123,7 @@ export default function GameApp() {
 
   useEffect(() => {
     const onVisible = () => {
-      if (!document.hidden && roomCodeRef.current) refresh(roomCodeRef.current);
+      if (!document.hidden && roomCodeRef.current) refresh(roomCodeRef.current, true);
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
@@ -202,15 +209,17 @@ export default function GameApp() {
 
   const me = game?.playersPublic.find((p) => p.slug === mySlug);
   const myGulps = me?.gulpsTotal ?? 0;
-  const drinkToast = useDrinkToast(game, myGulps, !!me);
+  // Univers Chill : jamais de gorgées (ni compteur, ni « Tu bois »).
+  const casino = game?.universe === "casino";
+  const drinkToast = useDrinkToast(game, myGulps, !!me && !casino);
 
   const openMenu = useCallback(() => setMenuOpen(true), []);
   const ctx: GameCtx | null = useMemo(
     () =>
       game
-        ? { roomCode, game, players, mySlug, isHost, busy, myHand, myVoteChoice, myUndercoverWord, act, openMenu }
+        ? { roomCode, game, players, mySlug, isHost, busy, myHand, myVoteChoice, myUndercoverWord, away, act, openMenu }
         : null,
-    [roomCode, game, players, mySlug, isHost, busy, myHand, myVoteChoice, myUndercoverWord, act, openMenu]
+    [roomCode, game, players, mySlug, isHost, busy, myHand, myVoteChoice, myUndercoverWord, away, act, openMenu]
   );
 
   if (booting) {
@@ -242,12 +251,24 @@ export default function GameApp() {
 
   const phase = game?.phase ?? "lobby";
   const inGame = !!game && phase !== "lobby";
-  const rt = game?.roundTypeId ? roundTypeById(game.roundTypeId) : null;
+  const rt = game?.roundTypeId && !casino ? roundTypeById(game.roundTypeId) : null;
+  const cg = casino && game?.casinoGameId ? casinoGameById(game.casinoGameId) : null;
+  const myStack = casino && game?.chips ? (game.chips.stacks[mySlug] ?? null) : null;
 
   return (
     <div id="app" style={{ paddingTop: "calc(var(--safe-top) + 8px)" }}>
       <header className="flex shrink-0 items-center gap-3 pb-3">
-        {inGame && phase !== "final" && phase !== "roundIntro" && rt ? (
+        {inGame && phase !== "final" && cg ? (
+          <div className="flex min-w-0 flex-1 items-center gap-2.5">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-cyan/25 bg-cyan/[0.08] text-2xl">
+              {cg.icon}
+            </span>
+            <div className="min-w-0">
+              <Kicker>Chill · {roomCode}</Kicker>
+              <div className="truncate font-display text-[1.08rem] font-bold leading-tight">{cg.label}</div>
+            </div>
+          </div>
+        ) : inGame && phase !== "final" && phase !== "roundIntro" && rt ? (
           <div className="flex min-w-0 flex-1 items-center gap-2.5">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-white/10 bg-white/[0.06] text-2xl">
               {rt.icon}
@@ -270,7 +291,12 @@ export default function GameApp() {
             </span>
           </div>
         )}
-        {inGame && me && (
+        {inGame && me && casino && myStack !== null && (
+          <div className="cs-gulp" aria-label="Mon solde">
+            🪙 {formatChips(myStack, cg?.unit)}
+          </div>
+        )}
+        {inGame && me && !casino && (
           <div className={`cs-gulp ${myGulps === 0 ? "cs-gulp-zero" : ""}`} aria-label="Mes gorgées">
             🍺 <CountUp value={myGulps} />
           </div>
@@ -300,6 +326,20 @@ export default function GameApp() {
           error={error}
           previousEnabledRoundTypeIds={game?.enabledRoundTypeIds}
           previousAdultMode={game?.adultMode}
+          universe={game?.universe ?? "party"}
+          casinoGameId={game?.casinoGameId ?? "poker"}
+          casinoOptions={game?.casinoOptions}
+          onSetup={(patch) => act({ type: "lobbySetup", ...patch })}
+          onLaunchCasino={(bots) =>
+            runAction(() =>
+              apiPost(`/api/rooms/${roomCode}/launch`, {
+                universe: "casino",
+                casinoGameId: game?.casinoGameId ?? "poker",
+                casinoOptions: game?.casinoOptions,
+                bots,
+              })
+            )
+          }
           myQuestions={myQuestions}
           tableQuestionCount={tableQuestionCount}
           onAddQuestion={(q) => runAction(() => apiPost(`/api/rooms/${roomCode}/questions`, { action: "add", ...q }))}
@@ -311,7 +351,7 @@ export default function GameApp() {
           }
           onRename={(name: string) => runAction(() => apiPost(`/api/rooms/${roomCode}/rename`, { name }))}
         />
-      ) : !game.playersPublic.some((p) => p.slug === mySlug) && phase !== "final" ? (
+      ) : !casino && !game.playersPublic.some((p) => p.slug === mySlug) && phase !== "final" ? (
         <Screen center>
           <div className="flex flex-col items-center gap-2 text-center">
             <div className="animate-float text-6xl">🍻</div>
@@ -321,7 +361,10 @@ export default function GameApp() {
         </Screen>
       ) : (
         <GameContext.Provider value={ctx}>
-          <GameRouter key={`${game.round}:${game.roundTypeId}`} onQuit={handleQuit} />
+          <GameRouter
+            key={casino ? `casino:${game.casinoGameId}:${game.casinoStartedAt}` : `${game.round}:${game.roundTypeId}`}
+            onQuit={handleQuit}
+          />
         </GameContext.Provider>
       )}
 
@@ -368,7 +411,51 @@ export default function GameApp() {
             </div>
           </div>
         )}
-        {game && game.playersPublic.length > 0 && phase !== "lobby" && (
+        {cg && inGame && phase !== "final" && (
+          <div className="mb-6">
+            <div className="mb-3 flex items-center gap-3">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-cyan/25 bg-cyan/[0.08] text-2xl">
+                {cg.icon}
+              </span>
+              <div className="min-w-0">
+                <Kicker>Règles</Kicker>
+                <div className="truncate font-display text-xl font-extrabold leading-tight">{cg.label}</div>
+              </div>
+            </div>
+            <ul className="flex flex-col gap-2 text-[0.95rem] leading-snug text-ink-2">
+              {cg.rules.map((l) => (
+                <li key={l} className="flex gap-2.5">
+                  <span className="mt-[0.5em] h-1.5 w-1.5 shrink-0 rounded-full bg-cyan" />
+                  {l}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {casino && game?.chips && phase !== "lobby" && (
+          <>
+            <Kicker className="mb-2">Soldes</Kicker>
+            <div className="mb-5 flex flex-col gap-2">
+              {[...game.playersPublic]
+                .sort((a, b) => (game.chips!.stacks[b.slug] ?? 0) - (game.chips!.stacks[a.slug] ?? 0))
+                .map((p) => (
+                  <PlayerRow
+                    key={p.slug}
+                    name={p.name}
+                    slug={p.slug}
+                    me={p.slug === mySlug}
+                    detail={away.includes(p.slug) ? "Absent" : undefined}
+                    right={
+                      <span className="font-display text-lg font-extrabold tabular-nums">
+                        {formatChips(game.chips!.stacks[p.slug] ?? 0, cg?.unit)}
+                      </span>
+                    }
+                  />
+                ))}
+            </div>
+          </>
+        )}
+        {!casino && game && game.playersPublic.length > 0 && phase !== "lobby" && (
           <>
             <Kicker className="mb-2">Classement</Kicker>
             <div className="mb-5 flex flex-col gap-2">

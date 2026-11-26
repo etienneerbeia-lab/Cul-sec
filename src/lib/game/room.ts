@@ -2,7 +2,10 @@ import { fail, notNow } from "../errors";
 import type { Room } from "../store";
 import { culSecWinnerSlug, endNight, confirmRoundIntro, moduleFor, nextRound, restartToLobby } from "./engine";
 import { type Action, type Ctx, type Pending, pick, rand } from "./module";
-import type { GameState } from "./types";
+import type { GameState, Player } from "./types";
+import { isCasinoGameId } from "../casino/catalog";
+import { casinoModule, launchCasino } from "../casino/launch";
+import { BJ_ROUND_OPTIONS, type CasinoOptions, DEFAULT_CASINO_OPTIONS } from "../casino/types";
 
 // Un humain qui n'a pas donné signe de vie depuis ce délai est considéré
 // absent : ses coups sont joués pour lui sans attendre la fin du chrono.
@@ -10,7 +13,43 @@ export const AWAY_MS = 45000;
 // L'hôte absent depuis ce délai passe la main à un autre humain présent.
 export const HOST_AWAY_MS = 20000;
 
-const HOST_ACTIONS = new Set(["confirmIntro", "nextRound", "endNight", "restart"]);
+const HOST_ACTIONS = new Set(["confirmIntro", "nextRound", "endNight", "restart", "lobbySetup", "casinoReplay"]);
+
+// Un humain est « absent » s'il a quitté le salon ou n'a pas donné signe de
+// vie depuis AWAY_MS. Les bots ne sont jamais absents.
+export function isAwayAt(room: Room, slug: string, now: number, seen?: Record<string, number>): boolean {
+  const p = room.players.find((pl) => pl.slug === slug);
+  if (!p || p.bot) return false;
+  if (p.left) return true;
+  return !!seen && seen[slug] !== undefined && now - seen[slug] > AWAY_MS;
+}
+
+export function awaySlugs(room: Room, now: number, seen?: Record<string, number>): string[] {
+  return room.players.filter((p) => isAwayAt(room, p.slug, now, seen)).map((p) => p.slug);
+}
+
+export function parseCasinoOptions(raw: unknown, prev?: CasinoOptions): CasinoOptions {
+  const o = (raw ?? {}) as Partial<CasinoOptions>;
+  const base = prev ?? DEFAULT_CASINO_OPTIONS;
+  return {
+    bjEndMode: o.bjEndMode === "survivor" || o.bjEndMode === "rounds" ? o.bjEndMode : base.bjEndMode,
+    bjRounds: BJ_ROUND_OPTIONS.includes(Number(o.bjRounds)) ? Number(o.bjRounds) : base.bjRounds,
+  };
+}
+
+// Réglages du salon partagés avec tous les joueurs (univers, jeu casino).
+function lobbySetup(g: GameState, action: Action): void {
+  if (g.phase !== "lobby") notNow();
+  if (action.universe !== undefined) {
+    if (action.universe !== "party" && action.universe !== "casino") fail(400, "Univers inconnu.");
+    g.universe = action.universe;
+  }
+  if (action.casinoGameId !== undefined) {
+    if (!isCasinoGameId(action.casinoGameId)) fail(400, "Jeu inconnu.");
+    g.casinoGameId = action.casinoGameId;
+  }
+  if (action.casinoOptions !== undefined) g.casinoOptions = parseCasinoOptions(action.casinoOptions, g.casinoOptions);
+}
 
 function ctxFor(room: Room, now: number): Ctx {
   return { now, hostSlug: room.hostSlug };
@@ -71,9 +110,22 @@ function applyGameAction(room: Room, slug: string, action: Action, now: number):
     case "assignCulSec":
       assignCulSec(g, slug, action.targetSlug);
       break;
+    case "lobbySetup":
+      lobbySetup(g, action);
+      break;
+    case "casinoReplay": {
+      // « Rejouer » : même jeu, mêmes réglages, dans le même salon. Les
+      // spectateurs (arrivés en cours de partie) prennent les places libres.
+      if (g.universe !== "casino" || g.phase !== "final" || !g.casinoGameId) notNow();
+      room.players = room.players.filter((p) => !p.left);
+      const next = launchCasino(room.players, g.casinoGameId, g.casinoOptions, ctx);
+      next.seq = (g.seq ?? 0) + 1;
+      room.game = next;
+      return;
+    }
     default: {
       const mod = moduleFor(g);
-      if (!mod || g.phase === "lobby") notNow();
+      if (!mod || g.phase === "lobby" || (g.universe === "casino" && g.phase === "final")) notNow();
       if (!g.playersPublic.some((p) => p.slug === slug)) fail(403, "Tu ne participes pas à cette partie.");
       mod.act(g, slug, action, ctx);
     }
@@ -126,12 +178,9 @@ export function tick(room: Room, now: number, seen?: Record<string, number>): bo
 
   if (seen && g.phase !== "lobby") changed = transferHostIfAway(room, now, seen) || changed;
 
-  const isAway = (slug: string) => {
-    const p = room.players.find((pl) => pl.slug === slug);
-    if (!p || p.bot) return false;
-    if (p.left) return true;
-    return !!seen && seen[slug] !== undefined && now - seen[slug] > AWAY_MS;
-  };
+  const isAway = (slug: string) => isAwayAt(room, slug, now, seen);
+
+  if (g.universe === "casino" && g.phase !== "lobby" && g.phase !== "final") changed = admitWaiting(room, now) || changed;
 
   for (let guard = 0; guard < 60; guard++) {
     const p = currentPending(room);
@@ -197,6 +246,16 @@ export function tick(room: Room, now: number, seen?: Record<string, number>): bo
     break;
   }
   return changed;
+}
+
+// Casino : propose au jeu les joueurs du salon pas encore assis.
+function admitWaiting(room: Room, now: number): boolean {
+  const g = room.game;
+  const mod = casinoModule(g.casinoGameId);
+  if (!mod?.admit) return false;
+  const seated = new Set(g.playersPublic.map((p) => p.slug));
+  const waiting: Player[] = room.players.filter((p) => !seated.has(p.slug) && !p.left);
+  return waiting.length > 0 && mod.admit(g, waiting, ctxFor(room, now));
 }
 
 function transferHostIfAway(room: Room, now: number, seen: Record<string, number>): boolean {
