@@ -1,4 +1,5 @@
 import type { ChipLedger } from "../chips/ledger";
+import type { PokerState } from "../poker/types";
 import type { CasinoGameId, CasinoOptions, CasinoRankEntry, Universe } from "../casino/types";
 
 export type SuitColor = "black" | "red";
@@ -71,6 +72,7 @@ export type GamePhase =
   | "qcm"
   | "dice421"
   | "reflex"
+  | "poker"
   | "final";
 
 export type Street = "single" | "preflop" | "flop" | "turn" | "river";
@@ -505,6 +507,8 @@ export interface GameState {
   chips?: ChipLedger;
   // Classement final, figé à la fin de la partie.
   casinoRanking?: CasinoRankEntry[];
+  // Poker casino (Texas Hold'em No Limit, tournoi express).
+  poker?: PokerState;
 }
 
 // Question écrite par un joueur dans le salon (« Questions de la table »),

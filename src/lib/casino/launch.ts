@@ -1,7 +1,7 @@
-import { ranking } from "../chips/ledger";
 import type { Ctx, GameModule } from "../game/module";
 import type { GameState, Player, PlayerPublic } from "../game/types";
 import { CASINO_MODULES } from "./registry";
+export { finishCasino } from "./finish";
 import { type CasinoGameId, type CasinoOptions, DEFAULT_CASINO_OPTIONS, MAX_CASINO_SEATS } from "./types";
 
 export function casinoModule(id: CasinoGameId | undefined): GameModule | null {
@@ -45,20 +45,6 @@ export function launchCasino(
   return g;
 }
 
-// Fin de partie : fige le classement (soldes, éliminations) et affiche
-// l'écran final.
-export function finishCasino(g: GameState, now: number): void {
-  g.casinoEndedAt = now;
-  const order = g.playersPublic.map((p) => p.slug);
-  const names = new Map(g.playersPublic.map((p) => [p.slug, p.name]));
-  g.casinoRanking = g.chips
-    ? ranking(g.chips, order).map((e) => ({ ...e, name: names.get(e.slug) ?? e.slug }))
-    : [];
-  g.phase = "final";
-  g.timer = undefined;
-  g.botPlan = undefined;
-}
-
 // Efface tout l'état propre au casino (retour au salon), en gardant le
 // choix d'univers / de jeu / de réglages pour la prochaine partie.
 export function clearCasinoRound(g: GameState): void {
@@ -66,4 +52,5 @@ export function clearCasinoRound(g: GameState): void {
   g.casinoRanking = undefined;
   g.casinoStartedAt = undefined;
   g.casinoEndedAt = undefined;
+  g.poker = undefined;
 }
