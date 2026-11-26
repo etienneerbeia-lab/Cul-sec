@@ -1,22 +1,20 @@
-// Simulation de tournois de Poker casino pour calibrer la structure des
-// blindes (durée visée : 5 à 6 min). Utilise le VRAI moteur et le vrai
-// tick du salon, avec une horloge virtuelle ; les joueurs sont des bots
+// Simulation de tournois de Poker casino : durée des parties avec la
+// structure de lib/poker/blinds.ts. Utilise le VRAI moteur et le vrai tick
+// du salon, avec une horloge virtuelle ; les joueurs sont des bots
 // (lib/poker/bot.ts) mais avec des temps de réflexion humains.
 //
-//   npx tsx scripts/sim-poker.ts                    # 300 parties à 3, 5, 8
-//   GAMES=100 npx tsx scripts/sim-poker.ts --sweep  # balaye la durée de niveau
-//   LEVEL_MS=3:50000,5:45000,8:40000 npx tsx scripts/sim-poker.ts
+//   npx tsx scripts/sim-poker.ts                     # 300 parties, 2 à 8 joueurs
+//   GAMES=500 SIZES=3,5,8 npx tsx scripts/sim-poker.ts
 import { launchCasino } from "../src/lib/casino/launch";
 import { tick } from "../src/lib/game/room";
 import type { Player } from "../src/lib/game/types";
 import { pokerModule } from "../src/lib/games/casinoPoker";
-import { LEVEL_MS_BY_PLAYERS } from "../src/lib/poker/blinds";
 import { ACTION_MS } from "../src/lib/poker/blinds";
 import { stackOf } from "../src/lib/chips/ledger";
 import type { Room } from "../src/lib/store";
 
 const GAMES = Number(process.env.GAMES ?? 300);
-const SIZES = (process.env.SIZES ?? "3,5,8").split(",").map(Number);
+const SIZES = (process.env.SIZES ?? "2,3,4,5,6,7,8").split(",").map(Number);
 
 // ---- Temps de réflexion humain ----
 function gauss(): number {
@@ -84,14 +82,12 @@ const fmt = (ms: number) => {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 };
 
-function run(n: number, levelMs: number, games: number) {
-  LEVEL_MS_BY_PLAYERS[n] = levelMs;
+function run(n: number, games: number) {
   const stats = Array.from({ length: games }, () => playOne(n));
   const ms = stats.map((s) => s.ms).sort((a, b) => a - b);
   const mean = ms.reduce((a, b) => a + b, 0) / ms.length;
   return {
     n,
-    levelMs,
     games,
     mean,
     median: quantile(ms, 0.5),
@@ -106,7 +102,6 @@ function run(n: number, levelMs: number, games: number) {
 function line(r: ReturnType<typeof run>) {
   return [
     `${r.n} joueurs`.padEnd(10),
-    `niveau ${r.levelMs / 1000}s`.padEnd(12),
     `moy ${fmt(r.mean)}`,
     `méd ${fmt(r.median)}`,
     `P10 ${fmt(r.p10)}`,
@@ -117,15 +112,4 @@ function line(r: ReturnType<typeof run>) {
   ].join("  ");
 }
 
-const custom = process.env.LEVEL_MS
-  ? Object.fromEntries(process.env.LEVEL_MS.split(",").map((kv) => kv.split(":").map(Number)))
-  : null;
-
-if (process.argv.includes("--sweep")) {
-  for (const n of SIZES) {
-    for (let lv = 25000; lv <= 90000; lv += 5000) console.log(line(run(n, lv, GAMES)));
-    console.log();
-  }
-} else {
-  for (const n of SIZES) console.log(line(run(n, custom?.[n] ?? LEVEL_MS_BY_PLAYERS[n], GAMES)));
-}
+for (const n of SIZES) console.log(line(run(n, GAMES)));

@@ -10,9 +10,9 @@ export const CASINO_GAMES: CasinoGameMeta[] = [
     tagline: "Texas Hold'em No Limit, tournoi express.",
     minPlayers: 2,
     unit: "chips",
-    ready: false,
+    ready: true,
     rules: [
-      "1 000 jetons chacun. Les blindes montent avec le temps, pas au nombre de mains.",
+      "1 000 jetons chacun, blindes 10/20 qui doublent toutes les 2 minutes.",
       "2 cartes privées, 5 cartes communes : la meilleure main de 5 cartes gagne.",
       "No limit : relance minimum = la dernière relance, tapis quand tu veux.",
       "15 s pour jouer : check si possible, sinon on se couche pour toi.",

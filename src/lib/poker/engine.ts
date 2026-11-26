@@ -14,7 +14,7 @@ import {
 import { fail, notNow } from "../errors";
 import { bestHand, describeHand, type HandEval } from "../game/evaluate";
 import type { GameState } from "../game/types";
-import { blindsFor, levelAt, STARTING_STACK, structureFor } from "./blinds";
+import { BLIND_STRUCTURE, blindsFor, levelAt, STARTING_STACK } from "./blinds";
 import { awardPots, buildPots } from "./pots";
 import type { PokerLegal, PokerMove, PokerStage, PokerState } from "./types";
 
@@ -71,7 +71,7 @@ export function leftOfButtonOrder(p: PokerState): string[] {
 
 export function startPokerTournament(g: GameState, now: number): void {
   const seats = g.playersPublic.map((pl) => pl.slug);
-  const s = structureFor(seats.length);
+  const s = BLIND_STRUCTURE;
   g.chips = createLedger(seats, STARTING_STACK);
   g.poker = {
     seats,
@@ -80,9 +80,9 @@ export function startPokerTournament(g: GameState, now: number): void {
     sbSlug: null,
     bbSlug: seats[0],
     level: 0,
-    blinds: s.levels[0],
+    blinds: s.start,
     levelMs: s.levelMs,
-    levels: s.levels,
+    startBlinds: s.start,
     stage: "preflop",
     deck: "",
     hole: {},
@@ -119,8 +119,9 @@ export function startHand(g: GameState, now: number, first = false): void {
   const l = g.chips!;
   const players = activeSlugs(l).filter((s) => stackOf(l, s) > 0);
   p.handNo += 1;
-  p.level = levelAt({ levelMs: p.levelMs, levels: p.levels }, now - (g.casinoStartedAt ?? now));
-  p.blinds = blindsFor({ levelMs: p.levelMs, levels: p.levels }, p.level);
+  const structure = { levelMs: p.levelMs, start: p.startBlinds };
+  p.level = levelAt(structure, now - (g.casinoStartedAt ?? now));
+  p.blinds = blindsFor(structure, p.level);
   const inGame = (s: string) => players.includes(s);
   // Bouton : au hasard au départ, puis au joueur suivant encore en jeu.
   if (first) {

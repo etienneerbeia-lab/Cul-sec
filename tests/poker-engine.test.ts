@@ -211,6 +211,10 @@ test("fin du tournoi : classement, le premier éliminé est dernier", () => {
   ]);
 });
 
+test("8 joueurs : même structure qu'à 3", () => {
+  assert.equal(table(8).poker!.levelMs, table(3).poker!.levelMs);
+});
+
 test("blindes au temps : nouveau niveau à la main suivante", () => {
   const g = table(3, { button: 0, now: 0 });
   const p = g.poker!;
@@ -220,11 +224,15 @@ test("blindes au temps : nouveau niveau à la main suivante", () => {
   afterHandEnd(g, p.levelMs + 1);
   assert.deepEqual(p.blinds, [20, 40]);
   assert.equal(p.level, 1);
-  // Au-delà du dernier palier, les blindes doublent.
+  assert.equal(p.levelMs, 120000, "un niveau = 2 minutes, quel que soit le nombre de joueurs");
+  // Doublement à chaque niveau : 10/20 → 20/40 → 40/80 → 80/160 → 160/320...
   mv(g, p.toAct!, "fold");
   if (g.poker!.stage !== "handEnd") mv(g, g.poker!.toAct!, "fold");
-  afterHandEnd(g, p.levelMs * 8 + 1); // niveau 8 = 2 doublements après 500/1000
-  assert.deepEqual(p.blinds, [2000, 4000]);
+  afterHandEnd(g, p.levelMs * 4 + 1);
+  assert.deepEqual(p.blinds, [160, 320]);
+  // Un niveau qui tombe en pleine main ne change pas les blindes de la main.
+  mv(g, p.toAct!, "call");
+  assert.deepEqual(p.blinds, [160, 320]);
 });
 
 test("chrono : check si possible, sinon couché (via le tick du salon)", () => {

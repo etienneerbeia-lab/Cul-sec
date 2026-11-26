@@ -1092,3 +1092,39 @@ input[type="text"]:focus {
     transform: none;
   }
 }
+
+/* Slider de mise (poker casino) : grosse poignée, facile au pouce. */
+.cs-range {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 36px;
+  background: transparent;
+  touch-action: pan-y;
+}
+.cs-range::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--color-cyan), var(--color-violet));
+}
+.cs-range::-moz-range-track {
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--color-cyan), var(--color-violet));
+}
+.cs-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 30px;
+  height: 30px;
+  margin-top: -11px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--color-cyan);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+}
+.cs-range::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--color-cyan);
+}

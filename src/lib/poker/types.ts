@@ -44,9 +44,10 @@ export interface PokerState {
   bbSlug: string;
   level: number;
   blinds: [number, number];
-  // Structure du tournoi (pour l'affichage du prochain niveau).
+  // Structure du tournoi (pour l'affichage du prochain niveau) : les
+  // blindes de départ doublent toutes les `levelMs`.
   levelMs: number;
-  levels: [number, number][];
+  startBlinds: [number, number];
   stage: PokerStage;
   // Secret : jamais envoyé aux clients (voir redact).
   deck: string;

@@ -17,11 +17,14 @@ import VoteScreen from "./games/VoteScreen";
 import FinalScreen from "./screens/FinalScreen";
 import RoundIntroScreen from "./screens/RoundIntroScreen";
 import CasinoFinalScreen from "./casino/CasinoFinalScreen";
+import CasinoPokerScreen from "./casino/PokerScreen";
 import type { CasinoGameId } from "@/lib/casino/types";
 
 // Écrans des jeux casino : un seul écran par jeu, toutes phases confondues
 // (la fin de partie a son écran commun, CasinoFinalScreen).
-const CASINO_SCREENS: Partial<Record<CasinoGameId, ComponentType>> = {};
+const CASINO_SCREENS: Partial<Record<CasinoGameId, ComponentType>> = {
+  poker: CasinoPokerScreen,
+};
 
 // Écran de chaque mini-jeu : il couvre ses propres phases ET son écran de
 // résultats (phase « showdown »), pour que rien ne disparaisse entre les deux.

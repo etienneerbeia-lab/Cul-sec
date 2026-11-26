@@ -83,3 +83,16 @@ test("conservation : la somme des gains égale la somme des mises (1 000 tirages
     assert.ok(Object.keys(payouts).every((p) => live.includes(p)));
   }
 });
+
+import { potRaiseTo } from "../src/lib/poker/format";
+
+test("raccourcis ½ pot / pot", () => {
+  // Pot 100 (blindes + mise 60 de l'adversaire), je dois suivre 40 : pot
+  // après mon call = 140 ; relance « pot » à 60 + 140 = 200.
+  const base = { pot: 100, currentBet: 60, myStreetBet: 20, min: 100, max: 1000 };
+  assert.equal(potRaiseTo({ ...base, fraction: 1 }), 200);
+  assert.equal(potRaiseTo({ ...base, fraction: 0.5 }), 130);
+  // Borné par le min-raise et le tapis.
+  assert.equal(potRaiseTo({ ...base, fraction: 0.1, min: 100 }), 100);
+  assert.equal(potRaiseTo({ ...base, fraction: 1, max: 150 }), 150);
+});
