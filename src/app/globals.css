@@ -1128,3 +1128,227 @@ input[type="text"]:focus {
   background: #fff;
   border: 3px solid var(--color-cyan);
 }
+
+/* =====================================================================
+   Tables Chill (poker, blackjack) : cartes, jetons, feutre, cuir.
+   Animations en transform / opacity uniquement (GPU).
+   ===================================================================== */
+
+/* ---- Cartes (CasinoCard) ---- */
+.cc {
+  position: relative;
+  flex-shrink: 0;
+  perspective: 800px;
+  will-change: transform;
+}
+.cc-inner {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.cc-inner.cc-down {
+  transform: rotateY(180deg);
+}
+.cc-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 7.2% / 5.1%;
+  overflow: hidden;
+  box-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.3),
+    0 8px 16px -6px rgba(0, 0, 0, 0.6);
+}
+/* Légère ombre interne (bord de carte) */
+.cc-face::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5), inset 0 -2px 4px rgba(80, 60, 30, 0.12);
+  pointer-events: none;
+}
+.cc-back {
+  transform: rotateY(180deg);
+}
+.cc-flip-in {
+  animation: cc-flip 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@keyframes cc-flip {
+  from {
+    transform: rotateY(180deg);
+  }
+  to {
+    transform: rotateY(0deg);
+  }
+}
+.cc-deal {
+  animation: cc-deal 0.5s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+@keyframes cc-deal {
+  from {
+    transform: translate(var(--from-x, 0), var(--from-y, -60px)) rotate(-16deg) scale(0.7);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+.cc-dim .cc-face {
+  filter: brightness(0.55) saturate(0.6);
+}
+.cc-lit .cc-face {
+  box-shadow:
+    0 0 0 2px #ffc94d,
+    0 0 16px 3px rgba(255, 201, 77, 0.65),
+    0 8px 16px -6px rgba(0, 0, 0, 0.6);
+}
+.cc-lit {
+  transform: translateY(-4px);
+  transition: transform 0.3s ease;
+}
+
+/* ---- Cuir et feutre ---- */
+.tb-rail {
+  background:
+    radial-gradient(ellipse at 50% 18%, rgba(255, 255, 255, 0.12), transparent 45%),
+    radial-gradient(ellipse at 50% 50%, #3b2416 0%, #22130b 62%, #120904 100%);
+  box-shadow:
+    0 22px 44px -16px rgba(0, 0, 0, 0.85),
+    inset 0 2px 1px rgba(255, 235, 210, 0.14),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.7);
+}
+/* Surpiqûre du rail */
+.tb-rail::after {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border-radius: inherit;
+  border: 1px dashed rgba(255, 214, 160, 0.28);
+  pointer-events: none;
+}
+.tb-felt {
+  background: radial-gradient(ellipse at 50% 42%, #2c8f62 0%, #1a6a45 42%, #0f4a30 72%, #082b1c 100%);
+  box-shadow:
+    inset 0 0 34px rgba(0, 0, 0, 0.65),
+    inset 0 0 0 2px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+/* Grain du feutre */
+.tb-felt::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.32;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='f'><feTurbulence type='fractalNoise' baseFrequency='1.15' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23f)'/></svg>");
+  pointer-events: none;
+}
+/* Ligne de mise dorée */
+.tb-line {
+  border: 1.5px solid rgba(219, 180, 96, 0.55);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+}
+.tb-print {
+  font-family: Georgia, "Times New Roman", serif;
+  fill: rgba(222, 186, 104, 0.85);
+  letter-spacing: 0.14em;
+}
+
+/* ---- Étiquettes d'action / de résultat ---- */
+.tk-tag {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-family: var(--font-bricolage), system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 10.5px;
+  line-height: 1.55;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  box-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  animation: tk-pop 0.32s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+@keyframes tk-pop {
+  from {
+    transform: translateY(5px) scale(0.6);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+.tk-tag-sm {
+  padding: 0 5px;
+  font-size: 9px;
+  letter-spacing: 0.02em;
+}
+.tk-tag-fold {
+  background: #5b5866;
+  color: #ece9f2;
+}
+.tk-tag-check {
+  background: linear-gradient(180deg, #4b8bff, #2a62d6);
+  color: #fff;
+}
+.tk-tag-bet {
+  background: linear-gradient(180deg, #ffad4d, #ef7d16);
+  color: #2a1400;
+}
+.tk-tag-allin {
+  background: linear-gradient(180deg, #ff4f61, #d01c33);
+  color: #fff;
+}
+.tk-tag-win,
+.tk-tag-bj {
+  background: linear-gradient(180deg, #ffe08a, #e2a72a);
+  color: #2a1a00;
+}
+.tk-tag-push {
+  background: #6d687c;
+  color: #fff;
+}
+.tk-tag-lose {
+  background: linear-gradient(180deg, #e0485a, #a8192c);
+  color: #fff;
+}
+
+/* ---- Anneau de timer ---- */
+.tk-ring-arc {
+  stroke: #45e3ff;
+  animation-name: tk-ring;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+@keyframes tk-ring {
+  0% {
+    stroke-dashoffset: 0;
+    stroke: #45e3ff;
+  }
+  65% {
+    stroke: #45e3ff;
+  }
+  80% {
+    stroke: #ffb627;
+  }
+  100% {
+    stroke-dashoffset: calc(var(--c) * 1px);
+    stroke: #ff4d5e;
+  }
+}
+.tk-halo {
+  box-shadow:
+    0 0 0 3px rgba(69, 227, 255, 0.35),
+    0 0 22px rgba(69, 227, 255, 0.55);
+}
