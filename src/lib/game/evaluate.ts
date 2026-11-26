@@ -95,3 +95,80 @@ export function handLabel5(e: HandEval): string {
     "Quinte flush",
   ][e.rank];
 }
+
+// ---- Ajouts partagés avec le Poker casino (les fonctions ci-dessus,
+// utilisées par le poker Soirée, restent inchangées) ----
+
+export interface BestHand {
+  eval: HandEval;
+  // Les 5 cartes qui composent la main (moins si moins de 5 cartes).
+  cards: Card[];
+}
+
+// Meilleure main de 5 cartes parmi 5 à 7 (ou la main brute s'il y en a
+// moins de 5, avant le flop), avec les cartes qui la composent.
+export function bestHand(cards: Card[]): BestHand {
+  if (cards.length <= 5) return { eval: evaluate5(cards), cards: cards.slice() };
+  let best: BestHand | null = null;
+  for (const combo of combinations(cards, 5)) {
+    const e = evaluate5(combo);
+    if (!best || compareHand(e, best.eval) < 0) best = { eval: e, cards: combo };
+  }
+  return best!;
+}
+
+const RANK_NAMES: Record<number, [string, string]> = {
+  // [singulier, pluriel]
+  2: ["2", "2"],
+  3: ["3", "3"],
+  4: ["4", "4"],
+  5: ["5", "5"],
+  6: ["6", "6"],
+  7: ["7", "7"],
+  8: ["8", "8"],
+  9: ["9", "9"],
+  10: ["10", "10"],
+  11: ["Valet", "Valets"],
+  12: ["Dame", "Dames"],
+  13: ["Roi", "Rois"],
+  14: ["As", "As"],
+};
+
+// « de Rois », « d'As », « de 8 ».
+const de = (v: number) => (v === 14 ? "d'As" : `de ${RANK_NAMES[v][1]}`);
+// « à l'As », « au Roi », « à la Dame », « au Valet », « au 9 ».
+function a(v: number): string {
+  if (v === 14) return "à l'As";
+  if (v === 12) return "à la Dame";
+  return `au ${RANK_NAMES[v][0]}`;
+}
+// « aux Rois », « aux As », « aux 8 ».
+const aux = (v: number) => `aux ${RANK_NAMES[v][1]}`;
+// « par les 4 », « par les As ».
+const par = (v: number) => `par les ${RANK_NAMES[v][1]}`;
+
+// Nom complet d'une main, en français : « Couleur à l'As », « Paire de
+// Rois », « Full aux Dames par les 4 », « Quinte au 5 »...
+export function describeHand(e: HandEval): string {
+  const [t0, t1] = e.tie;
+  switch (e.rank) {
+    case 8:
+      return t0 === 14 ? "Quinte flush royale" : `Quinte flush ${a(t0)}`;
+    case 7:
+      return `Carré ${de(t0)}`;
+    case 6:
+      return `Full ${aux(t0)} ${par(t1)}`;
+    case 5:
+      return `Couleur ${a(t0)}`;
+    case 4:
+      return `Quinte ${a(t0)}`;
+    case 3:
+      return `Brelan ${de(t0)}`;
+    case 2:
+      return `Double paire ${RANK_NAMES[t0][1]} et ${RANK_NAMES[t1][1]}`;
+    case 1:
+      return `Paire ${de(t0)}`;
+    default:
+      return `Hauteur ${t0 === 14 ? "As" : RANK_NAMES[t0][0]}`;
+  }
+}

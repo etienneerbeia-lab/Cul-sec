@@ -1,4 +1,5 @@
-import type { GameState, RoundTypeId } from "./types";
+import type { CasinoGameId } from "../casino/types";
+import type { GameState, Player, RoundTypeId } from "./types";
 
 // Une action envoyée par un joueur (ou jouée pour lui par le serveur).
 export interface Action {
@@ -27,7 +28,7 @@ export interface AutoOptions {
 }
 
 export interface GameModule {
-  id: RoundTypeId;
+  id: RoundTypeId | CasinoGameId;
   // Minimum de joueurs (humains + bots) pour que ce jeu soit tiré.
   minPlayers: number;
   start(g: GameState, ctx: Ctx): void;
@@ -42,6 +43,15 @@ export interface GameModule {
   // Ce qui se passe quand le délai expire sans acteur (ex. fin d'un
   // affichage). Par défaut : chaque acteur joue son coup automatique.
   onDeadline?(g: GameState, ctx: Ctx): void;
+  // ---- Jeux casino uniquement ----
+  // Retire de l'état ce que `slug` n'a pas le droit de voir (deck, cartes
+  // des autres...). Appelé par viewFor sur une copie superficielle de
+  // l'état : ne jamais modifier les objets imbriqués en place.
+  redact?(g: GameState, slug: string | null): GameState;
+  // Joueurs du salon pas encore assis (arrivés en cours de partie) : le jeu
+  // décide s'il les fait asseoir maintenant. Retourne true s'il a changé
+  // l'état.
+  admit?(g: GameState, waiting: Player[], ctx: Ctx): boolean;
 }
 
 export function rand(min: number, max: number): number {

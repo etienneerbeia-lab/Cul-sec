@@ -7,8 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:engine": "npx tsx scripts/test-engine.ts",
-    "test:api": "npx tsx scripts/test-api.ts"
+    "test:engine": "tsx scripts/test-engine.ts",
+    "test:api": "tsx scripts/test-api.ts",
+    "test": "tsx --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "test:all": "npm run typecheck && npm test && npm run test:engine"
   },
   "dependencies": {
     "@upstash/redis": "^1.38.3",
@@ -24,6 +27,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
     "tailwindcss": "^4",
+    "tsx": "4.23.15",
     "typescript": "^5"
   }
 }

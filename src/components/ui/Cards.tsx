@@ -7,9 +7,16 @@ const SIZES = {
   md: { w: 92, h: 130, corner: 17, suit: 40, r: 12 },
   sm: { w: 54, h: 76, corner: 13, suit: 22, r: 8 },
   xs: { w: 46, h: 66, corner: 12, suit: 19, r: 7 },
+  // Table de poker casino (board, sièges) : lisible à 375 px avec 8 sièges.
+  "2xs": { w: 34, h: 48, corner: 11, suit: 15, r: 6 },
+  "3xs": { w: 24, h: 34, corner: 9, suit: 11, r: 4 },
 } as const;
 
 export type CardSize = keyof typeof SIZES;
+
+export function cardDims(size: CardSize): { w: number; h: number } {
+  return { w: SIZES[size].w, h: SIZES[size].h };
+}
 
 export function cardKey(c: Card): string {
   return `${c.value}${c.suit.sym}`;

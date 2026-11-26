@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { handleError, readBody, roomCode, sessionToken } from "@/lib/auth";
 import { fail } from "@/lib/errors";
 import { launchGame, playableTypes } from "@/lib/game/engine";
-import { tick } from "@/lib/game/room";
+import { parseCasinoOptions, tick } from "@/lib/game/room";
+import { casinoGameById, isCasinoGameId } from "@/lib/casino/catalog";
+import { casinoModule, launchCasino } from "@/lib/casino/launch";
+import { MAX_CASINO_SEATS } from "@/lib/casino/types";
 import { ROUND_TYPES } from "@/lib/game/roundTypes";
 import { MIN_ENABLED_ROUND_TYPES, type CulSecRule, type RoundTypeId } from "@/lib/game/types";
 import { autoBotCount, makeBots, MAX_BOTS } from "@/lib/bots/names";
@@ -15,6 +18,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cod
   try {
     const code = await roomCode(params);
     const body = await readBody(req);
+    if (body.universe === "casino") return await launchCasinoRoom(req, code, body);
     const totalRounds = Number(body.totalRounds);
     const culSecRule: CulSecRule = body.culSecRule === "first" ? "first" : "last";
     const adultMode = body.adultMode === true;
@@ -53,4 +57,33 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cod
   } catch (e) {
     return handleError(e);
   }
+}
+
+// Univers Chill : un seul jeu casino, choisi par l'hôte, joué en continu
+// jusqu'au classement final. 8 places assises au plus (humains d'abord).
+async function launchCasinoRoom(req: NextRequest, code: string, body: Record<string, unknown>) {
+  const gameId = body.casinoGameId;
+  if (!isCasinoGameId(gameId)) fail(400, "Jeu inconnu.");
+  if (!casinoModule(gameId)) fail(400, "Ce jeu arrive bientôt.");
+  const meta = casinoGameById(gameId);
+  const extraBots = Math.max(0, Math.min(MAX_BOTS, Math.floor(Number(body.bots) || 0)));
+  await mutateRoom(
+    code,
+    (room, snap) => {
+      if (!snap.session || snap.session.slug !== room.hostSlug) fail(403, "Réservé à l'hôte.");
+      if (room.game.phase !== "lobby") fail(409, "La partie a déjà commencé.");
+      const humans = room.players.filter((p) => !p.bot && !p.left);
+      if (humans.length < 1) fail(400, "Il faut au moins 1 joueur pour commencer.");
+      const free = Math.max(0, MAX_CASINO_SEATS - humans.length);
+      const wanted = Math.max(extraBots, meta.minPlayers - humans.length);
+      const bots = makeBots(Math.min(free, MAX_BOTS, wanted), humans);
+      const options = parseCasinoOptions(body.casinoOptions, room.game.casinoOptions);
+      room.players = [...humans, ...bots];
+      room.game = launchCasino(room.players, gameId, options, { now: Date.now(), hostSlug: room.hostSlug });
+      tick(room, Date.now(), snap.seen);
+      return true;
+    },
+    sessionToken(req, code)
+  );
+  return NextResponse.json({ ok: true });
 }

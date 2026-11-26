@@ -15,6 +15,8 @@ export interface GameCtx {
   myHand: Card[] | null;
   myVoteChoice: string | null;
   myUndercoverWord: string | null;
+  // Joueurs absents (partis ou silencieux) : badge sur leur siège.
+  away: string[];
   // Envoie une action au serveur (avec gestion d'erreur et rafraîchissement).
   act: ActFn;
   // Ouvre le menu (règles du jeu en cours, classement, quitter).

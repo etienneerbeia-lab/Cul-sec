@@ -53,6 +53,7 @@ export interface StateResponse {
   isHost: boolean;
   myQuestions?: CustomQuestion[];
   tableQuestionCount?: number;
+  away?: string[];
 }
 
 export type BetAction = "fold" | "call" | "raise" | "check" | "bet";

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { handleError, roomCode, sessionToken } from "@/lib/auth";
-import { tick } from "@/lib/game/room";
+import { awaySlugs, tick } from "@/lib/game/room";
 import { viewFor } from "@/lib/game/view";
 import { mutateRoom, readRoom, touchPresence, type Room } from "@/lib/store";
 
@@ -43,6 +43,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ code
       // Questions de la table : chacun ne voit que les siennes, et le total.
       myQuestions: (room.customQuestions ?? []).filter((q) => q.authorSlug === slug),
       tableQuestionCount: (room.customQuestions ?? []).length,
+      // Joueurs absents (partis ou silencieux depuis 45 s) : leurs coups
+      // sont joués pour eux ; badge « absent » sur leur siège.
+      away: awaySlugs(room, now, snap.seen),
     });
   } catch (e) {
     return handleError(e);

@@ -1,6 +1,7 @@
 import { ROUND_TYPES, roundTypeById } from "./roundTypes";
 import { pickDuelists } from "../games/duel";
 import { MODULES } from "../games/registry";
+import { casinoModule, clearCasinoRound } from "../casino/launch";
 import type { Ctx, GameModule } from "./module";
 import type { CulSecRule, GameState, Player, PlayerPublic, RoundTypeId } from "./types";
 
@@ -25,6 +26,7 @@ export function uniqueSlug(name: string, taken: string[]): string {
 }
 
 export function moduleFor(g: GameState): GameModule | null {
+  if (g.universe === "casino") return casinoModule(g.casinoGameId);
   return g.roundTypeId ? (MODULES[g.roundTypeId] ?? null) : null;
 }
 
@@ -131,6 +133,8 @@ export function restartToLobby(g: GameState): void {
   g.playersPublic = [];
   g.culSecTargetSlug = undefined;
   resetRoundFields(g);
+  // Univers / jeu / réglages casino gardés : l'hôte retrouve son choix.
+  clearCasinoRound(g);
 }
 
 // Règle « first » : le plus sobre choisit qui boit le cul sec.

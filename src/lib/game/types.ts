@@ -1,3 +1,8 @@
+import type { ChipLedger } from "../chips/ledger";
+import type { PokerState } from "../poker/types";
+import type { BjtState } from "../bjtable/types";
+import type { CasinoGameId, CasinoOptions, CasinoRankEntry, Universe } from "../casino/types";
+
 export type SuitColor = "black" | "red";
 
 export interface Suit {
@@ -68,6 +73,8 @@ export type GamePhase =
   | "qcm"
   | "dice421"
   | "reflex"
+  | "poker"
+  | "bjtable"
   | "final";
 
 export type Street = "single" | "preflop" | "flop" | "turn" | "river";
@@ -489,6 +496,23 @@ export interface GameState {
   // Incrémenté à chaque action acceptée : sert de clé d'attente aux jeux
   // tour par tour (chaque coup ouvre une nouvelle attente).
   seq?: number;
+  // ---- Univers « Chill / Casino » ----
+  // Absent = « party » (Soirée) : les salons existants ne changent pas.
+  // Gardé au retour au salon pour que l'hôte retrouve son choix.
+  universe?: Universe;
+  casinoGameId?: CasinoGameId;
+  casinoOptions?: CasinoOptions;
+  // Heure serveur du lancement (horloge des blindes, durée de partie).
+  casinoStartedAt?: number;
+  casinoEndedAt?: number;
+  // Soldes des joueurs assis (voir lib/chips).
+  chips?: ChipLedger;
+  // Classement final, figé à la fin de la partie.
+  casinoRanking?: CasinoRankEntry[];
+  // Poker casino (Texas Hold'em No Limit, tournoi express).
+  poker?: PokerState;
+  // Blackjack Table casino (toute la table contre le croupier).
+  bjt?: BjtState;
 }
 
 // Question écrite par un joueur dans le salon (« Questions de la table »),
