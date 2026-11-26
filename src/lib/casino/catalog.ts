@@ -26,13 +26,13 @@ export const CASINO_GAMES: CasinoGameMeta[] = [
     tagline: "Toute la table contre le croupier.",
     minPlayers: 1,
     unit: "euro",
-    ready: false,
+    ready: true,
     rules: [
-      "500 € chacun. Mise de 5 € minimum, jusqu'à ton solde, en 15 s.",
+      "500 € chacun. Mise de 5 € minimum, jusqu'à ton solde, en 15 s (sinon tu passes la manche).",
       "Blackjack payé 3:2. Le croupier reste sur 17 (même soft).",
-      "Double sur 2 cartes (aussi après split), split jusqu'à 4 mains, As splittés : 1 carte.",
-      "Assurance proposée quand le croupier montre un As (paie 2:1).",
-      "15 s pour jouer, sinon tu restes. À 0 €, tu regardes la fin de la partie.",
+      "Doubler sur 2 cartes (aussi après un split), séparer jusqu'à 4 mains, As séparés : 1 carte chacun.",
+      "Assurance (moitié de la mise) quand le croupier montre un As : payée 2:1. Avec un As ou un 10 visible, il vérifie son blackjack.",
+      "15 s pour jouer, sinon tu restes. Sous 5 €, tu regardes la fin de la partie.",
     ],
   },
 ];

@@ -1,5 +1,6 @@
 import type { ChipLedger } from "../chips/ledger";
 import type { PokerState } from "../poker/types";
+import type { BjtState } from "../bjtable/types";
 import type { CasinoGameId, CasinoOptions, CasinoRankEntry, Universe } from "../casino/types";
 
 export type SuitColor = "black" | "red";
@@ -73,6 +74,7 @@ export type GamePhase =
   | "dice421"
   | "reflex"
   | "poker"
+  | "bjtable"
   | "final";
 
 export type Street = "single" | "preflop" | "flop" | "turn" | "river";
@@ -509,6 +511,8 @@ export interface GameState {
   casinoRanking?: CasinoRankEntry[];
   // Poker casino (Texas Hold'em No Limit, tournoi express).
   poker?: PokerState;
+  // Blackjack Table casino (toute la table contre le croupier).
+  bjt?: BjtState;
 }
 
 // Question écrite par un joueur dans le salon (« Questions de la table »),

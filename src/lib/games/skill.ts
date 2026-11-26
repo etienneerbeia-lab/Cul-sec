@@ -9,12 +9,12 @@ import {
   blackjackSplit,
   blackjackStand,
   dealEventDelay,
-  handValue,
   startBlackjackRound,
 } from "../blackjack/engine";
+import { basicStrategyMove } from "../blackjack/rules";
 import { applyArcheryShot, archeryActiveSlug, startArcheryRound } from "../archery/engine";
 import { ARCHERY_CENTER, ARCHERY_LAUNCH_POINT, ARCHERY_MAX_DEVIATION, WIND_VECTORS } from "../archery/physics";
-import type { ArcheryPoint, Card, GameState } from "../game/types";
+import type { ArcheryPoint, GameState } from "../game/types";
 
 function isPoint(v: unknown): v is ArcheryPoint {
   const p = v as ArcheryPoint;
@@ -22,43 +22,13 @@ function isPoint(v: unknown): v is ArcheryPoint {
 }
 
 // ---------- Blackjack ----------
-function cardPoints(c: Card): number {
-  return c.value === 14 ? 11 : Math.min(10, c.value);
-}
-
-function isSoft(cards: Card[]): boolean {
-  let total = 0;
-  let aces = 0;
-  for (const c of cards) {
-    total += cardPoints(c);
-    if (c.value === 14) aces++;
-  }
-  while (total > 21 && aces > 0) {
-    total -= 10;
-    aces--;
-  }
-  return aces > 0;
-}
-
-// Stratégie de base simplifiée (ce que ferait un joueur correct).
+// Stratégie de base simplifiée (ce que ferait un joueur correct), commune
+// avec le Blackjack Table (lib/blackjack/rules.ts).
 function blackjackBotMove(g: GameState): string {
   const bj = g.blackjack!;
   const player = bj.players[bj.turnPointer];
   const hand = player.hands[player.activeHandIdx];
-  const up = cardPoints(bj.dealer.cards[0]);
-  const total = handValue(hand.cards);
-  const two = hand.cards.length === 2;
-  if (two && hand.cards[0].value === hand.cards[1].value) {
-    const v = hand.cards[0].value;
-    if (v === 14 || v === 8) return "split";
-    if ([2, 3, 6, 7, 9].includes(v) && up <= 6) return "split";
-  }
-  if (two && (total === 11 || (total === 10 && up <= 9))) return "double";
-  if (isSoft(hand.cards)) return total >= 19 || (total === 18 && up <= 8) ? "stand" : "hit";
-  if (total >= 17) return "stand";
-  if (total >= 13 && up <= 6) return "stand";
-  if (total === 12 && up >= 4 && up <= 6) return "stand";
-  return "hit";
+  return basicStrategyMove(hand.cards, bj.dealer.cards[0]);
 }
 
 const BJ_ACTIONS = { hit: blackjackHit, stand: blackjackStand, double: blackjackDouble, split: blackjackSplit };

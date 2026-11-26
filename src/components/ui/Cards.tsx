@@ -14,6 +14,10 @@ const SIZES = {
 
 export type CardSize = keyof typeof SIZES;
 
+export function cardDims(size: CardSize): { w: number; h: number } {
+  return { w: SIZES[size].w, h: SIZES[size].h };
+}
+
 export function cardKey(c: Card): string {
   return `${c.value}${c.suit.sym}`;
 }

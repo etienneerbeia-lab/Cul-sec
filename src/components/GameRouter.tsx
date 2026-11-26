@@ -18,12 +18,14 @@ import FinalScreen from "./screens/FinalScreen";
 import RoundIntroScreen from "./screens/RoundIntroScreen";
 import CasinoFinalScreen from "./casino/CasinoFinalScreen";
 import CasinoPokerScreen from "./casino/PokerScreen";
+import BlackjackTableScreen from "./casino/BlackjackTableScreen";
 import type { CasinoGameId } from "@/lib/casino/types";
 
 // Écrans des jeux casino : un seul écran par jeu, toutes phases confondues
 // (la fin de partie a son écran commun, CasinoFinalScreen).
 const CASINO_SCREENS: Partial<Record<CasinoGameId, ComponentType>> = {
   poker: CasinoPokerScreen,
+  bjtable: BlackjackTableScreen,
 };
 
 // Écran de chaque mini-jeu : il couvre ses propres phases ET son écran de

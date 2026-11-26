@@ -1,5 +1,9 @@
 import { drink } from "../game/module";
 import { makeShuffledDeck, shuffleArr } from "../game/cards";
+import { dealerShouldHit, handValue } from "./rules";
+
+// Règles pures communes avec le Blackjack Table : voir ./rules.ts.
+export { handValue };
 import type {
   BlackjackDealEvent,
   BlackjackHand,
@@ -39,30 +43,6 @@ export function revealedCount(
     n++;
   }
   return n;
-}
-
-// card.value runs 2-14 (11=Valet, 12=Dame, 13=Roi, 14=As) — 10/J/Q/K all
-// count 10, an Ace counts 11 unless that would bust the hand, in which case
-// it drops to 1 (repeated for a second Ace if the hand somehow still needs
-// it, e.g. two Aces plus a ten-value card).
-export function handValue(cards: Card[]): number {
-  let total = 0;
-  let aces = 0;
-  for (const c of cards) {
-    if (c.value === 14) {
-      total += 11;
-      aces++;
-    } else if (c.value >= 11) {
-      total += 10;
-    } else {
-      total += c.value;
-    }
-  }
-  while (total > 21 && aces > 0) {
-    total -= 10;
-    aces--;
-  }
-  return total;
 }
 
 function newHand(id: number, bet: number, fromSplit = false, isSplitAces = false): BlackjackHand {
@@ -258,7 +238,7 @@ function startDealerTurn(g: GameState): void {
   bj.dealer.cards.push(bj.dealer.hiddenCard!);
   bj.dealer.hiddenCard = null;
   bj.dealLog.push({ target: "dealer-reveal" });
-  while (handValue(bj.dealer.cards) < 17) {
+  while (dealerShouldHit(bj.dealer.cards)) {
     bj.dealer.cards.push(bj.deck.shift()!);
     bj.dealLog.push({ target: "dealer-hit" });
   }

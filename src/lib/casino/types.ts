@@ -18,7 +18,7 @@ export interface CasinoOptions {
 }
 
 export const DEFAULT_CASINO_OPTIONS: CasinoOptions = { bjEndMode: "rounds", bjRounds: 10 };
-export const BJ_ROUND_OPTIONS = [5, 10, 15, 20];
+export const BJ_ROUND_OPTIONS = [5, 10, 15];
 
 export interface CasinoRankEntry {
   slug: string;

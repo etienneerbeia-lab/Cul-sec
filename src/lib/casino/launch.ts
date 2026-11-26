@@ -53,4 +53,5 @@ export function clearCasinoRound(g: GameState): void {
   g.casinoStartedAt = undefined;
   g.casinoEndedAt = undefined;
   g.poker = undefined;
+  g.bjt = undefined;
 }

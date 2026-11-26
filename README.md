@@ -29,6 +29,7 @@ ou **Chill**, des jeux casino sans gorgées, joués avec des jetons.
 | Jeu | Joueurs | En bref |
 |---|---|---|
 | Poker ♠️ | 2-8 | Texas Hold'em No Limit, tournoi express : 1 000 jetons, blindes 10/20 qui doublent toutes les 2 min. |
+| Blackjack Table 🎰 | 1-8 | Toute la table contre le croupier, 500 € chacun ; 5 / 10 / 15 manches ou dernier survivant. Règles dans `src/lib/bjtable/config.ts`. |
 
 8 places assises au plus ; les suivants regardent. Fin de partie : classement,
 puis « Rejouer » dans le même salon.
@@ -54,7 +55,9 @@ complètent la table. À plusieurs, un jeu sans assez de joueurs est sauté
   mises engagées, règlement entre joueurs ou contre la banque, éliminations,
   classement).
 - `src/lib/casino` : univers Chill (catalogue, lancement, fin de partie,
-  cartes compactes) ; `src/lib/poker` : moteur Hold'em, pots, bots, blindes.
+  cartes compactes) ; `src/lib/poker` : moteur Hold'em, pots, bots, blindes ;
+  `src/lib/bjtable` : Blackjack Table ; `src/lib/blackjack/rules.ts` : règles
+  pures communes aux deux blackjacks.
 - `src/app/sw.js/route.ts` : service worker versionné par build.
 
 ## Variables d'environnement
@@ -85,7 +88,7 @@ npm test
 ```
 
 Tests unitaires : jetons, évaluateur de mains, side pots, moteur de poker,
-cadre Chill, et un instantané déterministe du Poker et du Blackjack Soirée
+Blackjack Table, cadre Chill, et un instantané déterministe du Poker et du Blackjack Soirée
 (non-régression).
 
 ```bash
