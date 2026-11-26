@@ -283,7 +283,7 @@ function OtherSeat({
       data-seat={slug}
     >
       {away && (
-        <span className="absolute -right-1 -top-2 rounded-full bg-amber px-1 text-[0.55rem] font-black uppercase leading-[1.4] text-night-950">
+        <span className="absolute right-1 -top-2 rounded-full bg-amber px-1 text-[0.55rem] font-black uppercase leading-[1.4] text-night-950">
           absent
         </span>
       )}
@@ -291,18 +291,19 @@ function OtherSeat({
       <div className="mt-1 w-full">
         <CardFan codes={codes} size="3xs" />
       </div>
-      <div className="mt-0.5 flex min-h-[18px] flex-wrap items-center justify-center gap-0.5">
+      <div className="mt-0.5 flex min-h-[18px] w-full flex-nowrap items-center justify-center gap-0.5 overflow-hidden">
         {seat && seat.hands.length > 1
           ? seat.hands.map((h, i) => {
               const vis = h.cards.slice(0, visibleCount(log, shown, slug, h.id));
               return (
                 <span
                   key={h.id}
-                  className={`rounded px-1 text-[0.6rem] font-bold tabular-nums leading-[1.5] ${
-                    i === focus && active ? "bg-cyan text-night-950" : total(vis) > 21 ? "bg-danger/80" : "bg-white/15"
+                  className={`shrink-0 rounded px-[3px] text-[0.6rem] font-bold tabular-nums leading-[1.5] ${
+                    i === focus && active ? "bg-cyan text-night-950" : total(vis) > 21 ? "bg-danger/80 line-through" : "bg-white/15"
                   }`}
+                  title={total(vis) > 21 ? "Bust" : undefined}
                 >
-                  {vis.length ? (total(vis) > 21 ? "Bust" : total(vis)) : "…"}
+                  {vis.length ? total(vis) : "…"}
                 </span>
               );
             })
@@ -393,9 +394,10 @@ function MySeat({
                   {vis.length > 0 && <TotalBadge cards={vis} blackjack={h.status === "blackjack" && vis.length === 2} large={hands.length <= 2} />}
                   {showResults && <ResultChip hand={h} />}
                 </div>
-                <div className="text-[0.7rem] font-semibold tabular-nums text-ink-2">
-                  {hands.length > 1 ? `Main ${i + 1} · ` : ""}Mise {euro(h.bet)}
-                  {h.doubled ? " · doublée" : ""}
+                <div className="truncate text-[0.7rem] font-semibold tabular-nums text-ink-2">
+                  {hands.length > 2
+                    ? `${euro(h.bet)}${h.doubled ? " · ×2" : ""}`
+                    : `${hands.length > 1 ? `Main ${i + 1} · ` : ""}Mise ${euro(h.bet)}${h.doubled ? " · doublée" : ""}`}
                 </div>
               </div>
             );
