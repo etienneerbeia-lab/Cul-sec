@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { handleError, roomCode, sessionToken } from "@/lib/auth";
+import { scheduleDealerJobs } from "@/lib/dealer/llm";
 import { awaySlugs, tick } from "@/lib/game/room";
 import { viewFor } from "@/lib/game/view";
 import { mutateRoom, readRoom, touchPresence, type Room } from "@/lib/store";
+
+export const maxDuration = 30;
 
 // Rafraîchissement d'un joueur. Une lecture groupée (1 requête Upstash),
 // puis — seulement si un bot doit jouer ou un délai a expiré — une écriture
@@ -29,6 +32,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ code
       room = res.room;
       version = res.version;
     }
+
+    // Réplique de la croupière à rédiger (fin de manche) : après la réponse.
+    scheduleDealerJobs(code, room);
 
     const view = viewFor(room.game, slug);
     return NextResponse.json({

@@ -2,7 +2,7 @@ import { fromCodes } from "../casino/cards";
 import { fail, notNow } from "../errors";
 import type { Card, DealerChatMessage, DealerChatState, GameState } from "../game/types";
 import { dealerReply, type BotStage } from "./bot";
-import { blackjackGameKey, croupierFor } from "./croupiers";
+import { blackjackGameKey, croupierFor, dealerRng } from "./croupiers";
 
 // Chat de la table avec la croupière : chaque joueur du salon peut écrire,
 // tout le monde voit les messages (ils voyagent avec la partie, comme le
@@ -40,38 +40,58 @@ export function chatFor(g: GameState, roomCode: string): DealerChatState | null 
   return key && g.dealerChat?.key === key ? g.dealerChat : null;
 }
 
-export function postDealerChat(
-  g: GameState,
-  roomCode: string,
-  slug: string,
-  name: string,
-  rawText: unknown,
-  now: number,
-  rng: () => number = Math.random,
-): void {
+// Discussion de la partie en cours (créée ou remise à zéro au besoin).
+export function chatState(g: GameState, key: string): DealerChatState {
+  if (g.dealerChat?.key !== key) g.dealerChat = { key, next: 1, messages: [], last: {} };
+  return g.dealerChat!;
+}
+
+export function pushMessage(chat: DealerChatState, m: Omit<DealerChatMessage, "id">): DealerChatMessage {
+  const msg = { id: chat.next++, ...m };
+  chat.messages.push(msg);
+  if (chat.messages.length > CHAT_KEEP) chat.messages = chat.messages.slice(-CHAT_KEEP);
+  return msg;
+}
+
+export interface ChatOptions {
+  rng?: () => number;
+  // L'IA rédigera la réponse : on la laisse « écrire » jusqu'à `llmWaitMs`,
+  // la réponse toute faite servant de secours.
+  llm?: boolean;
+  llmWaitMs?: number;
+}
+
+export function postDealerChat(g: GameState, roomCode: string, slug: string, name: string, rawText: unknown, now: number, opts: ChatOptions = {}): void {
   const key = blackjackGameKey(g, roomCode);
   if (!key || g.phase === "lobby" || g.phase === "final") notNow();
   if (typeof rawText !== "string") fail(400, "Message vide.");
   const text = rawText.replace(/\s+/g, " ").trim().slice(0, CHAT_MAX_LEN);
   if (!text) fail(400, "Message vide.");
 
-  if (g.dealerChat?.key !== key) g.dealerChat = { key, next: 1, messages: [], last: {} };
-  const chat = g.dealerChat!;
+  const chat = chatState(g, key);
   const last = chat.last[slug];
   if (last !== undefined && now - last < CHAT_MIN_GAP_MS) fail(429, "Doucement : un message à la fois.");
   chat.last[slug] = now;
 
   const croupier = croupierFor(key);
   const player = cleanName(name);
-  const push = (m: Omit<DealerChatMessage, "id">) => chat.messages.push({ id: chat.next++, ...m });
-  push({ from: "player", slug, name: player, text, at: now });
+  const ask = pushMessage(chat, { from: "player", slug, name: player, text, at: now });
 
+  const rng = opts.rng ?? dealerRng(`${key}:${ask.id}:${text}`);
   const reply = dealerReply(text, { croupier, playerName: player, soiree: g.universe !== "casino", rng, ...context(g, slug) });
   // Elle « écrit » un instant (plus long pour une longue réponse), et ses
   // réponses arrivent dans l'ordre des questions.
   const lastDealer = [...chat.messages].reverse().find((m) => m.from === "dealer");
-  const at = Math.max(now + Math.min(2600, 700 + reply.length * 16), (lastDealer?.at ?? 0) + 700);
-  push({ from: "dealer", name: croupier.name, text: reply, at });
-
-  if (chat.messages.length > CHAT_KEEP) chat.messages = chat.messages.slice(-CHAT_KEEP);
+  const minAt = Math.max(now + 600, (lastDealer?.at ?? 0) + 700);
+  if (opts.llm)
+    pushMessage(chat, {
+      from: "dealer",
+      name: croupier.name,
+      text: reply,
+      at: Math.max(now + (opts.llmWaitMs ?? 9000), minAt),
+      minAt,
+      llm: "todo",
+      job: { kind: "reply", askId: ask.id },
+    });
+  else pushMessage(chat, { from: "dealer", name: croupier.name, text: reply, at: Math.max(now + Math.min(2600, 700 + reply.length * 16), minAt) });
 }
