@@ -5,43 +5,29 @@ import { fromCode, type CardCode } from "@/lib/casino/cards";
 import type { Card } from "@/lib/game/types";
 import { Back as ClassicBack, Front as DetailedFront, Pip, SUIT_KEY, rankLabel, type SuitKey } from "../CasinoCard";
 
-// Cartes des variantes de table (labo). Quatre jeux :
-// - classic : vraie carte (ratio 2,5:3,5), index rang + couleur en coin
-//   haut-gauche et bas-droit inversé, symbole central ; vrais pips et
-//   figures dès qu'elle est assez grande ;
-// - minimal : blanche et plate, gros index (rang, couleur dessous), grosse
-//   couleur en bas à droite ;
-// - club : la classique, avec liseré doré, reflet et ombre portée ;
-// - neon : fond coloré par couleur (♠ graphite, ♥ rouge, ♦ bleu, ♣ vert).
+// Cartes des tables (Chill et Soirée). Deux jeux :
+// - classic (blackjack) : vraie carte (ratio 2,5:3,5), index rang + couleur
+//   en coin haut-gauche et bas-droit inversé, symbole central ; vrais pips
+//   et figures dès qu'elle est assez grande ;
+// - neon (poker) : fond coloré par couleur (♠ graphite, ♥ rouge, ♦ bleu,
+//   ♣ vert), index blanc.
 // Tout est en SVG (net sur Retina) ; les animations reprennent celles de
 // CasinoCard (classes .cc*).
 
-export type Deck = "classic" | "minimal" | "club" | "neon";
+export type Deck = "classic" | "neon";
 
 // Zone de l'index (rang + couleur) en coin haut-gauche, en fraction de la
 // largeur de la carte : ce qui doit rester visible quand les cartes se
 // chevauchent.
 export const INDEX_BOX: Record<Deck, { w: number; h: number }> = {
   classic: { w: 0.36, h: 0.74 },
-  club: { w: 0.36, h: 0.74 },
-  minimal: { w: 0.46, h: 0.98 },
   neon: { w: 0.44, h: 0.92 },
 };
 
 const SERIF = "Georgia, 'Times New Roman', serif";
 const SANS = "var(--font-inter), 'Helvetica Neue', Arial, sans-serif";
-
-// Couleurs d'encre selon le jeu (4 couleurs : ♦ bleu, ♣ vert).
-function inkOf(deck: Deck, suit: SuitKey, fourColor: boolean): string {
-  if (deck === "neon") return "#ffffff";
-  const red = deck === "minimal" ? "#e0262f" : "#b3122e";
-  const black = deck === "minimal" ? "#14161c" : "#16141c";
-  if (fourColor) {
-    if (suit === "d") return deck === "minimal" ? "#1764d8" : "#1d4fb8";
-    if (suit === "c") return deck === "minimal" ? "#12893f" : "#16703a";
-  }
-  return suit === "h" || suit === "d" ? red : black;
-}
+const RED = "#b3122e";
+const BLACK = "#16141c";
 
 const NEON_BG: Record<SuitKey, [string, string]> = {
   s: ["#3a3f55", "#1d2030"],
@@ -96,10 +82,8 @@ const CROWN: Record<number, string> = {
   11: "M8 56 Q50 -6 92 56 Z",
 };
 
-// ---- Faces ----
-
-// Classique / club, petite taille : index en coin, symbole central.
-function ClassicSmall({ card, suit, ink, id, club }: { card: Card; suit: SuitKey; ink: string; id: string; club: boolean }) {
+// Classique, petite taille : index en coin, symbole central.
+function ClassicSmall({ card, suit, ink }: { card: Card; suit: SuitKey; ink: string }) {
   const label = rankLabel(card.value);
   const corner = (
     <g>
@@ -118,7 +102,7 @@ function ClassicSmall({ card, suit, ink, id, club }: { card: Card; suit: SuitKey
         </g>
       ) : card.value >= 11 ? (
         <g>
-          <rect x={86} y={110} width={78} height={130} rx={8} fill={club ? `url(#${id}-gold)` : "#f6e9c6"} stroke={ink} strokeWidth={3} />
+          <rect x={86} y={110} width={78} height={130} rx={8} fill="#f6e9c6" stroke={ink} strokeWidth={3} />
           <g transform="translate(97 122) scale(0.56)">
             <path d={CROWN[card.value]} fill="#c9a24a" stroke={ink} strokeWidth={4} strokeLinejoin="round" />
           </g>
@@ -127,19 +111,6 @@ function ClassicSmall({ card, suit, ink, id, club }: { card: Card; suit: SuitKey
       ) : (
         <Pip suit={suit} x={125} y={175} size={88} color={ink} />
       )}
-    </g>
-  );
-}
-
-// Minimal : gros rang en haut à gauche, couleur dessous, grosse couleur en
-// bas à droite.
-function MinimalFace({ card, suit, ink }: { card: Card; suit: SuitKey; ink: string }) {
-  const label = rankLabel(card.value);
-  return (
-    <g>
-      <RankText label={label} x={22} y={122} size={124} font={SANS} color={ink} anchor="start" weight={800} narrow={98} />
-      <Pip suit={suit} x={62} y={192} size={74} color={ink} />
-      <Pip suit={suit} x={170} y={268} size={118} color={ink} />
     </g>
   );
 }
@@ -169,101 +140,45 @@ function MiniFace({ card, suit, ink }: { card: Card; suit: SuitKey; ink: string 
   );
 }
 
-function FaceSvg({ card, deck, fourColor, mini, width, id }: { card: Card; deck: Deck; fourColor: boolean; mini: boolean; width: number; id: string }) {
+function FaceSvg({ card, deck, mini, width, id }: { card: Card; deck: Deck; mini: boolean; width: number; id: string }) {
   const suit = SUIT_KEY[card.suit.sym] ?? "s";
-  const ink = inkOf(deck, suit, fourColor);
-  // Grandes cartes classiques : vrais pips et figures (dessin de CasinoCard).
-  if ((deck === "classic" || deck === "club") && !mini && width >= 60) {
-    return (
-      <div className="relative h-full w-full">
-        <DetailedFront card={card} id={id} compact={false} color={ink} />
-        {deck === "club" && <Gloss />}
-      </div>
-    );
-  }
   const neon = deck === "neon";
-  const paper = deck === "minimal" ? ["#ffffff", "#f4f5f7"] : ["#fffdf7", "#f1ead9"];
+  const ink = neon ? "#ffffff" : suit === "h" || suit === "d" ? RED : BLACK;
+  // Grandes cartes classiques : vrais pips et figures (dessin de CasinoCard).
+  if (!neon && !mini && width >= 60) return <DetailedFront card={card} id={id} compact={false} color={ink} />;
   return (
-    <div className="relative h-full w-full">
-      <svg viewBox="0 0 250 350" className="block h-full w-full" aria-label={`${rankLabel(card.value)} ${card.suit.sym}`}>
-        <defs>
-          <linearGradient id={`${id}-paper`} x1="0" y1="0" x2="0.4" y2="1">
-            <stop offset="0" stopColor={paper[0]} />
-            <stop offset="1" stopColor={paper[1]} />
-          </linearGradient>
-          <linearGradient id={`${id}-neon`} x1="0" y1="0" x2="0.6" y2="1">
-            <stop offset="0" stopColor={NEON_BG[suit][0]} />
-            <stop offset="1" stopColor={NEON_BG[suit][1]} />
-          </linearGradient>
-          <linearGradient id={`${id}-gold`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#fbefc9" />
-            <stop offset="1" stopColor="#e7cf8c" />
-          </linearGradient>
-        </defs>
-        {neon ? (
-          mini ? (
-            <rect x={0} y={0} width={250} height={350} fill={`url(#${id}-neon)`} />
-          ) : null
-        ) : (
-          <rect x="1" y="1" width="248" height="348" rx="18" fill={`url(#${id}-paper)`} stroke={deck === "minimal" ? "#d5d9e0" : "#cfc4ad"} strokeWidth="2" />
-        )}
-        {deck === "club" && !mini && <rect x={10} y={10} width={230} height={330} rx={12} fill="none" stroke="#c9a24a" strokeWidth={3} />}
-        {mini ? (
-          <MiniFace card={card} suit={suit} ink={ink} />
-        ) : neon ? (
-          <NeonFace card={card} suit={suit} id={id} />
-        ) : deck === "minimal" ? (
-          <MinimalFace card={card} suit={suit} ink={ink} />
-        ) : (
-          <ClassicSmall card={card} suit={suit} ink={ink} id={id} club={deck === "club"} />
-        )}
-      </svg>
-      {deck === "club" && <Gloss />}
-    </div>
+    <svg viewBox="0 0 250 350" className="block h-full w-full" aria-label={`${rankLabel(card.value)} ${card.suit.sym}`}>
+      <defs>
+        <linearGradient id={`${id}-paper`} x1="0" y1="0" x2="0.4" y2="1">
+          <stop offset="0" stopColor="#fffdf7" />
+          <stop offset="1" stopColor="#f1ead9" />
+        </linearGradient>
+        <linearGradient id={`${id}-neon`} x1="0" y1="0" x2="0.6" y2="1">
+          <stop offset="0" stopColor={NEON_BG[suit][0]} />
+          <stop offset="1" stopColor={NEON_BG[suit][1]} />
+        </linearGradient>
+      </defs>
+      {neon ? (
+        mini ? (
+          <rect x={0} y={0} width={250} height={350} fill={`url(#${id}-neon)`} />
+        ) : null
+      ) : (
+        <rect x="1" y="1" width="248" height="348" rx="18" fill={`url(#${id}-paper)`} stroke="#cfc4ad" strokeWidth="2" />
+      )}
+      {mini ? (
+        <MiniFace card={card} suit={suit} ink={ink} />
+      ) : neon ? (
+        <NeonFace card={card} suit={suit} id={id} />
+      ) : (
+        <ClassicSmall card={card} suit={suit} ink={ink} />
+      )}
+    </svg>
   );
-}
-
-// Reflet de la carte « club » (vernis).
-function Gloss() {
-  return <div className="pc-gloss" aria-hidden />;
 }
 
 // ---- Dos ----
 function BackSvg({ deck, id }: { deck: Deck; id: string }) {
   if (deck === "classic") return <ClassicBack id={id} color="bordeaux" />;
-  if (deck === "minimal")
-    return (
-      <svg viewBox="0 0 250 350" className="block h-full w-full" aria-hidden>
-        <defs>
-          <pattern id={`${id}-st`} width="14" height="14" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-            <rect width="14" height="14" fill="#23324d" />
-            <rect width="5" height="14" fill="#2b3d5c" />
-          </pattern>
-        </defs>
-        <rect x="0" y="0" width="250" height="350" rx="18" fill="#f7f8fa" />
-        <rect x="12" y="12" width="226" height="326" rx="11" fill={`url(#${id}-st)`} />
-        <circle cx="125" cy="175" r="34" fill="#f7f8fa" />
-        <Pip suit="s" x={125} y={175} size={40} color="#23324d" />
-      </svg>
-    );
-  if (deck === "club")
-    return (
-      <svg viewBox="0 0 250 350" className="block h-full w-full" aria-hidden>
-        <defs>
-          <pattern id={`${id}-dk`} width="24" height="24" patternUnits="userSpaceOnUse">
-            <path d="M12 0 L24 12 L12 24 L0 12 Z" fill="none" stroke="rgba(214,175,92,0.32)" strokeWidth="1.4" />
-          </pattern>
-        </defs>
-        <rect x="0" y="0" width="250" height="350" rx="18" fill="#141018" />
-        <rect x="0" y="0" width="250" height="350" rx="18" fill={`url(#${id}-dk)`} />
-        <rect x="12" y="12" width="226" height="326" rx="10" fill="none" stroke="#d6af5c" strokeWidth="4" />
-        <rect x="22" y="22" width="206" height="306" rx="6" fill="none" stroke="rgba(214,175,92,0.6)" strokeWidth="1.5" />
-        <g transform="translate(125 175)">
-          <path d="M0 -58 L40 0 L0 58 L-40 0 Z" fill="#141018" stroke="#d6af5c" strokeWidth="3" />
-          <path d="M0 -36 L24 0 L0 36 L-24 0 Z" fill="#d6af5c" opacity="0.85" />
-        </g>
-      </svg>
-    );
   return (
     <svg viewBox="0 0 250 350" className="block h-full w-full" aria-hidden>
       <defs>
@@ -292,9 +207,7 @@ export const PlayingCard = memo(function PlayingCard({
   faceDown = false,
   width,
   deck,
-  fourColor = false,
   mini = false,
-  backDeck,
   dealFrom,
   flipIn = false,
   animate = true,
@@ -309,9 +222,7 @@ export const PlayingCard = memo(function PlayingCard({
   faceDown?: boolean;
   width: number;
   deck: Deck;
-  fourColor?: boolean;
   mini?: boolean;
-  backDeck?: Deck;
   dealFrom?: { x: number; y: number };
   flipIn?: boolean;
   animate?: boolean;
@@ -343,9 +254,9 @@ export const PlayingCard = memo(function PlayingCard({
         className={`cc-inner ${showFace ? "" : "cc-down"} ${anim && flipIn && showFace ? "cc-flip-in" : ""}`}
         style={anim && flipIn ? { animationDelay: `${delayMs}ms` } : undefined}
       >
-        <div className="cc-face">{card ? <FaceSvg card={card} deck={deck} fourColor={fourColor} mini={mini} width={width} id={id} /> : null}</div>
+        <div className="cc-face">{card ? <FaceSvg card={card} deck={deck} mini={mini} width={width} id={id} /> : null}</div>
         <div className="cc-face cc-back">
-          <BackSvg deck={backDeck ?? deck} id={`${id}b`} />
+          <BackSvg deck={deck} id={`${id}b`} />
         </div>
       </div>
       {children}

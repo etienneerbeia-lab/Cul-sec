@@ -1,7 +1,16 @@
-import { fromCodes, toCode, type CardCode } from "@/lib/casino/cards";
+import { fromCode, fromCodes, toCode, type CardCode } from "@/lib/casino/cards";
 import type { BjtDealEvent, BjtHand, BjtSeat, BjtState } from "@/lib/bjtable/types";
-import { bestHand, describeHand } from "@/lib/game/evaluate";
-import type { GameState, PlayerPublic } from "@/lib/game/types";
+import { bestHand, bestOf7, describeHand, handLabel5 } from "@/lib/game/evaluate";
+import type {
+  BlackjackDealEvent,
+  BlackjackHand,
+  BlackjackPlayerState,
+  BlackjackResultEntry,
+  Card,
+  DrinkEntry,
+  GameState,
+  PlayerPublic,
+} from "@/lib/game/types";
 import type { PokerState } from "@/lib/poker/types";
 
 // Données fictives (mais cohérentes avec les moteurs) pour la page
@@ -286,4 +295,156 @@ export function bjGame(scenario: BjScenario, now: number): GameState {
     bjt: t,
     chips: { startingStack: 500, stacks, committed: {}, bustOrder: [] },
   });
+}
+
+// ---------------- Soirée : Poker ----------------
+
+export type PartyPokerScenario = "tour" | "abattage";
+export const PARTY_POKER_SCENARIOS: { id: PartyPokerScenario; label: string }[] = [
+  { id: "tour", label: "À moi · river" },
+  { id: "abattage", label: "Abattage" },
+];
+
+const PARTY = [ME, "gege", "jacky", "momo", "lulu", "dede"];
+const cards = (codes: string[]): Card[] => codes.map(fromCode);
+const gulps: Record<string, number> = { [ME]: 7, gege: 3, jacky: 12, momo: 5, lulu: 9, dede: 4 };
+
+function partyBase(now: number, extra: Partial<GameState>): GameState {
+  return {
+    ...base(PARTY, now, {}),
+    universe: undefined,
+    round: 4,
+    totalRounds: 10,
+    playersPublic: pub(PARTY).map((p) => ({ ...p, gulpsTotal: gulps[p.slug] ?? 0 })),
+    ...extra,
+  };
+}
+
+export function partyPokerGame(scenario: PartyPokerScenario, now: number, boardCount = 5): { game: GameState; myHand: Card[] } {
+  const myHand = cards(["7d", "Tc"]);
+  const board = cards(BOARD.slice(0, boardCount));
+  const g = partyBase(now, {
+    phase: "betting",
+    roundTypeId: "holdem",
+    street: "river",
+    community: board,
+    communityRevealed: board.length,
+    pot: 9,
+    currentBet: 1,
+    foldReferencePot: 6,
+    dealTargets: [0, 1, 2, 3, 4, 5],
+    turnIdx: 0,
+    startIndex: 1,
+    turnOrder: [1, 2, 3, 4, 5, 0],
+    turnPointer: 5,
+    needsToAct: [0],
+    bettingOpts: { mode: "check-or-bet", foldCost: "pot" },
+    timer: { key: "p", deadlineAt: now + 25_000 },
+  });
+  const set = (slug: string, v: Partial<GameState["playersPublic"][number]>) => Object.assign(g.playersPublic.find((p) => p.slug === slug)!, v);
+  set("gege", { folded: true, foldCost: 2 });
+  set("jacky", { folded: true, foldCost: 4 });
+  set("dede", { folded: true, foldCost: 6 });
+  set("momo", { bet: 1 });
+  set("lulu", { bet: 1 });
+  const drinks: DrinkEntry[] = [
+    { slug: "gege", name: NAMES.gege, n: 2, why: "S'est couché" },
+    { slug: "jacky", name: NAMES.jacky, n: 4, why: "S'est couché" },
+    { slug: "dede", name: NAMES.dede, n: 6, why: "S'est couché" },
+  ];
+  g.drinks = drinks;
+  if (scenario === "abattage") {
+    const hands: Record<string, Card[]> = { [NAMES[ME]]: myHand, [NAMES.momo]: cards(["Qd", "9s"]), [NAMES.lulu]: cards(["Kh", "Js"]) };
+    const full = cards(BOARD);
+    const labels: Record<string, string> = {};
+    for (const [n, h] of Object.entries(hands)) labels[n] = handLabel5(bestOf7([...h, ...full]));
+    g.phase = "showdown";
+    g.community = full;
+    g.turnIdx = undefined;
+    g.timer = undefined;
+    g.pot = 9;
+    g.playersPublic.forEach((p) => (p.bet = 0));
+    g.lastResults = {
+      type: "holdem",
+      soleSurvivor: false,
+      winners: [NAMES.momo],
+      losers: [NAMES[ME], NAMES.lulu],
+      potAtEnd: 9,
+      hands,
+      handLabels: labels,
+    };
+    g.drinks = [...drinks, { slug: ME, name: NAMES[ME], n: 9, why: "Perdu à l'abattage" }, { slug: "lulu", name: NAMES.lulu, n: 9, why: "Perdu à l'abattage" }];
+  }
+  return { game: g, myHand };
+}
+
+// ---------------- Soirée : Blackjack ----------------
+
+export type PartyBjScenario = "tour" | "resultats";
+export const PARTY_BJ_SCENARIOS: { id: PartyBjScenario; label: string }[] = [
+  { id: "tour", label: "À moi de jouer" },
+  { id: "resultats", label: "Résultats" },
+];
+
+function bjHand(id: number, codes: string[], bet: number, extra: Partial<BlackjackHand> = {}): BlackjackHand {
+  return { id, cards: cards(codes), bet, status: "stand", doubled: false, isSplitAces: false, fromSplit: false, ...extra };
+}
+
+export function partyBjGame(scenario: PartyBjScenario, now: number): GameState {
+  const results = scenario === "resultats";
+  const order = ["gege", "jacky", "momo", "lulu", "dede", ME];
+  const players: BlackjackPlayerState[] = [
+    { slug: "gege", name: NAMES.gege, activeHandIdx: 0, hands: [bjHand(1, ["7d", "3s", "2c", "Ad", "9d"], 2, { status: "bust" })] },
+    { slug: "jacky", name: NAMES.jacky, activeHandIdx: 0, hands: [bjHand(2, ["4c", "As", "7h", "8c"], 3)] },
+    { slug: "momo", name: NAMES.momo, activeHandIdx: 0, hands: [bjHand(3, ["8h", "Kh"], 1)] },
+    { slug: "lulu", name: NAMES.lulu, activeHandIdx: 0, hands: [bjHand(4, ["9c", "Qs"], 4)] },
+    { slug: "dede", name: NAMES.dede, activeHandIdx: 0, hands: [bjHand(5, ["5s", "3h", "9c"], 2)] },
+    {
+      slug: ME,
+      name: NAMES[ME],
+      activeHandIdx: 0,
+      hands: [results ? bjHand(6, ["2s", "8c", "Ac"], 4, { doubled: true }) : bjHand(6, ["2s", "8c"], 2, { status: "playing" })],
+    },
+  ];
+  const log: BlackjackDealEvent[] = [];
+  for (const p of players) log.push({ target: "player", slug: p.slug, handId: p.hands[0].id });
+  log.push({ target: "dealer-up" });
+  for (const p of players) log.push({ target: "player", slug: p.slug, handId: p.hands[0].id });
+  log.push({ target: "dealer-hidden" });
+  for (const p of players) for (let k = 2; k < p.hands[0].cards.length; k++) log.push({ target: "player", slug: p.slug, handId: p.hands[0].id });
+  if (results) log.push({ target: "dealer-reveal" });
+  const bets: Record<string, number> = {};
+  players.forEach((p) => (bets[p.slug] = p.hands[0].bet / (p.hands[0].doubled ? 2 : 1)));
+  const g = partyBase(now, {
+    phase: results ? "showdown" : "blackjack",
+    roundTypeId: "blackjack",
+    timer: results ? undefined : { key: "b", deadlineAt: now + 20_000 },
+    blackjack: {
+      stage: results ? "result" : "playerTurns",
+      bets,
+      betResponded: order.slice(),
+      players,
+      turnPointer: 5,
+      dealer: { cards: cards(results ? ["Ts", "7h"] : ["Ts"]), hiddenCard: null },
+      deck: [],
+      dealLog: log,
+      distributionQueue: [],
+    },
+  });
+  if (results) {
+    const res: BlackjackResultEntry[] = [];
+    const outcome: Record<string, BlackjackResultEntry["outcome"]> = { gege: "lose", jacky: "win", momo: "win", lulu: "win", dede: "push", [ME]: "win" };
+    for (const p of players) {
+      const h = p.hands[0];
+      const o = outcome[p.slug];
+      res.push({ slug: p.slug, name: p.name, handIdx: 0, cards: h.cards, total: 0, bet: h.bet, outcome: o, amount: o === "push" ? 0 : h.bet });
+    }
+    g.lastResults = { type: "blackjack", blackjackResults: res };
+    g.drinks = [
+      { slug: "gege", name: NAMES.gege, n: 2, why: "Sauté" },
+      { slug: "dede", name: NAMES.dede, n: 3, why: "Offert par Jacky" },
+      { slug: ME, name: NAMES[ME], n: 1, why: "Offert par Momo" },
+    ];
+  }
+  return g;
 }

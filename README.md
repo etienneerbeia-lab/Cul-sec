@@ -58,6 +58,9 @@ complètent la table. À plusieurs, un jeu sans assez de joueurs est sauté
   cartes compactes) ; `src/lib/poker` : moteur Hold'em, pots, bots, blindes ;
   `src/lib/bjtable` : Blackjack Table ; `src/lib/blackjack/rules.ts` : règles
   pures communes aux deux blackjacks.
+- `src/components/casino/table` : tables Poker « Néon » et Blackjack « Arc
+  sourire », partagées par le Chill (jetons) et la Soirée (gorgées) ;
+  aperçu avec données fictives sur `/preview/tables`.
 - `src/app/sw.js/route.ts` : service worker versionné par build.
 
 ## Variables d'environnement

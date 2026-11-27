@@ -7,7 +7,7 @@ import { haptic } from "@/lib/haptics";
 import { Tag, type TagTone } from "../TableKit";
 import { INDEX_BOX, PlayingCard, type Deck } from "./PlayingCard";
 
-// Mains de blackjack des variantes : chaque main vit dans une boîte de
+// Mains de blackjack (Chill et Soirée) : chaque main vit dans une boîte de
 // taille FIXE (réservée pour 6+ cartes) ; les cartes s'y rangent sans
 // jamais en sortir ni pousser le reste de l'écran. Règle d'or : l'index
 // (rang + couleur) de chaque carte reste visible. On essaie, de la plus
@@ -26,7 +26,7 @@ export interface RunLayout {
 
 export type Align = "start" | "center" | "end";
 
-const HAS_BOTTOM_INDEX: Record<Deck, boolean> = { classic: true, club: true, minimal: false, neon: false };
+const HAS_BOTTOM_INDEX: Record<Deck, boolean> = { classic: true, neon: false };
 
 // Pas minimal entre deux cartes (px) dans la direction (ux, uy) pour que
 // l'index reste lisible, et ordre d'empilement correspondant.
@@ -132,7 +132,6 @@ export function HandRun({
   maxCw,
   minCw,
   deck,
-  fourColor,
   dir,
   dirs,
   align,
@@ -153,7 +152,6 @@ export function HandRun({
   maxCw: number;
   minCw?: number;
   deck: Deck;
-  fourColor: boolean;
   dir?: { x: number; y: number };
   dirs?: { x: number; y: number }[];
   align?: [Align, Align];
@@ -194,7 +192,6 @@ export function HandRun({
             key={i}
             code={c}
             deck={deck}
-            fourColor={fourColor}
             mini={lay.mini}
             width={lay.cw}
             animate={animate}
@@ -251,14 +248,15 @@ export function HandZoom({
   name,
   hands,
   deck,
-  fourColor,
+  unit,
 }: {
   open: boolean;
   onClose: () => void;
   name: string;
   hands: ZoomHand[];
+  // Unité des mises : « € » (Chill) ou « 🍺 » (Soirée).
+  unit: string;
   deck: Deck;
-  fourColor: boolean;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -282,21 +280,12 @@ export function HandZoom({
               <div className="flex items-center gap-2">
                 <TotalBadge cards={h.cards} blackjack={h.natural} size="lg" />
                 <span className="text-sm font-semibold tabular-nums text-ink-2">
-                  {hands.length > 1 ? `Main ${i + 1} · ` : ""}Mise {h.bet} €{h.doubled ? " (doublée)" : ""}
+                  {hands.length > 1 ? `Main ${i + 1} · ` : ""}Mise {h.bet} {unit}
+                  {h.doubled ? " (doublée)" : ""}
                 </span>
                 {h.res && <Tag tone={h.res.tone}>{h.res.text}</Tag>}
               </div>
-              <HandRun
-                cards={h.cards}
-                w={300}
-                h={h.cards.length > 4 ? 98 : 112}
-                maxCw={80}
-                minCw={30}
-                deck={deck}
-                fourColor={fourColor}
-                spread={0.72}
-                animate={false}
-              />
+              <HandRun cards={h.cards} w={300} h={h.cards.length > 4 ? 98 : 112} maxCw={80} minCw={30} deck={deck} spread={0.72} animate={false} />
             </div>
           ))}
         </div>
