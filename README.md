@@ -59,8 +59,7 @@ complètent la table. À plusieurs, un jeu sans assez de joueurs est sauté
   `src/lib/bjtable` : Blackjack Table ; `src/lib/blackjack/rules.ts` : règles
   pures communes aux deux blackjacks.
 - `src/components/casino/table` : tables Poker « Néon » et Blackjack « Arc
-  sourire », partagées par le Chill (jetons) et la Soirée (gorgées) ;
-  aperçu avec données fictives sur `/preview/tables`.
+  sourire », partagées par le Chill (jetons) et la Soirée (gorgées).
 - `src/app/sw.js/route.ts` : service worker versionné par build.
 
 ## Variables d'environnement
