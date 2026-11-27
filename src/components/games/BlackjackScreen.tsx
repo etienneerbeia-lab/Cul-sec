@@ -2,20 +2,45 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { dealEventDelay, handValue, revealedCount } from "@/lib/blackjack/engine";
-import type { BlackjackHand } from "@/lib/game/types";
+import { toCode } from "@/lib/casino/cards";
+import type { BlackjackHand, BlackjackResultEntry, Card } from "@/lib/game/types";
 import { haptic } from "@/lib/haptics";
 import { useGame } from "../GameContext";
+import { ArcBlackjackTable, type ArcHand, type ArcPlace } from "../casino/table/ArcBlackjackTable";
+import type { Bubble } from "../casino/table/NeonPokerTable";
 import { Button } from "../ui/Button";
-import { PlayingCardV2 } from "../ui/Cards";
-import { Gulps, TimerBar, Waiting } from "../ui/Feedback";
+import { Waiting } from "../ui/Feedback";
 import { Kicker, Screen } from "../ui/Layout";
-import { Avatar, cleanName, PlayerName, PlayerRow } from "../ui/Players";
+import { cleanName, isBotName, PlayerRow } from "../ui/Players";
 import { GulpList, NextRoundActions, sumGulps } from "../ui/Results";
 
-const OUTCOME_LABEL = { win: "Gagné", lose: "Perdu", push: "Égalité", blackjack: "Blackjack !" } as const;
+// Blackjack Soirée sur la table « Arc sourire » (la même que la Blackjack
+// Table Chill) : on mise des gorgées contre la banque. Règles, rejeu de la
+// distribution et actions inchangés.
+
+const BET_MS = 25000;
+const TURN_MS = 30000;
+
+// Résultat d'une de mes mains.
+function myResult(r: BlackjackResultEntry): Bubble {
+  if (r.outcome === "lose") return { tone: "lose", text: `Tu bois ${r.amount} 🍺` };
+  if (r.outcome === "push") return { tone: "push", text: "Égalité" };
+  if (r.outcome === "blackjack") return { tone: "bj", text: `BJ · ${r.amount} à donner` };
+  return { tone: "win", text: `${r.amount} à donner` };
+}
+
+// Résultat d'un autre joueur, en une étiquette.
+function otherResult(rs: BlackjackResultEntry[]): Bubble | null {
+  if (!rs.length) return null;
+  const drink = rs.filter((r) => r.outcome === "lose").reduce((a, r) => a + r.amount, 0);
+  if (drink > 0) return { tone: "lose", text: `BOIT ${drink}` };
+  if (rs.some((r) => r.outcome === "blackjack")) return { tone: "bj", text: "BJ" };
+  if (rs.some((r) => r.outcome === "win")) return { tone: "win", text: "GAGNÉ" };
+  return { tone: "push", text: "ÉGAL" };
+}
 
 export default function BlackjackScreen() {
-  const { game, mySlug, busy, act } = useGame();
+  const { game, mySlug, busy, act, away } = useGame();
   const bj = game.blackjack!;
   const done = game.phase === "showdown";
   const [bet, setBet] = useState(2);
@@ -44,17 +69,18 @@ export default function BlackjackScreen() {
   // Ancien journal sans événement « dealer-reveal » : on retourne la carte
   // à la fin du rejeu.
   const hasRevealEvent = bj.dealLog.some((e) => e.target === "dealer-reveal");
-  const holeRevealed =
-    bj.dealer.cards.length > 1 && (hasRevealEvent ? revealedCount(log, "dealer-reveal") > 0 : caughtUp);
+  const holeRevealed = bj.dealer.cards.length > 1 && (hasRevealEvent ? revealedCount(log, "dealer-reveal") > 0 : caughtUp);
   const hits = revealedCount(log, "dealer-hit");
   // Toujours dans l'ordre du tirage : carte visible, carte cachée, puis tirages.
-  const dealerSlots = [
-    ...(upShown ? [{ key: "up", card: bj.dealer.cards[0] }] : []),
-    ...(holeShown ? [{ key: "hole", card: holeRevealed ? bj.dealer.cards[1] : null }] : []),
-    ...bj.dealer.cards.slice(2, 2 + hits).map((card, i) => ({ key: `hit-${i}`, card })),
+  const slotCards: (Card | null)[] = [
+    ...(upShown ? [bj.dealer.cards[0]] : []),
+    ...(holeShown ? [holeRevealed ? bj.dealer.cards[1] : null] : []),
+    ...bj.dealer.cards.slice(2, 2 + hits),
   ];
-  const dealerCards = dealerSlots.flatMap((s) => (s.card ? [s.card] : []));
-  const dealerTotal = handValue(dealerCards);
+  const dealerSlots = slotCards.map((c) => (c ? toCode(c) : null));
+  const dealerVisible = slotCards.filter((c): c is Card => !!c);
+  const dealerCards = dealerVisible.map(toCode);
+  const dealerTotal = handValue(dealerVisible);
   const dealerDone = caughtUp && holeRevealed;
 
   const turnPlayer = caughtUp && bj.stage === "playerTurns" ? bj.players[bj.turnPointer] : null;
@@ -62,8 +88,51 @@ export default function BlackjackScreen() {
   const myHand = turnPlayer && myTurn ? turnPlayer.hands[turnPlayer.activeHandIdx] : null;
   const pending = caughtUp ? bj.distributionQueue[0] : undefined;
   const results = done ? (game.lastResults?.blackjackResults ?? []) : [];
+  const deadline = game.timer?.deadlineAt ?? null;
 
   const visibleCards = (slug: string, h: BlackjackHand) => h.cards.slice(0, revealedCount(log, "player", slug, h.id));
+
+  // Places : ceux qui jouent après moi à ma gauche (écran à gauche).
+  const meIdx = bj.players.findIndex((p) => p.slug === mySlug);
+  const others = meIdx >= 0 ? [...bj.players.slice(meIdx + 1), ...bj.players.slice(0, meIdx)] : bj.players;
+  const nLeft = Math.ceil(others.length / 2);
+  const placeOf = (p: (typeof bj.players)[number]): ArcPlace => {
+    const me = p.slug === mySlug;
+    const isTurn = turnPlayer?.slug === p.slug;
+    const res = caughtUp ? results.filter((x) => x.slug === p.slug) : [];
+    const hands: ArcHand[] = p.hands.map((h, hi) => {
+      const cards = visibleCards(p.slug, h);
+      const r = res.find((x) => x.handIdx === hi);
+      return {
+        id: h.id,
+        cards: cards.map(toCode),
+        bet: h.bet,
+        doubled: h.doubled,
+        active: isTurn && p.activeHandIdx === hi,
+        bust: cards.length > 0 && handValue(cards) > 21,
+        natural: h.status === "blackjack" && cards.length === 2,
+        lose: r?.outcome === "lose",
+        res: r ? myResult(r) : null,
+      };
+    });
+    const betting = bj.stage === "betting";
+    const staked = betting ? (bj.betResponded.includes(p.slug) ? (bj.bets[p.slug] ?? 0) : 0) : p.hands.reduce((s, h) => s + h.bet, 0);
+    return {
+      slug: p.slug,
+      name: cleanName(p.name),
+      bot: isBotName(p.name),
+      // Ma mise sous mon nom ; pour les autres, le cercle suffit.
+      sub: me ? (betting && !bj.betResponded.includes(p.slug) ? "mise…" : `mise ${staked} 🍺`) : betting && !bj.betResponded.includes(p.slug) ? "mise…" : "",
+      busted: false,
+      away: away.includes(p.slug),
+      hands,
+      shownHand: hands.length ? hands[Math.min(p.activeHandIdx, hands.length - 1)] : null,
+      turn: isTurn,
+      deadline: isTurn ? deadline : me && betting && !bj.betResponded.includes(p.slug) ? deadline : null,
+      stake: staked > 0 ? { amount: staked, kind: "gulps" } : null,
+      tag: otherResult(res),
+    };
+  };
 
   let actions: React.ReactNode;
   if (done) actions = caughtUp ? <NextRoundActions /> : <Waiting>La banque joue…</Waiting>;
@@ -83,7 +152,7 @@ export default function BlackjackScreen() {
                 haptic("select");
                 setBet(n);
               }}
-              className={`grid h-14 w-14 place-items-center rounded-full border-4 border-dashed font-display text-xl font-extrabold transition active:scale-90 ${
+              className={`grid h-12 w-12 place-items-center rounded-full border-4 border-dashed font-display text-lg font-extrabold transition active:scale-90 ${
                 bet === n ? "scale-110 border-white bg-neon text-white shadow-[0_0_20px_rgba(255,61,139,0.7)]" : "border-white/40 bg-white/10"
               }`}
             >
@@ -100,17 +169,17 @@ export default function BlackjackScreen() {
     const two = myHand.cards.length === 2;
     const canSplit = two && myHand.cards[0].value === myHand.cards[1].value;
     actions = (
-      <div className="grid grid-cols-2 gap-2.5">
-        <Button disabled={busy} haptics="tap" onClick={() => act({ type: "bjAct", action: "hit" })}>
+      <div className="grid grid-cols-4 gap-1.5">
+        <Button size="sm" className="px-1!" disabled={busy} haptics="tap" onClick={() => act({ type: "bjAct", action: "hit" })}>
           Carte
         </Button>
-        <Button variant="secondary" disabled={busy} onClick={() => act({ type: "bjAct", action: "stand" })}>
+        <Button variant="secondary" size="sm" className="px-1!" disabled={busy} onClick={() => act({ type: "bjAct", action: "stand" })}>
           Je reste
         </Button>
-        <Button variant="secondary" size="sm" disabled={busy || !two} onClick={() => act({ type: "bjAct", action: "double" })}>
-          Doubler ×2
+        <Button variant="secondary" size="sm" className="px-1!" disabled={busy || !two} onClick={() => act({ type: "bjAct", action: "double" })}>
+          Doubler
         </Button>
-        <Button variant="secondary" size="sm" disabled={busy || !canSplit} onClick={() => act({ type: "bjAct", action: "split" })}>
+        <Button variant="secondary" size="sm" className="px-1!" disabled={busy || !canSplit} onClick={() => act({ type: "bjAct", action: "split" })}>
           Séparer
         </Button>
       </div>
@@ -133,39 +202,29 @@ export default function BlackjackScreen() {
     );
   }
 
+  const stageLabel =
+    bj.stage === "betting" ? "Mises · 1 à 5 gorgées" : done ? "Résultats" : turnPlayer ? "À vous de jouer" : !caughtUp ? "Distribution" : "La banque joue";
+
   return (
     <Screen actions={actions}>
-      {!done && bj.stage !== "dealerTurn" && caughtUp && (
-        <div className="mb-3">
-          <TimerBar deadlineAt={game.timer?.deadlineAt} totalMs={bj.stage === "betting" ? 25000 : 30000} />
-        </div>
-      )}
-
-      <div className="relative rounded-[28px] border border-white/10 bg-[radial-gradient(ellipse_at_top,#1f6b4f_0%,#123f31_75%)] p-4 shadow-[inset_0_0_50px_rgba(0,0,0,0.55)]">
-        <div className="mb-2 flex items-center justify-between">
-          <Kicker className="text-white/70!">Banque</Kicker>
-          {dealerCards.length > 0 && (
-            <span
-              key={dealerCards.length}
-              className={`animate-pop font-display text-xl font-extrabold tabular-nums ${
-                dealerDone && dealerTotal > 21 ? "text-danger" : "text-white"
-              }`}
-            >
-              {dealerDone && dealerTotal > 21 ? `${dealerTotal} · Sauté !` : dealerTotal}
-            </span>
-          )}
-        </div>
-        <div className="flex min-h-[90px] flex-wrap gap-1.5">
-          {dealerSlots.map((s) => (
-            <div key={s.key} className={s.key.startsWith("hit") ? "bj-deal-in" : undefined}>
-              <PlayingCardV2 card={s.card} faceDown={!s.card} size="sm" />
-            </div>
-          ))}
-        </div>
-        <p className="mt-2 text-center text-[0.7rem] font-semibold tracking-widest text-white/50 uppercase">
-          La banque tire jusqu&apos;à 17 · Blackjack paie 3 pour 2
-        </p>
+      <div className="flex items-center justify-between gap-2">
+        <Kicker>{stageLabel}</Kicker>
+        <span className="text-[0.72rem] font-semibold text-mute">Contre la banque</span>
       </div>
+
+      <ArcBlackjackTable
+        dealer={{
+          cards: dealerSlots,
+          visible: dealerCards,
+          blackjack: false,
+          line: dealerDone && dealerCards.length > 1 ? (dealerTotal > 21 ? `La banque saute à ${dealerTotal} !` : `La banque fait ${dealerTotal}`) : null,
+        }}
+        left={others.slice(0, nLeft).map(placeOf)}
+        right={others.slice(nLeft).reverse().map(placeOf)}
+        me={meIdx >= 0 ? placeOf(bj.players[meIdx]) : null}
+        deadlineTotal={bj.stage === "betting" ? BET_MS : TURN_MS}
+        unit="🍺"
+      />
 
       {pending?.slug === mySlug && (
         <div className="mt-4">
@@ -187,63 +246,14 @@ export default function BlackjackScreen() {
         </div>
       )}
 
-      <div className="mt-4 flex flex-col gap-2">
-        {bj.players.map((p) => {
-          const isTurn = turnPlayer?.slug === p.slug;
-          const res = results.filter((r) => r.slug === p.slug);
-          return (
-            <div key={p.slug} className="cs-row flex-col items-stretch! gap-2! p-3!" data-active={isTurn}>
-              <div className="flex items-center gap-2">
-                <Avatar name={p.name} slug={p.slug} size={30} />
-                <span className="min-w-0 flex-1">
-                  <PlayerName name={p.name} me={p.slug === mySlug} />
-                </span>
-                {bj.stage === "betting" ? (
-                  <span className="text-sm text-mute">{bj.betResponded.includes(p.slug) ? "Mise posée ✓" : "Mise…"}</span>
-                ) : (
-                  <span className="text-sm font-bold text-beer">Mise {p.hands.reduce((s, h) => s + h.bet, 0)}</span>
-                )}
-              </div>
-              {p.hands.map((h, hi) => {
-                const cards = visibleCards(p.slug, h);
-                const total = handValue(cards);
-                const r = res.find((x) => x.handIdx === hi);
-                const activeHand = isTurn && p.activeHandIdx === hi;
-                return (
-                  <div key={h.id} className={`flex items-center gap-2 rounded-xl p-1.5 ${activeHand ? "bg-white/10" : ""}`}>
-                    <div className="flex -space-x-5">
-                      {cards.map((c, k) => (
-                        <PlayingCardV2 key={k} card={c} size={p.slug === mySlug ? "sm" : "xs"} />
-                      ))}
-                    </div>
-                    <div className="ml-auto text-right">
-                      <div className={`font-display text-lg font-extrabold ${total > 21 ? "text-danger" : ""}`}>{cards.length ? total : ""}</div>
-                      <div className="text-xs text-mute">
-                        {r && caughtUp
-                          ? h.status === "bust"
-                            ? "Sauté"
-                            : OUTCOME_LABEL[r.outcome]
-                          : h.status === "bust"
-                            ? "Sauté"
-                            : h.status === "blackjack"
-                              ? "Blackjack !"
-                              : h.doubled
-                                ? "Doublé"
-                                : ""}
-                      </div>
-                    </div>
-                    {r && caughtUp && r.outcome === "lose" && <Gulps n={r.amount} />}
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })}
-      </div>
-
       {done && caughtUp && (
         <div className="mt-5">
-          <GulpList rows={sumGulps(game, (game.drinks ?? []).map((d) => ({ slug: d.slug, gulps: d.n })))} />
+          <GulpList
+            rows={sumGulps(
+              game,
+              (game.drinks ?? []).map((d) => ({ slug: d.slug, gulps: d.n })),
+            )}
+          />
         </div>
       )}
     </Screen>

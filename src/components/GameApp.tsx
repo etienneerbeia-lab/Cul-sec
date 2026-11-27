@@ -487,6 +487,9 @@ export default function GameApp() {
             Fermer
           </Button>
         </div>
+        {/* Version installée : utile pour vérifier qu'un déploiement est
+            bien arrivé sur l'appli (cache du service worker). */}
+        <p className="mt-3 text-center text-[0.65rem] text-mute/70">Cul·Sec · version {process.env.APP_BUILD_ID ?? "dev"}</p>
       </Sheet>
 
       <Sheet open={confirm !== null} onClose={() => setConfirm(null)}>
