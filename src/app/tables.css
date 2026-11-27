@@ -355,3 +355,207 @@ button.bv-hand:active {
   background: rgba(0, 0, 0, 0.35);
   color: #fff;
 }
+
+/* ---- Croupière (blackjack) ---- */
+.cr-glow {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 240px;
+  height: 120px;
+  transform: translateX(-50%);
+  background: radial-gradient(50% 55% at 50% 55%, rgba(255, 190, 120, 0.2), transparent 70%);
+  pointer-events: none;
+}
+.cr-body,
+.cr-hands,
+.cr-avatar {
+  line-height: 0;
+}
+/* Respiration */
+.cr-body {
+  animation: cr-breathe 5s ease-in-out infinite;
+}
+@keyframes cr-breathe {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-1px);
+  }
+}
+/* Clignement des yeux */
+.cr-body .cr-eyes {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: cr-blink 5.2s infinite;
+}
+@keyframes cr-blink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.1);
+  }
+}
+/* Geste à chaque carte distribuée : la main pousse la carte vers la table */
+.cr-dealing .cr-deal {
+  animation: cr-deal 0.42s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+@keyframes cr-deal {
+  0% {
+    transform: translate(0, 0);
+  }
+  45% {
+    transform: translate(-7px, 7px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+/* Sa dernière réponse, en bulle à côté d'elle */
+.cr-bubble {
+  position: absolute;
+  z-index: 8;
+  right: calc(50% + 52px);
+  top: 6px;
+  max-width: min(44%, 170px);
+  padding: 6px 9px;
+  border-radius: 14px 14px 4px 14px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: #2a0d18;
+  background: #fff6f7;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Bouton du chat (en haut à droite) */
+.cr-chat-btn {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  color: #ffd6dc;
+  background: linear-gradient(180deg, #e8304b, #9e0f25);
+  box-shadow:
+    0 6px 16px rgba(196, 18, 47, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transition: transform 0.15s;
+}
+.cr-chat-btn:active {
+  transform: scale(0.92);
+}
+.cr-chat-badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  line-height: 18px;
+  text-align: center;
+  color: #0b0614;
+  background: #45e3ff;
+  box-shadow: 0 0 0 2px #0b0614;
+}
+
+/* Panneau de discussion */
+.cr-chat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: min(46vh, 380px);
+  min-height: 120px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px 2px;
+}
+.cr-msg {
+  max-width: 82%;
+  padding: 7px 11px 8px;
+  border-radius: 16px;
+  font-size: 0.92rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.cr-msg-name {
+  margin-bottom: 1px;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+.cr-msg-me {
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+  color: #062a33;
+  background: linear-gradient(180deg, #7cf0ff, #45e3ff);
+}
+.cr-msg-other {
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.cr-msg-dealer {
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+  color: #fff;
+  background: linear-gradient(180deg, #b4142d, #7a0a1b);
+}
+.cr-msg-dealer .cr-msg-name {
+  color: #ffd6dc;
+}
+.cr-typing .cr-msg-text {
+  display: flex;
+  gap: 4px;
+  padding: 4px 0;
+}
+.cr-typing .cr-msg-text span {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #ffd6dc;
+  animation: cr-dot 1s infinite ease-in-out;
+}
+.cr-typing .cr-msg-text span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.cr-typing .cr-msg-text span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes cr-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+.cr-send {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  flex-shrink: 0;
+  border-radius: 16px;
+  color: #fff;
+  background: linear-gradient(180deg, #ff3d8b, #d4246f);
+}
+.cr-send:disabled {
+  opacity: 0.4;
+}

@@ -60,6 +60,10 @@ complètent la table. À plusieurs, un jeu sans assez de joueurs est sauté
   pures communes aux deux blackjacks.
 - `src/components/casino/table` : tables Poker « Néon » et Blackjack « Arc
   sourire », partagées par le Chill (jetons) et la Soirée (gorgées).
+- `src/lib/dealer` : la croupière du blackjack (Carmen, Lola ou Maya, tirée
+  au sort à chaque partie d'après le code du salon) et le chat de la table :
+  chaque joueur peut lui écrire, tout le monde voit les messages, et elle
+  répond (sans IA : intentions reconnues, conseils de stratégie de base).
 - `src/app/sw.js/route.ts` : service worker versionné par build.
 
 ## Variables d'environnement

@@ -7,6 +7,7 @@ import type { BlackjackHand, BlackjackResultEntry, Card } from "@/lib/game/types
 import { haptic } from "@/lib/haptics";
 import { useGame } from "../GameContext";
 import { ArcBlackjackTable, type ArcHand, type ArcPlace } from "../casino/table/ArcBlackjackTable";
+import { useDealerChat } from "../casino/table/DealerChat";
 import type { Bubble } from "../casino/table/NeonPokerTable";
 import { Button } from "../ui/Button";
 import { Waiting } from "../ui/Feedback";
@@ -44,6 +45,7 @@ export default function BlackjackScreen() {
   const bj = game.blackjack!;
   const done = game.phase === "showdown";
   const [bet, setBet] = useState(2);
+  const chat = useDealerChat();
 
   // Les cartes arrivent une à une (rejoue le journal de distribution), puis
   // la banque retourne sa carte cachée et tire ses cartes une par une, plus
@@ -224,6 +226,7 @@ export default function BlackjackScreen() {
         me={meIdx >= 0 ? placeOf(bj.players[meIdx]) : null}
         deadlineTotal={bj.stage === "betting" ? BET_MS : TURN_MS}
         unit="🍺"
+        croupier={chat ? { look: chat.croupier.look, dealCount: shown, chat } : null}
       />
 
       {pending?.slug === mySlug && (

@@ -16,6 +16,7 @@ import { Kicker, Screen } from "../ui/Layout";
 import { cleanName, isBotName } from "../ui/Players";
 import type { TagTone } from "./TableKit";
 import { ArcBlackjackTable, type ArcHand, type ArcPlace } from "./table/ArcBlackjackTable";
+import { useDealerChat } from "./table/DealerChat";
 
 export const euro = (n: number) => formatChips(n, "euro");
 export const signed = (n: number) => (n > 0 ? `+${euro(n)}` : n < 0 ? `−${euro(-n)}` : "0 €");
@@ -78,6 +79,7 @@ function Table() {
   const chips = game.chips!;
   const names = useMemo(() => new Map(game.playersPublic.map((p) => [p.slug, p.name])), [game.playersPublic]);
   const { shown, caughtUp } = useReplay(t.log);
+  const chat = useDealerChat();
   const isBusted = (s: string) => chips.bustOrder.some((grp) => grp.includes(s));
   const seated = t.order.includes(mySlug);
   const busted = seated && isBusted(mySlug);
@@ -199,6 +201,7 @@ function Table() {
         me={seated ? placeOf(mySlug) : null}
         deadlineTotal={t.stage === "betting" ? BJT_RULES.betMs : t.stage === "insurance" ? BJT_RULES.insuranceMs : BJT_RULES.actionMs}
         unit="€"
+        croupier={chat ? { look: chat.croupier.look, dealCount: shown, chat } : null}
       />
 
       {!hasActions && (

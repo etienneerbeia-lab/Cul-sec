@@ -513,6 +513,29 @@ export interface GameState {
   poker?: PokerState;
   // Blackjack Table casino (toute la table contre le croupier).
   bjt?: BjtState;
+  // Chat avec la croupière (blackjack Chill et Soirée), partagé par la
+  // table ; remis à zéro à chaque nouvelle partie de blackjack.
+  dealerChat?: DealerChatState;
+}
+
+export interface DealerChatMessage {
+  id: number;
+  from: "player" | "dealer";
+  slug?: string;
+  name: string;
+  text: string;
+  // Heure serveur d'affichage : la réponse de la croupière arrive après un
+  // court « … écrit » (les clients la masquent jusque-là).
+  at: number;
+}
+
+export interface DealerChatState {
+  // Partie de blackjack à laquelle appartient la discussion.
+  key: string;
+  next: number;
+  messages: DealerChatMessage[];
+  // Dernier message de chaque joueur (anti-spam).
+  last: Record<string, number>;
 }
 
 // Question écrite par un joueur dans le salon (« Questions de la table »),
