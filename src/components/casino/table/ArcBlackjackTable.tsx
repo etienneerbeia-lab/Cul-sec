@@ -4,6 +4,9 @@ import { useCallback, useId, useState, type CSSProperties, type ReactNode } from
 import type { CardCode } from "@/lib/casino/cards";
 import { ChipStack } from "../Chips";
 import { Tag, TimerRing, useAfterFirstPaint, useWidth } from "../TableKit";
+import type { CroupierLook } from "@/lib/dealer/croupiers";
+import { CroupiereBand } from "./Croupiere";
+import { DealerBubble, DealerChatButton, type DealerChatData } from "./DealerChat";
 import { HandRun, HandZoom, TotalBadge, layoutRun, type Align } from "./Hand";
 import type { Bubble, Stake } from "./NeonPokerTable";
 
@@ -57,7 +60,10 @@ export function ArcBlackjackTable({
   me,
   deadlineTotal,
   unit,
+  croupier,
 }: {
+  // Croupière derrière la table (et son chat), si présente.
+  croupier?: { look: CroupierLook; dealCount: number; chat: DealerChatData | null } | null;
   dealer: ArcDealer;
   // Les autres joueurs : à ma gauche (écran à gauche) et à ma droite, du
   // plus proche au plus éloigné.
@@ -113,7 +119,15 @@ export function ArcBlackjackTable({
 
   return (
     <>
-      <div ref={ref} className="relative mt-2 w-full select-none" style={{ height: H }} data-table>
+      {croupier && (
+        <CroupiereBand
+          look={croupier.look}
+          dealCount={croupier.dealCount}
+          bubble={croupier.chat ? <DealerBubble data={croupier.chat} /> : null}
+          chat={croupier.chat ? <DealerChatButton data={croupier.chat} /> : null}
+        />
+      )}
+      <div ref={ref} className={`relative w-full select-none ${croupier ? "" : "mt-2"}`} style={{ height: H }} data-table>
         <svg className="pointer-events-none absolute inset-0" width={W} height={H} viewBox={`0 0 ${W} ${H}`} aria-hidden>
           <defs>
             <radialGradient id={`${id}-leather`} cx="50%" cy="30%" r="80%">
@@ -161,7 +175,7 @@ export function ArcBlackjackTable({
           <Discard x={22} y={14} />
         </svg>
 
-        <DealerHand dealer={dealer} animate={animate} style={{ left: cx - 59, top: 14 }} />
+        <DealerHand dealer={dealer} animate={animate} style={{ left: cx - 59, top: croupier ? 22 : 14 }} />
 
         {spots.map(({ p, side, x, y, dirs, bw, bh, topCard }) => {
           const h = p.shownHand;
