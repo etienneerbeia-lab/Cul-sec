@@ -20,7 +20,7 @@ import { CasinoCard } from "./CasinoCard";
 import { BlindChip, ChipStack, DealerButton } from "./Chips";
 import { Tag, type TagTone, TimerRing, useAfterFirstPaint, useWidth } from "./TableKit";
 
-const BETTING = ["preflop", "flop", "turn", "river"];
+export const BETTING = ["preflop", "flop", "turn", "river"];
 const AVATAR = 40;
 const PLATE_W = 76;
 
@@ -113,7 +113,7 @@ function layoutBets(g: Geo, angles: Map<string, number>, mySlug: string, withBet
 
 // Dernière action de chaque joueur sur la rue en cours (bulle au-dessus de
 // son avatar).
-function lastActions(p: PokerState): Record<string, PokerLogEntry> {
+export function lastActions(p: PokerState): Record<string, PokerLogEntry> {
   const out: Record<string, PokerLogEntry> = {};
   for (const e of p.log) {
     if (e.k === "street") for (const k of Object.keys(out)) delete out[k];
@@ -122,7 +122,7 @@ function lastActions(p: PokerState): Record<string, PokerLogEntry> {
   return out;
 }
 
-function bubbleFor(p: PokerState, slug: string, last: PokerLogEntry | undefined): { tone: TagTone; text: string } | null {
+export function bubbleFor(p: PokerState, slug: string, last: PokerLogEntry | undefined): { tone: TagTone; text: string } | null {
   if (p.stage === "handEnd") {
     const net = p.result?.net[slug] ?? 0;
     return net > 0 ? { tone: "win", text: `GAGNE +${formatChips(net)}` } : null;
@@ -379,7 +379,7 @@ export default function PokerScreen() {
 }
 
 // ---- Niveau de blindes et compte à rebours ----
-function LevelBar({ game, p }: { game: GameState; p: PokerState }) {
+export function LevelBar({ game, p }: { game: GameState; p: PokerState }) {
   const [now, setNow] = useState(() => serverNow());
   useEffect(() => {
     const id = setInterval(() => setNow(serverNow()), 500);
@@ -606,7 +606,7 @@ function MyHand({
 }
 
 // ---- Barre d'actions (seulement quand c'est à moi) ----
-function ActionBar({
+export function ActionBar({
   game,
   p,
   myTurn,

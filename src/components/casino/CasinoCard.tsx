@@ -6,15 +6,15 @@ import type { Card } from "@/lib/game/types";
 // Carte de casino en SVG (tables Chill) : vrais pips, figures, dos guilloché.
 // Tout est vectoriel : net sur écran Retina, sans aucune image externe.
 
-type SuitKey = "s" | "h" | "d" | "c";
-const SUIT_KEY: Record<string, SuitKey> = { "♠": "s", "♥": "h", "♦": "d", "♣": "c" };
+export type SuitKey = "s" | "h" | "d" | "c";
+export const SUIT_KEY: Record<string, SuitKey> = { "♠": "s", "♥": "h", "♦": "d", "♣": "c" };
 const RED = "#b3122e";
 const BLACK = "#16141c";
 const GOLD = "#c9a24a";
 
 // Symboles dessinés dans une boîte 100×100 (pas de caractères Unicode : iOS
 // les affiche parfois en emoji).
-const SUIT_PATH: Record<SuitKey, string> = {
+export const SUIT_PATH: Record<SuitKey, string> = {
   h: "M50 92 C34 78 4 60 4 32 C4 14 17 4 31 4 C41 4 47 10 50 18 C53 10 59 4 69 4 C83 4 96 14 96 32 C96 60 66 78 50 92 Z",
   d: "M50 2 Q68 27 90 50 Q68 73 50 98 Q32 73 10 50 Q32 27 50 2 Z",
   s: "M50 4 C62 22 93 40 93 62 C93 77 82 86 69 86 C61 86 55 82 52 77 C53 86 57 92 66 97 L34 97 C43 92 47 86 48 77 C45 82 39 86 31 86 C18 86 7 77 7 62 C7 40 38 22 50 4 Z",
@@ -22,9 +22,9 @@ const SUIT_PATH: Record<SuitKey, string> = {
 };
 
 const RANK_LABEL: Record<number, string> = { 11: "V", 12: "D", 13: "R", 14: "A" };
-const rankLabel = (v: number) => RANK_LABEL[v] ?? String(v);
+export const rankLabel = (v: number) => RANK_LABEL[v] ?? String(v);
 
-function Pip({ suit, x, y, size, flip = false, color }: { suit: SuitKey; x: number; y: number; size: number; flip?: boolean; color: string }) {
+export function Pip({ suit, x, y, size, flip = false, color }: { suit: SuitKey; x: number; y: number; size: number; flip?: boolean; color: string }) {
   const s = size / 100;
   return (
     <path
@@ -121,7 +121,7 @@ function FaceArt({ value, suit, color, id }: { value: number; suit: SuitKey; col
 
 export type CardBack = "bordeaux" | "navy";
 
-function Back({ id, color }: { id: string; color: CardBack }) {
+export function Back({ id, color }: { id: string; color: CardBack }) {
   const [base, dark] = color === "navy" ? ["#1b2a5c", "#101a3d"] : ["#7d1426", "#560a18"];
   return (
     <svg viewBox="0 0 250 350" className="block h-full w-full" aria-hidden>
@@ -151,9 +151,11 @@ function Back({ id, color }: { id: string; color: CardBack }) {
   );
 }
 
-function Front({ card, id, compact }: { card: Card; id: string; compact: boolean }) {
+// `color` : couleur imposée (jeu 4 couleurs des variantes de table) ; par
+// défaut, rouge ou noir.
+export function Front({ card, id, compact, color: colorOverride }: { card: Card; id: string; compact: boolean; color?: string }) {
   const suit = SUIT_KEY[card.suit.sym] ?? "s";
-  const color = card.suit.color === "red" ? RED : BLACK;
+  const color = colorOverride ?? (card.suit.color === "red" ? RED : BLACK);
   const label = rankLabel(card.value);
   return (
     <svg viewBox="0 0 250 350" className="block h-full w-full" aria-label={`${label} ${card.suit.sym}`}>

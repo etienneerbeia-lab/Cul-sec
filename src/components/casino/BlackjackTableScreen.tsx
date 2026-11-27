@@ -18,15 +18,15 @@ import { Tag, type TagTone, TimerRing, useAfterFirstPaint, useWidth } from "./Ta
 import { Kicker, Screen } from "../ui/Layout";
 import { cleanName } from "../ui/Players";
 
-const euro = (n: number) => formatChips(n, "euro");
-const signed = (n: number) => (n > 0 ? `+${euro(n)}` : n < 0 ? `−${euro(-n)}` : "0 €");
+export const euro = (n: number) => formatChips(n, "euro");
+export const signed = (n: number) => (n > 0 ? `+${euro(n)}` : n < 0 ? `−${euro(-n)}` : "0 €");
 
 // ---- Rejeu de la distribution, carte par carte ----
 // Le serveur distribue tout d'un coup ; chaque client rejoue le journal à
 // son rythme (même tempo que le Blackjack Soirée : rapide pour les joueurs,
 // plus lent pour le croupier). Un écran monté en cours de manche (retour,
 // rechargement) affiche directement l'état courant.
-function useReplay(log: BjtDealEvent[]) {
+export function useReplay(log: BjtDealEvent[]) {
   const [shown, setShown] = useState(log.length);
   const len = log.length;
   const next = shown < len ? log[shown] : null;
@@ -45,7 +45,7 @@ function useReplay(log: BjtDealEvent[]) {
 }
 
 // Nombre de cartes visibles d'une main : dernier état rejoué.
-function visibleCount(log: BjtDealEvent[], shown: number, slug: string, handId: number): number {
+export function visibleCount(log: BjtDealEvent[], shown: number, slug: string, handId: number): number {
   for (let i = shown - 1; i >= 0; i--) {
     const e = log[i];
     if (e.t === "p" && e.s === slug && e.h === handId) return e.n;
@@ -53,7 +53,7 @@ function visibleCount(log: BjtDealEvent[], shown: number, slug: string, handId: 
   return 0;
 }
 
-function dealerView(log: BjtDealEvent[], shown: number, cards: CardCode[]) {
+export function dealerView(log: BjtDealEvent[], shown: number, cards: CardCode[]) {
   let up = false;
   let hole = false;
   let revealed = 0;
@@ -405,7 +405,7 @@ function TotalPill({ cards, blackjack = false }: { cards: CardCode[]; blackjack?
   );
 }
 
-function resultTag(h: BjtHand): { tone: TagTone; text: string } | null {
+export function resultTag(h: BjtHand): { tone: TagTone; text: string } | null {
   if (!h.outcome) return null;
   const n = h.net ?? 0;
   if (h.outcome === "blackjack") return { tone: "bj", text: `BLACKJACK ${signed(n)}` };
@@ -613,7 +613,7 @@ function Place({
   );
 }
 
-function ActionBar({
+export function ActionBar({
   game,
   t,
   mySlug,

@@ -19,6 +19,7 @@ import LobbyScreen from "./screens/LobbyScreen";
 import GameRouter from "./GameRouter";
 import { casinoGameById } from "@/lib/casino/catalog";
 import { formatChips } from "@/lib/chips/format";
+import { LabSettings } from "./casino/variants/LabSettings";
 
 const POLL_MS = 1200;
 
@@ -487,6 +488,7 @@ export default function GameApp() {
             Fermer
           </Button>
         </div>
+        <LabSettings />
       </Sheet>
 
       <Sheet open={confirm !== null} onClose={() => setConfirm(null)}>
