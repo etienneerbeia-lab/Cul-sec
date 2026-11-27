@@ -527,7 +527,18 @@ export interface DealerChatMessage {
   // Heure serveur d'affichage : la réponse de la croupière arrive après un
   // court « … écrit » (les clients la masquent jusque-là).
   at: number;
+  // Réponse rédigée par l'IA (si activée) : « todo » à rédiger, puis
+  // « doing:<jeton> » pendant la rédaction. Le texte présent sert de
+  // réponse de secours si l'IA ne répond pas avant `at`.
+  llm?: string;
+  // Jamais affichée avant (fin de la distribution, par exemple).
+  minAt?: number;
+  job?: DealerJob;
 }
+
+// Ce que la croupière doit rédiger : une réponse à un message, ou un
+// commentaire de fin de manche (faits à chambrer).
+export type DealerJob = { kind: "reply"; askId: number } | { kind: "event"; facts: string[] };
 
 export interface DealerChatState {
   // Partie de blackjack à laquelle appartient la discussion.
@@ -536,6 +547,9 @@ export interface DealerChatState {
   messages: DealerChatMessage[];
   // Dernier message de chaque joueur (anti-spam).
   last: Record<string, number>;
+  // Manches déjà commentées, joueurs à sec déjà chambrés.
+  reacted?: string[];
+  brokeSeen?: string[];
 }
 
 // Question écrite par un joueur dans le salon (« Questions de la table »),

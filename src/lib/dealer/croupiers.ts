@@ -40,3 +40,16 @@ function hash(s: string): number {
 export function croupierFor(key: string): Croupier {
   return CROUPIERS[hash(key) % CROUPIERS.length];
 }
+
+// Hasard propre à la croupière (choix de ses répliques), déduit d'une clé :
+// elle ne puise jamais dans Math.random, qui mélange les cartes.
+export function dealerRng(seed: string): () => number {
+  let a = hash(seed);
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}

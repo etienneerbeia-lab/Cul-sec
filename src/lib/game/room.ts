@@ -7,6 +7,8 @@ import { isCasinoGameId } from "../casino/catalog";
 import { casinoModule, launchCasino } from "../casino/launch";
 import { BJ_ROUND_OPTIONS, type CasinoOptions, DEFAULT_CASINO_OPTIONS } from "../casino/types";
 import { postDealerChat } from "../dealer/chat";
+import { DEALER_LLM_WAIT_MS, dealerLlmEnabled } from "../dealer/config";
+import { dealerReact } from "../dealer/react";
 
 // Un humain qui n'a pas donné signe de vie depuis ce délai est considéré
 // absent : ses coups sont joués pour lui sans attendre la fin du chrono.
@@ -120,7 +122,7 @@ function applyGameAction(room: Room, slug: string, action: Action, now: number):
       // chronos des tours ne repartent pas).
       const p = room.players.find((pl) => pl.slug === slug && !pl.bot);
       if (!p) fail(403, "Tu ne fais pas partie de ce salon.");
-      postDealerChat(g, room.code, slug, p.name, action.text, now);
+      postDealerChat(g, room.code, slug, p.name, action.text, now, { llm: dealerLlmEnabled(), llmWaitMs: DEALER_LLM_WAIT_MS });
       return;
     }
     case "casinoReplay": {
@@ -255,6 +257,8 @@ export function tick(room: Room, now: number, seen?: Record<string, number>): bo
     }
     break;
   }
+  // Fin de manche de blackjack : la croupière commente (une fois).
+  if (dealerReact(room.game, room.code, now, { llm: dealerLlmEnabled(), llmWaitMs: DEALER_LLM_WAIT_MS })) changed = true;
   return changed;
 }
 

@@ -63,12 +63,19 @@ complètent la table. À plusieurs, un jeu sans assez de joueurs est sauté
 - `src/lib/dealer` : la croupière du blackjack (Carmen, Lola ou Maya, tirée
   au sort à chaque partie d'après le code du salon) et le chat de la table :
   chaque joueur peut lui écrire, tout le monde voit les messages, et elle
-  répond (sans IA : intentions reconnues, conseils de stratégie de base).
+  répond avec Claude si `ANTHROPIC_API_KEY` est configurée (consigne dans
+  `llm.ts`, état de la table dans `context.ts`), sinon avec des réponses
+  toutes faites (`bot.ts`). En fin de manche, elle chambre les doubles et
+  splits ratés et les joueurs à sec (`events.ts`).
 - `src/app/sw.js/route.ts` : service worker versionné par build.
 
 ## Variables d'environnement
 
 - `KV_REST_API_URL` / `KV_REST_API_TOKEN` : base Upstash Redis (injectées par Vercel).
+- `ANTHROPIC_API_KEY` (facultatif) : la croupière du blackjack répond avec
+  Claude (`claude-opus-5-5`, effort `low`) et chambre les joueurs en fin de
+  manche. Sans clé, ou avec `DEALER_LLM=off`, elle garde ses réponses toutes
+  faites.
 
 ## Développement local
 
